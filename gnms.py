@@ -52,7 +52,7 @@ class GNMS(SolverAbstract):
         self.gap_norm = np.linalg.norm(self.gap, 1)
 
         self.cost += self.problem.terminalData.cost 
-        self.compute_merit_function(True)
+        self.merit =  self.cost + self.mu*self.gap_norm
 
     def computeDirection(self, recalc=True):
         if recalc:
@@ -69,14 +69,7 @@ class GNMS(SolverAbstract):
                 self.du[t][:] = self.L[t].dot(self.dx[t]) + self.l[t] 
                 A = data.Fx
                 B = data.Fu        
-                if len(data.Fu.shape) == 1:
-                    bl = B.dot(self.l[t][0])
-                    BL = B.reshape(B.shape[0], 1)@self.L[t]
-                else: 
-                    bl = B @ self.l[t]
-                    BL = B@self.L[t]
-                # import pdb; pdb.set_trace()
-                self.dx[t+1] = (A + BL)@self.dx[t] + bl + self.gap[t]
+                self.dx[t+1] = (A + B@self.L[t])@self.dx[t] + B@self.l[t] + self.gap[t]
 
         self.x_grad_norm = np.linalg.norm(self.dx)/self.problem.T
         self.u_grad_norm = np.linalg.norm(self.du)/self.problem.T
@@ -88,8 +81,6 @@ class GNMS(SolverAbstract):
         """
         self.merit_try = 0
         self.cost_try = 0
-        self.armijo = 0
-
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
             self.xs_try[t] = model.state.integrate(self.xs[t], alpha*self.dx[t])
             self.us_try[t] = self.us[t] + alpha*self.du[t]    
@@ -101,16 +92,13 @@ class GNMS(SolverAbstract):
             self.gap_try[t] = model.state.diff(self.xs_try[t+1], data.xnext) #gaps
             self.cost_try += data.cost
 
-            r = data.Lu
-            q = data.Lx
-            self.armijo += alpha*(q.dot(self.dx[t]) + r.dot(self.du[t])) 
-
         self.problem.terminalModel.calc(self.problem.terminalData, self.xs_try[-1])
         self.cost_try += self.problem.terminalData.cost
 
         self.gap_norm_try = np.linalg.norm(self.gap_try, 1)
 
-        self.compute_merit_function(False)
+        self.merit_try = self.cost_try + self.mu*self.gap_norm_try
+
 
     def acceptStep(self, alpha):
 
@@ -120,15 +108,6 @@ class GNMS(SolverAbstract):
             self.us[t] = self.us[t] + alpha*self.du[t]
 
         self.xs[-1] = model.state.integrate(self.xs[-1], alpha*self.dx[-1]) ## terminal state update
-
-    def compute_merit_function(self, isTryStep):
-        
-        if not isTryStep:
-            # self.merit =  self.cost + self.mu*self.gap_norm
-            self.merit = self.cost
-        else:
-            # self.merit_try = self.cost_try + self.mu*self.gap_norm_try
-            self.merit_try = self.cost_try - self.armijo 
 
     def backwardPass(self): 
         self.S[-1][:,:] = self.problem.terminalData.Lxx
@@ -150,8 +129,7 @@ class GNMS(SolverAbstract):
             self.H = R + B.T@self.S[t+1]@B
 
             ## Making sure H is PD
-            if len(G.shape) == 1:
-                G = np.resize(G,(1,G.shape[0]))
+
             # print(H.shape, R.shape, B.shape, G.shape)
             while True:
                 try:
@@ -162,7 +140,6 @@ class GNMS(SolverAbstract):
                     self.H += 100*self.regMin*np.eye(len(self.H))
 
             H = self.H.copy()
-            # 
             self.L[t][:,:] = -1*scl.cho_solve(Lb_uu, G)
             self.l[t][:] = -1*scl.cho_solve(Lb_uu, h)
             
@@ -248,10 +225,8 @@ class GNMS(SolverAbstract):
         self.x_grad_norm = 0
         self.u_grad_norm = 0
         self.gap_norm = 0
-        self.gap_norm_try = 0
         self.cost = 0
         self.cost_try = 0
-        self.armijo = 0
 
     def check_optimality(self):
         """
