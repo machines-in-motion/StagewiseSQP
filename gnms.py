@@ -81,6 +81,8 @@ class GNMS(SolverAbstract):
         """
         self.merit_try = 0
         self.cost_try = 0
+        self.armijo = 0
+
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
             self.xs_try[t] = model.state.integrate(self.xs[t], alpha*self.dx[t])
             self.us_try[t] = self.us[t] + alpha*self.du[t]    
@@ -91,6 +93,10 @@ class GNMS(SolverAbstract):
             model.calc(data, self.xs_try[t], self.us_try[t])  
             self.gap_try[t] = model.state.diff(self.xs_try[t+1], data.xnext) #gaps
             self.cost_try += data.cost
+
+            r = data.Lu
+            q = data.Lx
+            self.armijo += alpha*(q.dot(self.dx[t]) + r.dot(self.du[t])) 
 
         self.problem.terminalModel.calc(self.problem.terminalData, self.xs_try[-1])
         self.cost_try += self.problem.terminalData.cost
@@ -111,10 +117,11 @@ class GNMS(SolverAbstract):
     def compute_merit_function(self, isTryStep):
         
         if not isTryStep:
-            self.merit =  self.cost + self.mu*self.gap_norm
+            # self.merit =  self.cost + self.mu*self.gap_norm
+            self.merit = self.cost
         else:
-            self.merit_try = self.cost_try + self.mu*self.gap_norm_try
-
+            # self.merit_try = self.cost_try + self.mu*self.gap_norm_try
+            self.merit_try = self.cost_try - self.armijo 
 
     def backwardPass(self): 
         self.S[-1][:,:] = self.problem.terminalData.Lxx
@@ -235,6 +242,7 @@ class GNMS(SolverAbstract):
         self.gap_norm_try = 0
         self.cost = 0
         self.cost_try = 0
+        self.armijo = 0
 
     def check_optimality(self):
         """
