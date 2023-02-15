@@ -173,7 +173,7 @@ if __name__ == "__main__":
     ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
     xs = [x0] * (horizon + 1)
     us = [np.zeros(2)] * horizon
-    converged = ddp.solve(xs, us)
+    converged = ddp.solve(xs, us, 10)
     if converged:
         print(" DDP solver has CONVERGED ".center(LINE_WIDTH, "-"))
         plt.figure("trajectory plot")
