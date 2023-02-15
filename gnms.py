@@ -69,7 +69,14 @@ class GNMS(SolverAbstract):
                 self.du[t][:] = self.L[t].dot(self.dx[t]) + self.l[t] 
                 A = data.Fx
                 B = data.Fu        
-                self.dx[t+1] = (A + B@self.L[t])@self.dx[t] + B@self.l[t] + self.gap[t]
+                if len(data.Fu.shape) == 1:
+                    bl = B.dot(self.l[t][0])
+                    BL = B.reshape(B.shape[0], 1)@self.L[t]
+                else: 
+                    bl = B @ self.l[t]
+                    BL = B@self.L[t]
+                # import pdb; pdb.set_trace()
+                self.dx[t+1] = (A + BL)@self.dx[t] + bl + self.gap[t]
 
         self.x_grad_norm = np.linalg.norm(self.dx)/self.problem.T
         self.u_grad_norm = np.linalg.norm(self.du)/self.problem.T
@@ -143,7 +150,8 @@ class GNMS(SolverAbstract):
             self.H = R + B.T@self.S[t+1]@B
 
             ## Making sure H is PD
-
+            if len(G.shape) == 1:
+                G = np.resize(G,(1,G.shape[0]))
             # print(H.shape, R.shape, B.shape, G.shape)
             while True:
                 try:
@@ -154,6 +162,7 @@ class GNMS(SolverAbstract):
                     self.H += 100*self.regMin*np.eye(len(self.H))
 
             H = self.H.copy()
+            # 
             self.L[t][:,:] = -1*scl.cho_solve(Lb_uu, G)
             self.l[t][:] = -1*scl.cho_solve(Lb_uu, h)
             
