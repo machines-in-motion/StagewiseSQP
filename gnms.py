@@ -52,8 +52,7 @@ class GNMS(SolverAbstract):
         self.gap_norm = np.linalg.norm(self.gap, 1)
 
         self.cost += self.problem.terminalData.cost 
-        self.merit =  self.cost + self.mu*self.gap_norm
-
+        self.compute_merit_function(True)
 
     def computeDirection(self, recalc=True):
         if recalc:
@@ -98,8 +97,7 @@ class GNMS(SolverAbstract):
 
         self.gap_norm_try = np.linalg.norm(self.gap_try, 1)
 
-        self.merit_try = self.cost_try + self.mu*self.gap_norm_try
-
+        self.compute_merit_function(False)
 
     def acceptStep(self, alpha):
 
@@ -109,6 +107,14 @@ class GNMS(SolverAbstract):
             self.us[t] = self.us[t] + alpha*self.du[t]
 
         self.xs[-1] = model.state.integrate(self.xs[-1], alpha*self.dx[-1]) ## terminal state update
+
+    def compute_merit_function(self, isTryStep):
+        
+        if not isTryStep:
+            self.merit =  self.cost + self.mu*self.gap_norm
+        else:
+            self.merit_try = self.cost_try + self.mu*self.gap_norm_try
+
 
     def backwardPass(self): 
         self.S[-1][:,:] = self.problem.terminalData.Lxx
@@ -226,6 +232,7 @@ class GNMS(SolverAbstract):
         self.x_grad_norm = 0
         self.u_grad_norm = 0
         self.gap_norm = 0
+        self.gap_norm_try = 0
         self.cost = 0
         self.cost_try = 0
 
