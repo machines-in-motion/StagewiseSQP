@@ -193,7 +193,7 @@ if __name__ == "__main__":
     ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
     xs = [x0] * (T + 1)
     us = [10*np.ones(2)] * T
-    converged = ddp.solve(xs, us, maxiter=1)
+    converged = ddp.solve(xs, us, maxiter=20)
     print(converged)
     assert False
     if converged:

@@ -49,9 +49,7 @@ class GNMS(SolverAbstract):
             self.gap[t] = model.state.diff(self.xs[t+1], data.xnext) #gaps
             self.cost += data.cost
         
-        # self.gap_try[-1] = model.state.diff(self.xs_try[-1], data.xnext) #gaps
-
-        self.gap_norm = np.linalg.norm(self.gap)
+        self.gap_norm = np.linalg.norm(self.gap, 1)
 
         self.cost += self.problem.terminalData.cost 
         self.merit =  self.cost + self.mu*self.gap_norm
@@ -74,8 +72,8 @@ class GNMS(SolverAbstract):
                 B = data.Fu        
                 self.dx[t+1] = (A + B@self.L[t])@self.dx[t] + B@self.l[t] + self.gap[t]
 
-        self.x_grad_norm = np.linalg.norm(self.dx)
-        self.u_grad_norm = np.linalg.norm(self.du)
+        self.x_grad_norm = np.linalg.norm(self.dx)/self.problem.T
+        self.u_grad_norm = np.linalg.norm(self.du)/self.problem.T
 
         
     def tryStep(self, alpha):
@@ -87,18 +85,18 @@ class GNMS(SolverAbstract):
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
             self.xs_try[t] = model.state.integrate(self.xs[t], alpha*self.dx[t])
             self.us_try[t] = self.us[t] + alpha*self.du[t]    
+        self.xs_try[-1] = model.state.integrate(self.xs_try[-1], alpha*self.dx[-1]) ## terminal state update
+
 
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
             model.calc(data, self.xs_try[t], self.us_try[t])  
             self.gap_try[t] = model.state.diff(self.xs_try[t+1], data.xnext) #gaps
             self.cost_try += data.cost
 
-        self.xs_try[-1] = model.state.integrate(self.xs_try[-1], alpha*self.dx[-1]) ## terminal state update
-
         self.problem.terminalModel.calc(self.problem.terminalData, self.xs_try[-1])
         self.cost_try += self.problem.terminalData.cost
 
-        self.gap_norm_try = np.linalg.norm(self.gap_try)
+        self.gap_norm_try = np.linalg.norm(self.gap_try, 1)
 
         self.merit_try = self.cost_try + self.mu*self.gap_norm_try
 
@@ -167,48 +165,41 @@ class GNMS(SolverAbstract):
         
         self.setCandidate(init_xs, init_us, False)
         self.calc() # compute the gaps 
-
+        alpha = None
         for i in range(maxiter):
             recalc = True   # this will recalculated derivatives in Compute Direction 
             self.computeDirection(recalc=recalc)
+            print("iter", i, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
+
+
             alpha = 1.0
 
-            # print("iter", i, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
 
             self.tryStep(alpha)
-            # print("iter", i, "Total merit", self.merit_try, "Total cost", self.cost_try, "gap norms", self.gap_norm_try, "step length", alpha)
-
-
-            # self.tryStep(0.5)
-            # print("iter", i, "Total merit", self.merit_try, "Total cost", self.cost_try, "gap norms", self.gap_norm_try, "step length", alpha)
-
             max_search = 20
             for k in range(max_search):
                 if k == max_search - 1:
                     print("No improvement")
                     return False
-                # print(k, self.merit, self.merit_try)
-                print("iter_try", k, "Total merit", self.merit_try, "Total cost", self.cost_try, "gap norms", self.gap_norm_try, "step length", alpha)
-                
+                # print("iter_try", k, "Total merit", self.merit_try, "Total cost", self.cost_try, "gap norms", self.gap_norm_try, "step length", alpha)
                 if self.merit < self.merit_try:     # backward pass with regularization 
                     alpha *= 0.5
                     self.tryStep(alpha)
                 else:
-                    print(alpha)
                     self.acceptStep(alpha)
                     break
 
 
             # self.check_optimality()
             self.calc()
-
-            print("iter", i, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
+            # print("grad norm", self.x_grad_norm + self.u_grad_norm)
 
             # if abs(self.merit - self.merit_old) < 1e-4:
             if self.x_grad_norm + self.u_grad_norm < 1e-5:
                 print("No improvement observed")
                 break
 
+        print("iter", i+1, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
         return True 
 
     def allocateData(self):
