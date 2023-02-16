@@ -29,7 +29,7 @@ class GNMS(SolverAbstract):
         self.regFactor = 10
         self.regMax = 1e9
         self.regMin = 1e-9
-        self.mu = 10000.0
+        self.mu = 1e1
 
         self.allocateData()
 
@@ -102,12 +102,13 @@ class GNMS(SolverAbstract):
 
     def acceptStep(self, alpha):
 
-        for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
+        # for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
 
-            self.xs[t] = model.state.integrate(self.xs[t], alpha*self.dx[t])
-            self.us[t] = self.us[t] + alpha*self.du[t]
+        #     self.xs[t] = model.state.integrate(self.xs[t], alpha*self.dx[t])
+        #     self.us[t] = self.us[t] + alpha*self.du[t]
 
-        self.xs[-1] = model.state.integrate(self.xs[-1], alpha*self.dx[-1]) ## terminal state update
+        # self.xs[-1] = model.state.integrate(self.xs[-1], alpha*self.dx[-1]) ## terminal state update
+        self.setCandidate(self.xs_try, self.us_try, False)
 
     def backwardPass(self): 
         self.S[-1][:,:] = self.problem.terminalData.Lxx
@@ -143,12 +144,6 @@ class GNMS(SolverAbstract):
             self.L[t][:,:] = -1*scl.cho_solve(Lb_uu, G)
             self.l[t][:] = -1*scl.cho_solve(Lb_uu, h)
             
-            # H_inv = np.linalg.inv(H + 1e-3*np.eye(len(H)))
-
-            # self.L[t][:,:] = -1*H_inv@G
-            # self.l[t][:] = -1*H_inv@h
-            
-
             self.S[t] = Q + A.T @ (self.S[t+1])@A - self.L[t].T@H@self.L[t] 
             self.s[t] = q + A.T @ (self.S[t+1] @ self.gap[t] + self.s[t+1]) + \
                             G.T@self.l[t][:]+ self.L[t].T@(h + H@self.l[t][:])
@@ -168,11 +163,9 @@ class GNMS(SolverAbstract):
         for i in range(maxiter):
             recalc = True   # this will recalculated derivatives in Compute Direction 
             self.computeDirection(recalc=recalc)
-            print("iter", i, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
 
-
-            alpha = 1.0
-
+            alpha = 0.2
+      
 
             self.tryStep(alpha)
             max_search = 20
@@ -182,7 +175,7 @@ class GNMS(SolverAbstract):
                     return False
                 # print("iter_try", k, "Total merit", self.merit_try, "Total cost", self.cost_try, "gap norms", self.gap_norm_try, "step length", alpha)
                 if self.merit < self.merit_try:     # backward pass with regularization 
-                    alpha *= 0.5
+                    alpha *= 0.8
                     self.tryStep(alpha)
                 else:
                     self.acceptStep(alpha)
@@ -191,6 +184,8 @@ class GNMS(SolverAbstract):
 
             # self.check_optimality()
             self.calc()
+            print("iter", i, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
+
             # print("grad norm", self.x_grad_norm + self.u_grad_norm)
 
             # if abs(self.merit - self.merit_old) < 1e-4:
