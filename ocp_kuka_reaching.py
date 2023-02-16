@@ -88,12 +88,12 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 # Create solver + callbacks
 
 # FDDP
-fddp = crocoddyl.SolverFDDP(problem)
+fddp = crocoddyl.SolverDDP(problem)
 fddp.setCallbacks([crocoddyl.CallbackLogger(),
                 crocoddyl.CallbackVerbose()])
-xs_init = [x0 for i in range(T+1)]
-us_init = fddp.problem.quasiStatic(xs_init[:-1])
-fddp.solve([], [], maxiter=50, isFeasible=False)
+# xs_init = [x0 for i in range(T+1)]
+# us_init = fddp.problem.quasiStatic(xs_init[:-1])
+fddp.solve([], [], maxiter=100, isFeasible=False)
 
 print('-----')
 # GNMS
@@ -101,15 +101,24 @@ print('-----')
 ddp = GNMS(problem)
 # ddp.setCallbacks([crocoddyl.CallbackLogger(),
 #                 crocoddyl.CallbackVerbose()])
-xs_init = [x0 for i in range(T+1)] #fddp.xs #[x0 for i in range(T+1)]
-us_init = ddp.problem.quasiStatic(xs_init[:-1]) #fddp.us #ddp.problem.quasiStatic(xs_init[:-1])
+# xs_init = [x0 for i in range(T+1)] #fddp.xs #[x0 for i in range(T+1)]
+# us_init = ddp.problem.quasiStatic(xs_init[:-1]) #fddp.us #ddp.problem.quasiStatic(xs_init[:-1])
 # ddp.solve(xs_init, us_init, maxiter=20, isFeasible=False)
 ddp.solve([], [], maxiter=100, isFeasible=False)
 
+
+diff = np.array(ddp.xs) -np.array(fddp.xs)
+print(np.linalg.norm(diff))
+
 # # Extract DDP data and plot
+fddp_data = ocp_utils.extract_ocp_data(fddp, ee_frame_name='contact')
+
+ocp_utils.plot_ocp_results(fddp_data, which_plots='all', labels="FDDP", markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
+
 # ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
 
-# ocp_utils.plot_ocp_results(ddp_data, which_plots='all', labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
+# ocp_utils.plot_ocp_results(ddp_data, which_plots='all', labels="GNMS", markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
+
 
 # # Display solution in Gepetto Viewer
 # display = crocoddyl.GepettoDisplay(robot)
