@@ -104,16 +104,16 @@ ddp = GNMS(problem)
 # xs_init = [x0 for i in range(T+1)] #fddp.xs #[x0 for i in range(T+1)]
 # us_init = ddp.problem.quasiStatic(xs_init[:-1]) #fddp.us #ddp.problem.quasiStatic(xs_init[:-1])
 # ddp.solve(xs_init, us_init, maxiter=20, isFeasible=False)
-ddp.solve([], [], maxiter=100, isFeasible=False)
+ddp.solve([], [], maxiter=200, isFeasible=False)
 
 
 diff = np.array(ddp.xs) -np.array(fddp.xs)
 print(np.linalg.norm(diff))
 
 # # Extract DDP data and plot
-fddp_data = ocp_utils.extract_ocp_data(fddp, ee_frame_name='contact')
+# fddp_data = ocp_utils.extract_ocp_data(fddp, ee_frame_name='contact')
 
-ocp_utils.plot_ocp_results(fddp_data, which_plots='all', labels="FDDP", markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
+# ocp_utils.plot_ocp_results(fddp_data, which_plots='all', labels="FDDP", markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
 
 # ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
 
