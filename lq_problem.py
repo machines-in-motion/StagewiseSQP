@@ -2,6 +2,7 @@ import numpy as np
 import crocoddyl
 import matplotlib.pyplot as plt
 from gnms import GNMS
+from gnms_cpp import GNMSCPP
 
 LINE_WIDTH = 100
 
@@ -168,12 +169,24 @@ if __name__ == "__main__":
 
     # ddp = crocoddyl.SolverDDP(problem)
     ddp = GNMS(problem)
+    ddp = GNMSCPP(problem)
 
     print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
     ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
     xs = [x0] * (horizon + 1)
     us = [np.zeros(2)] * horizon
     converged = ddp.solve(xs, us, 10)
+    
+    ddp = GNMSCPP(problem)
+
+    print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
+    ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
+    xs = [x0] * (horizon + 1)
+    us = [np.zeros(2)] * horizon
+    converged = ddp.solve(xs, us, 10)
+    
+    
+    assert False
     if converged:
         print(" DDP solver has CONVERGED ".center(LINE_WIDTH, "-"))
         plt.figure("trajectory plot")

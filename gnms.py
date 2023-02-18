@@ -1,11 +1,13 @@
-""" solve for full observable case 
-"""
+### This is a python implementation of GNMS with crocoddyl with a different line search and step
+### Date : 17/02/2023
+## Authors : Avadesh, Armand, Sebastien
+
 import numpy as np
 from numpy import linalg
 
-import scipy.linalg as scl
 import crocoddyl
 from crocoddyl import SolverAbstract
+import scipy.linalg as scl
 
 LINE_WIDTH = 100 
 
