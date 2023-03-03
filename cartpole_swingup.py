@@ -5,6 +5,7 @@ from cartpole_utils import animateCartpole
 import crocoddyl
 import matplotlib.pyplot as plt
 from gnms import GNMS
+from gnms_cpp import GNMSCPP
 
 class DifferentialActionModelCartpole(crocoddyl.DifferentialActionModelAbstract):
 
@@ -75,7 +76,7 @@ terminalCartpole.costWeights[5] = 0.0001
 problem = crocoddyl.ShootingProblem(x0, [cartpoleIAM] * T, terminalCartpoleIAM)
 # Solving it using DDP
 # ddp = crocoddyl.SolverDDP(problem)
-ddp = GNMS(problem)
+ddp = GNMSCPP(problem)
 
 ddp.setCallbacks([crocoddyl.CallbackVerbose()])
 ddp.solve(maxiter=100)

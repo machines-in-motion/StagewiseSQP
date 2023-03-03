@@ -52,7 +52,8 @@ class GNMS(SolverAbstract):
             self.gap[t] = model.state.diff(self.xs[t+1], data.xnext) #gaps
             self.cost += data.cost
         
-        self.gap_norm = np.linalg.norm(self.gap, 1)
+        # self.gap_norm = np.linalg.norm(self.gap, 1)
+        self.gap_norm = sum(np.linalg.norm(self.gap, 1, axis = 1))
 
         self.cost += self.problem.terminalData.cost 
         self.merit =  self.cost + self.mu*self.gap_norm

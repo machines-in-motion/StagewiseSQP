@@ -25,7 +25,7 @@ class GNMSCPP(SolverFDDP):
         # print(self.cost, self.cost_try, self.gap_norm)
 
     def computeDirection(self):
-        print("using Python")
+        # print("using Python")
         self.calc()
         self.backwardPass()
         self.computeUpdates()
@@ -39,11 +39,11 @@ class GNMSCPP(SolverFDDP):
                 B = data.Fu      
                 if len(data.Fu.shape) == 1:
                     bl = -B.dot(self.k[t][0])
-                    BL = -B.reshape(B.shape[0], 1)@ self.K[t]
+                    BL = -B.reshape(B.shape[0], 1)@ self.K[t].reshape(1, B.shape[0])
                 else: 
                     bl = -B @ self.k[t]
                     BL = -B@ self.K[t]
-                self.dx[t+1] = (A + BL)@self.dx[t] + bl + self.fs[t]  
+                self.dx[t+1] = (A + BL)@self.dx[t] + bl + self.fs[t+1]  
 
         self.x_grad_norm = sum(np.linalg.norm(self.dx, axis = 1))/self.problem.T
         self.u_grad_norm = sum(np.linalg.norm(self.du, axis = 1))/self.problem.T
@@ -89,10 +89,10 @@ class GNMSCPP(SolverFDDP):
         self.setCandidate(init_xs, init_us, False)
         alpha = None
         self.computeDirection()
-        # self.tryStep(1.0)
+        self.tryStep(1.0)
         print(self.gap_norm, self.cost)
 
-        assert False
+        # assert False
         for i in range(maxiter):
             recalc = True   # this will recalculated derivatives in Compute Direction 
             print("iter", i, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
@@ -104,12 +104,12 @@ class GNMSCPP(SolverFDDP):
                 if k == max_search - 1:
                     print("No improvement")
                     return False
-                print("iter_try", k, "Total merit", self.merit_try, "Total cost", self.cost_try, "gap norms", self.gap_norm_try, "step length", alpha)
+                # print("iter_try", k, "Total merit", self.merit_try, "Total cost", self.cost_try, "gap norms", self.gap_norm_try, "step length", alpha)
                 if self.merit < self.merit_try:     # backward pass with regularization 
                     alpha *= 0.5
                     self.tryStep(alpha)
                 else:
-                    self.acceptStep(alpha)
+                    self.acceptStep()
                     break
 
             # self.check_optimality()
