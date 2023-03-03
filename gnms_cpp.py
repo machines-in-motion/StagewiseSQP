@@ -12,7 +12,7 @@ class GNMSCPP(SolverFDDP):
     def __init__(self, shootingProblem):
         
         SolverFDDP.__init__(self, shootingProblem)
-        self.mu = 1e3
+        self.mu = 1e0
 
         self.allocateData()
 
@@ -80,7 +80,7 @@ class GNMSCPP(SolverFDDP):
     def solve(self, init_xs=None, init_us=None, maxiter=100, isFeasible=False, regInit=None):
 
         if init_xs is None or len(init_xs) < 1:
-            init_xs = [np.zeros(m.state.nx) for m in self.models()] 
+            init_xs = [self.problem.x0.copy() for m in self.models()] 
         if init_us is None or len(init_us) < 1:
             init_us = [np.zeros(m.nu) for m in self.problem.runningModels] 
 
@@ -99,7 +99,7 @@ class GNMSCPP(SolverFDDP):
 
             alpha = 1.
             self.tryStep(alpha)
-            max_search = 20
+            max_search = 10
             for k in range(max_search):
                 if k == max_search - 1:
                     print("No improvement")

@@ -31,7 +31,7 @@ class GNMS(SolverAbstract):
         self.regFactor = 10
         self.regMax = 1e9
         self.regMin = 1e-9
-        self.mu = 1e3
+        self.mu = 1e0
 
         self.allocateData()
 
@@ -186,7 +186,7 @@ class GNMS(SolverAbstract):
     def solve(self, init_xs=None, init_us=None, maxiter=100, isFeasible=False, regInit=None):
         #___________________ Initialize ___________________#
         if init_xs is None or len(init_xs) < 1:
-            init_xs = [np.zeros(m.state.nx) for m in self.models()] 
+            init_xs = [self.problem.x0.copy() for m in self.models()] 
         if init_us is None or len(init_us) < 1:
             init_us = [np.zeros(m.nu) for m in self.problem.runningModels] 
 
