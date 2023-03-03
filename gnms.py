@@ -83,7 +83,7 @@ class GNMS(SolverAbstract):
 
         self.x_grad_norm = np.linalg.norm(self.dx)/self.problem.T
         self.u_grad_norm = np.linalg.norm(self.du)/self.problem.T
-        print("x_norm", self.x_grad_norm,"u_norm", self.u_grad_norm )
+        # print("x_norm", self.x_grad_norm,"u_norm", self.u_grad_norm )
 
 
     def compute_expected_decrease(self):
@@ -243,8 +243,8 @@ class GNMS(SolverAbstract):
         self.x_grad = [np.zeros(m.state.ndx) for m in self.models()]
         self.u_grad = [np.zeros(m.nu) for m in self.problem.runningModels]
 
-        self.gap = [np.zeros(m.state.nx) for m in self.models()] # gaps
-        self.gap_try = [np.zeros(m.state.nx) for m in self.models()] # gaps for line search
+        self.gap = [np.zeros(m.state.ndx) for m in self.models()] # gaps
+        self.gap_try = [np.zeros(m.state.ndx) for m in self.models()] # gaps for line search
 
         self.merit = 0
         self.merit_old = 0

@@ -21,7 +21,7 @@ class GNMSCPP(SolverFDDP):
         self.calcDiff()
         self.gap_norm = sum(np.linalg.norm(self.fs, 1, axis = 1))
         self.merit = self.cost + self.mu*self.gap_norm
-        print(self.gap_norm)
+        # print(self.gap_norm)
         # print(self.cost, self.cost_try, self.gap_norm)
 
     def computeDirection(self):
@@ -47,10 +47,10 @@ class GNMSCPP(SolverFDDP):
 
         self.x_grad_norm = sum(np.linalg.norm(self.dx, axis = 1))/self.problem.T
         self.u_grad_norm = sum(np.linalg.norm(self.du, axis = 1))/self.problem.T
-        print("x_norm", self.x_grad_norm,"u_norm", self.u_grad_norm )
+        # print("x_norm", self.x_grad_norm,"u_norm", self.u_grad_norm )
 
     def tryStep(self, alpha):
-        print("using python")
+        # print("using python")
         self.merit_try = 0
         self.cost_try = 0
 
@@ -137,8 +137,8 @@ class GNMSCPP(SolverFDDP):
         self.dx = [np.zeros(m.state.ndx) for m  in self.models()]
         self.du = [np.zeros(m.nu) for m  in self.problem.runningModels] 
 
-        self.gap = [np.zeros(m.state.nx) for m in self.models()] # gaps
-        self.gap_try = [np.zeros(m.state.nx) for m in self.models()] # gaps for line search
+        self.gap = [np.zeros(m.state.ndx) for m in self.models()] # gaps
+        self.gap_try = [np.zeros(m.state.ndx) for m in self.models()] # gaps for line search
 
 
         self.merit = 0
