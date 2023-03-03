@@ -169,7 +169,6 @@ if __name__ == "__main__":
 
     # ddp = crocoddyl.SolverDDP(problem)
     ddp = GNMS(problem)
-    ddp = GNMSCPP(problem)
 
     print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
     ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])

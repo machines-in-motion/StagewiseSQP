@@ -21,7 +21,7 @@ class GNMSCPP(SolverFDDP):
         self.calcDiff()
         self.gap_norm = sum(np.linalg.norm(self.fs, 1, axis = 1))
         self.merit = self.cost + self.mu*self.gap_norm
-        
+        print(self.gap_norm)
         # print(self.cost, self.cost_try, self.gap_norm)
 
     def computeDirection(self):
@@ -34,20 +34,20 @@ class GNMSCPP(SolverFDDP):
         """ computes step updates dx and du """
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
                 # here we compute the direction 
-                self.du[t][:] = self.K[t].dot(self.dx[t]) + self.k[t] 
+                self.du[t][:] = -self.K[t].dot(self.dx[t]) - self.k[t] 
                 A = data.Fx
                 B = data.Fu      
                 if len(data.Fu.shape) == 1:
-                    bl = B.dot(self.k[t][0])
-                    BL = B.reshape(B.shape[0], 1)@self.K[t]
+                    bl = -B.dot(self.k[t][0])
+                    BL = -B.reshape(B.shape[0], 1)@ self.K[t]
                 else: 
-                    bl = B @ self.k[t]
-                    BL = B@self.K[t]
+                    bl = -B @ self.k[t]
+                    BL = -B@ self.K[t]
                 self.dx[t+1] = (A + BL)@self.dx[t] + bl + self.fs[t]  
 
         self.x_grad_norm = sum(np.linalg.norm(self.dx, axis = 1))/self.problem.T
         self.u_grad_norm = sum(np.linalg.norm(self.du, axis = 1))/self.problem.T
-        print(self.x_grad_norm)
+        print("x_norm", self.x_grad_norm,"u_norm", self.u_grad_norm )
 
     def tryStep(self, alpha):
         print("using python")
@@ -89,10 +89,8 @@ class GNMSCPP(SolverFDDP):
         self.setCandidate(init_xs, init_us, False)
         alpha = None
         self.computeDirection()
-        self.tryStep(1.0)
-        # print(self.gap_norm, self.gap_norm_try, self.cost, self.cost_try)
-        print(self.gap_norm, self.gap_norm_try, self.cost, self.cost_try)
-        print( "Total merit", self.merit_try, "Total cost", self.cost_try, "gap norms", self.gap_norm_try, "step length", alpha)
+        # self.tryStep(1.0)
+        print(self.gap_norm, self.cost)
 
         assert False
         for i in range(maxiter):

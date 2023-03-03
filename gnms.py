@@ -82,7 +82,9 @@ class GNMS(SolverAbstract):
 
         self.x_grad_norm = np.linalg.norm(self.dx)/self.problem.T
         self.u_grad_norm = np.linalg.norm(self.du)/self.problem.T
-    
+        print("x_norm", self.x_grad_norm,"u_norm", self.u_grad_norm )
+
+
     def compute_expected_decrease(self):
 
         self.expected_decrease = 0
