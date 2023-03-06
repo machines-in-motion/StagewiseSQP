@@ -167,30 +167,38 @@ if __name__ == "__main__":
     problem = crocoddyl.ShootingProblem(x0, [lq_running] * horizon, lq_terminal)
     print(" Constructing shooting problem completed ".center(LINE_WIDTH, "-"))
 
-    # ddp = crocoddyl.SolverDDP(problem)
-    ddp = GNMS(problem)
+    ddp_py = GNMSCPP(problem)
 
     print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
-    ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
+    ddp_py.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
     xs = [x0] * (horizon + 1)
     us = [np.zeros(2)] * horizon
-    converged = ddp.solve(xs, us, 10)
+    converged = ddp_py.solve(xs, us, 2)
     
-    ddp = GNMSCPP(problem)
+    ddp_cpp = crocoddyl.SolverGNMS(problem)
+    # ddp = crocoddyl.SolverFDDP(problem)
 
     print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
-    ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
+    ddp_cpp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
     xs = [x0] * (horizon + 1)
     us = [np.zeros(2)] * horizon
-    converged = ddp.solve(xs, us, 10)
+    converged = ddp_cpp.solve(xs, us, 2)
     
+    # converged = True
     
-    assert False
+    assert np.linalg.norm(np.array(ddp_py.xs) - np.array(ddp_cpp.xs)) < 1e-4
+    assert np.linalg.norm(np.array(ddp_py.us) - np.array(ddp_cpp.us)) < 1e-4
+    print("........  PASSED UNIT TEST ........................................")
+
+    # assert False
     if converged:
         print(" DDP solver has CONVERGED ".center(LINE_WIDTH, "-"))
         plt.figure("trajectory plot")
-        plt.plot(np.array(ddp.xs)[:, 0], np.array(ddp.xs)[:, 1], label="ddp")
+        plt.plot(np.array(ddp_py.xs)[:, 0], np.array(ddp_py.xs)[:, 1], label="ddp_py")
+
+        plt.plot(np.array(ddp_cpp.xs)[:, 0], np.array(ddp_cpp.xs)[:, 1], label="ddp_cpp")
         plt.xlabel("x")
         plt.ylabel("y")
         plt.title("DDP")
+        plt.legend()
         plt.show()

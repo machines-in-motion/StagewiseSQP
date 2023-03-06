@@ -31,7 +31,7 @@ class GNMS(SolverAbstract):
         self.regFactor = 10
         self.regMax = 1e9
         self.regMin = 1e-9
-        self.mu = 1e0
+        self.mu = 1e3
 
         self.allocateData()
 

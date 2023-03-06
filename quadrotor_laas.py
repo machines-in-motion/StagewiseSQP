@@ -51,28 +51,30 @@ terminalModel = crocoddyl.IntegratedActionModelEuler(
 # Creating the shooting problem and the FDDP solver
 T = 33
 problem = crocoddyl.ShootingProblem(np.concatenate([hector.q0, np.zeros(state.nv)]), [runningModel] * T, terminalModel)
-# solver = crocoddyl.SolverFDDP(problem)
-solver = GNMS(problem)
+# solver = GNMS(problem)
 # solver = GNMSCPP(problem)
+solver = crocoddyl.SolverGNMS(problem)
 
 
 
-solver.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
+# solver.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
 
 cameraTF = [-0.03, 4.4, 2.3, -0.02, 0.56, 0.83, -0.03]
-if WITHDISPLAY and WITHPLOT:
-    display = crocoddyl.GepettoDisplay(hector, 4, 4, cameraTF)
-    solver.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose(), crocoddyl.CallbackDisplay(display)])
-elif WITHDISPLAY:
-    display = crocoddyl.GepettoDisplay(hector, 4, 4, cameraTF)
-    solver.setCallbacks([crocoddyl.CallbackVerbose(), crocoddyl.CallbackDisplay(display)])
-elif WITHPLOT:
-    solver.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
-else:
-    solver.setCallbacks([crocoddyl.CallbackVerbose()])
+# if WITHDISPLAY and WITHPLOT:
+#     display = crocoddyl.GepettoDisplay(hector, 4, 4, cameraTF)
+#     solver.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose(), crocoddyl.CallbackDisplay(display)])
+# elif WITHDISPLAY:
+#     display = crocoddyl.GepettoDisplay(hector, 4, 4, cameraTF)
+#     solver.setCallbacks([crocoddyl.CallbackVerbose(), crocoddyl.CallbackDisplay(display)])
+# elif WITHPLOT:
+#     solver.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
+# else:
+#     solver.setCallbacks([crocoddyl.CallbackVerbose()])
 
 # Solving the problem with the FDDP solver
-solver.solve()
+xs = [np.zeros(13)] * (T + 1)
+us = [np.zeros(nu)] * T
+solver.solve(xs, us, 100)
 
 # Plotting the entire motion
 if WITHPLOT:

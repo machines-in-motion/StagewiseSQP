@@ -8,6 +8,8 @@ import example_robot_data
 import pinocchio
 from crocoddyl.utils.biped import SimpleBipedGaitProblem, plotSolution
 from gnms import GNMS
+from gnms_cpp import GNMSCPP
+
 
 WITHDISPLAY = 'display' in sys.argv or 'CROCODDYL_DISPLAY' in os.environ
 WITHPLOT = 'plot' in sys.argv or 'CROCODDYL_PLOT' in os.environ
@@ -44,8 +46,8 @@ for i, phase in enumerate(GAITPHASES):
             problem = gait.createWalkingProblem(x0, value['stepLength'], value['stepHeight'], value['timeStep'],
                                           value['stepKnots'], value['supportKnots'])
             # Creating a walking problem
-            # solver[i] = crocoddyl.SolverFDDP(problem)
-            solver[i] = GNMS(problem)
+            solver[i] = crocoddyl.SolverGNMS(problem)
+            # solver[i] = GNMSCPP(problem)
             
             solver[i].th_stop = 1e-7
 

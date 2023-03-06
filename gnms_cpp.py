@@ -12,7 +12,7 @@ class GNMSCPP(SolverFDDP):
     def __init__(self, shootingProblem):
         
         SolverFDDP.__init__(self, shootingProblem)
-        self.mu = 1e0
+        self.mu = 1e3
 
         self.allocateData()
 
@@ -22,7 +22,6 @@ class GNMSCPP(SolverFDDP):
         self.gap_norm = sum(np.linalg.norm(self.fs, 1, axis = 1))
         self.merit = self.cost + self.mu*self.gap_norm
         # print(self.gap_norm)
-        # print(self.cost, self.cost_try, self.gap_norm)
 
     def computeDirection(self):
         # print("using Python")
@@ -45,9 +44,9 @@ class GNMSCPP(SolverFDDP):
                     BL = -B@ self.K[t]
                 self.dx[t+1] = (A + BL)@self.dx[t] + bl + self.fs[t+1]  
 
-        self.x_grad_norm = sum(np.linalg.norm(self.dx, axis = 1))/self.problem.T
-        self.u_grad_norm = sum(np.linalg.norm(self.du, axis = 1))/self.problem.T
-        # print("x_norm", self.x_grad_norm,"u_norm", self.u_grad_norm )
+        self.x_grad_norm = sum(np.linalg.norm(self.dx, 1,  axis = 1))/self.problem.T
+        self.u_grad_norm = sum(np.linalg.norm(self.du, 1,  axis = 1))/self.problem.T
+        # print("x_norm", self.x_grad_norm, "u_norm", self.u_grad_norm )
 
     def tryStep(self, alpha):
         # print("using python")
@@ -67,10 +66,11 @@ class GNMSCPP(SolverFDDP):
 
         self.problem.terminalModel.calc(self.problem.terminalData, self.xs_try[-1])
         self.cost_try += self.problem.terminalData.cost
-
+        
         self.gap_norm_try = sum(np.linalg.norm(self.gap_try, 1, axis = 1))
 
         self.merit_try = self.cost_try + self.mu*self.gap_norm_try
+        # print("cost_try", self.cost_try, "gaps_try", self.gap_norm_try, "merit try", self.merit_try)
 
     def acceptStep(self):
 
@@ -87,35 +87,37 @@ class GNMSCPP(SolverFDDP):
         init_xs[0][:] = self.problem.x0.copy() # Initial condition guess must be x0
         
         self.setCandidate(init_xs, init_us, False)
+
         alpha = None
         self.computeDirection()
-        self.tryStep(1.0)
-        print(self.gap_norm, self.cost)
+        # self.tryStep(1.0)
 
-        # assert False
         for i in range(maxiter):
             recalc = True   # this will recalculated derivatives in Compute Direction 
-            print("iter", i, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
+            # print("iter", i, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
 
             alpha = 1.
             self.tryStep(alpha)
             max_search = 10
+            print("iter", i, "Total merit", self.merit, "Total merit try", self.merit_try, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
+
             for k in range(max_search):
                 if k == max_search - 1:
                     print("No improvement")
+                    print("Terminated", "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
                     return False
                 # print("iter_try", k, "Total merit", self.merit_try, "Total cost", self.cost_try, "gap norms", self.gap_norm_try, "step length", alpha)
                 if self.merit < self.merit_try:     # backward pass with regularization 
                     alpha *= 0.5
+                    print(alpha)
                     self.tryStep(alpha)
                 else:
                     self.acceptStep()
                     break
-
             # self.check_optimality()
             self.computeDirection()
 
-            # print("grad norm", self.x_grad_norm + self.u_grad_norm)
+            print("grad norm", self.x_grad_norm + self.u_grad_norm)
             # if abs(self.merit - self.merit_old) < 1e-4:
             if self.x_grad_norm + self.u_grad_norm < 1e-4:
                 print("No improvement observed")
