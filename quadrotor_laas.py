@@ -50,42 +50,51 @@ terminalModel = crocoddyl.IntegratedActionModelEuler(
 
 # Creating the shooting problem and the FDDP solver
 T = 33
-problem = crocoddyl.ShootingProblem(np.concatenate([hector.q0, np.zeros(state.nv)]), [runningModel] * T, terminalModel)
-# solver = crocoddyl.SolverFDDP(problem)
-solver = GNMS(problem)
-# solver = GNMSCPP(problem)
+x0 = np.concatenate([hector.q0, np.zeros(state.nv)])
+problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
+
+usol = np.load("quadror_us.npy")
 
 
+N_iter = 100
 
-solver.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
 
-cameraTF = [-0.03, 4.4, 2.3, -0.02, 0.56, 0.83, -0.03]
-if WITHDISPLAY and WITHPLOT:
-    display = crocoddyl.GepettoDisplay(hector, 4, 4, cameraTF)
-    solver.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose(), crocoddyl.CallbackDisplay(display)])
-elif WITHDISPLAY:
-    display = crocoddyl.GepettoDisplay(hector, 4, 4, cameraTF)
-    solver.setCallbacks([crocoddyl.CallbackVerbose(), crocoddyl.CallbackDisplay(display)])
-elif WITHPLOT:
-    solver.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
-else:
-    solver.setCallbacks([crocoddyl.CallbackVerbose()])
+ddp_reccord = []
 
-# Solving the problem with the FDDP solver
-solver.solve()
+ddp = crocoddyl.SolverFDDP(problem)
+ddp.th_stop = 1e-20
+ddp.setCallbacks([crocoddyl.CallbackVerbose()])
 
-# Plotting the entire motion
-if WITHPLOT:
-    log = solver.getCallbacks()[0]
-    crocoddyl.plotOCSolution(log.xs, log.us, figIndex=1, show=False)
-    crocoddyl.plotConvergence(log.costs, log.u_regs, log.x_regs, log.stops, log.grads, log.steps, figIndex=2)
+xs = [x0] * (T+1)
+us = [np.zeros(nu)] * T 
 
-# Display the entire motion
-if WITHDISPLAY:
-    display = crocoddyl.GepettoDisplay(hector)
-    hector.viewer.gui.addXYZaxis('world/wp', [1., 0., 0., 1.], .03, 0.5)
-    hector.viewer.gui.applyConfiguration(
-        'world/wp',
-        target_pos.tolist() + [target_quat[0], target_quat[1], target_quat[2], target_quat[3]])
+for i in range(N_iter):
+    xs, us = ddp.xs, ddp.us
+    ddp_reccord.append(np.linalg.norm(np.array(us) - usol))
+    ddp.solve(xs, us, isFeasible=False, maxiter=1)
 
-    display.displayFromSolver(solver)
+
+GNMS_reccord = []
+
+GNMS = GNMSCPP(problem)
+GNMS.th_stop = 1e-20
+GNMS.setCallbacks([crocoddyl.CallbackVerbose()])
+
+xs = [x0] * (T+1)
+us = [np.zeros(nu)] * T 
+
+for i in range(N_iter):
+    xs, us = GNMS.xs, GNMS.us
+    GNMS_reccord.append(np.linalg.norm(np.array(us) - usol))
+
+    GNMS.solve(xs, us, maxiter=1)
+
+usol = np.save("quadror_us.npy", np.array(ddp.us))
+
+import matplotlib.pyplot as plt
+
+plt.plot(np.array(GNMS_reccord), label="gnms")
+plt.plot(np.array(ddp_reccord), label="ddp")
+plt.yscale("log")
+plt.legend()
+plt.show()
