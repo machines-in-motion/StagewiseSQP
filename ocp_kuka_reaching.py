@@ -9,6 +9,7 @@ import pinocchio as pin
 np.set_printoptions(precision=4, linewidth=180)
 import ocp_utils
 from gnms import GNMS
+from gnms_cpp import GNMSCPP
 
 # # # # # # # # # # # # #
 ### LOAD ROBOT MODEL  ###
@@ -78,49 +79,35 @@ runningModel = crocoddyl.IntegratedActionModelEuler(running_DAM, dt)
 terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
 
 # Optionally add armature to take into account actuator's inertia
-runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
-terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
+# runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
+# terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
 
 # Create the shooting problem
 T = 100
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
-# Create solver + callbacks
-
-# FDDP
-fddp = crocoddyl.SolverDDP(problem)
-fddp.setCallbacks([crocoddyl.CallbackLogger(),
-                crocoddyl.CallbackVerbose()])
-# xs_init = [x0 for i in range(T+1)]
-# us_init = fddp.problem.quasiStatic(xs_init[:-1])
-fddp.solve([], [], maxiter=100, isFeasible=False)
-
-print('-----')
-# GNMS
-# ddp = crocoddyl.SolverGNMS(problem)
-ddp = GNMS(problem)
-# ddp.setCallbacks([crocoddyl.CallbackLogger(),
-#                 crocoddyl.CallbackVerbose()])
-# xs_init = [x0 for i in range(T+1)] #fddp.xs #[x0 for i in range(T+1)]
-# us_init = ddp.problem.quasiStatic(xs_init[:-1]) #fddp.us #ddp.problem.quasiStatic(xs_init[:-1])
-# ddp.solve(xs_init, us_init, maxiter=20, isFeasible=False)
-ddp.solve([], [], maxiter=200, isFeasible=False)
 
 
-diff = np.array(ddp.xs) -np.array(fddp.xs)
-print(np.linalg.norm(diff))
-
-# # Extract DDP data and plot
-# fddp_data = ocp_utils.extract_ocp_data(fddp, ee_frame_name='contact')
-
-# ocp_utils.plot_ocp_results(fddp_data, which_plots='all', labels="FDDP", markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
-
-# ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
-
-# ocp_utils.plot_ocp_results(ddp_data, which_plots='all', labels="GNMS", markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
 
 
-# # Display solution in Gepetto Viewer
-# display = crocoddyl.GepettoDisplay(robot)
-# display.displayFromSolver(ddp, factor=1)
+N_iter = 60
+
+
+xs = [x0] * (T+1)
+us = [np.zeros(nu)] * T 
+ddp = GNMSCPP(problem) 
+ddp.solve(xs, us, maxiter=200)
+
+# Extract DDP data and plot
+ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
+
+ocp_utils.plot_ocp_results(ddp_data, which_plots=['u', 'x'], labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
+
+# xs_ddp = [x0] * (T+1)
+# us_ddp = [np.zeros(nu)] * T 
+# ddp.solve(xs_ddp, us_ddp, maxiter=200)
+
+# print(np.linalg.norm(np.array(ddp.us) - np.array(GNMS.us)))
+# print(np.linalg.norm(np.array(ddp.xs) - np.array(GNMS.xs)))
+
 

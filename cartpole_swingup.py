@@ -76,11 +76,14 @@ terminalCartpole.costWeights[5] = 0.0001
 problem = crocoddyl.ShootingProblem(x0, [cartpoleIAM] * T, terminalCartpoleIAM)
 # Solving it using DDP
 # ddp = crocoddyl.SolverDDP(problem)
-ddp = GNMSCPP(problem)
+ddp = GNMS(problem)
 
 ddp.setCallbacks([crocoddyl.CallbackVerbose()])
-ddp.solve(maxiter=100)
-# ddp.solve([], [], maxiter=300)
+xs = [x0] * (ddp.problem.T + 1)
+us = [np.zeros(1)] * ddp.problem.T 
+
+# ddp.solve(xs, us, maxiter=300)
+ddp.solve(maxiter=300)
 
 fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1)
 ax1.plot(np.array(ddp.xs)[:, 0], label="ddp")

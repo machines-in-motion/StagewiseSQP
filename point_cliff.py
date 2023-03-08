@@ -119,8 +119,8 @@ if __name__ == "__main__":
     problem = crocoddyl.ShootingProblem(x0, [cliff_running] * T, cliff_terminal)
     print(" Constructing shooting problem completed ".center(LINE_WIDTH, "-"))
 
-    ddp = GNMS(problem)
-    # ddp = GNMSCPP(problem)
+    # ddp = GNMS(problem)
+    ddp = GNMSCPP(problem)
     print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
     # ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
     xs = [x0] * (T + 1)
