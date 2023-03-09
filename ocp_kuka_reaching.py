@@ -11,6 +11,9 @@ import ocp_utils
 from gnms import GNMS
 from gnms_cpp import GNMSCPP
 
+from clqr import CLQR
+from cilqr import CILQR
+
 # # # # # # # # # # # # #
 ### LOAD ROBOT MODEL  ###
 # # # # # # # # # # # # #
@@ -64,10 +67,10 @@ frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidu
 
 # Add costs
 runningCostModel.addCost("stateReg", xRegCost, 1e-1)
-runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-6)
-runningCostModel.addCost("translation", frameTranslationCost, 10)
+runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
+runningCostModel.addCost("translation", frameTranslationCost, 1)
 terminalCostModel.addCost("stateReg", xRegCost, 1e-1)
-terminalCostModel.addCost("translation", frameTranslationCost, 10)
+terminalCostModel.addCost("translation", frameTranslationCost, 1)
 
 # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
 running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, runningCostModel)
@@ -95,8 +98,11 @@ N_iter = 60
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
-ddp = GNMSCPP(problem) 
-ddp.solve(xs, us, maxiter=200)
+# ddp = GNMSCPP(problem) 
+ddp = CILQR(problem) 
+# ddp = crocoddyl.SolverFDDP(problem) 
+ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
+ddp.solve(xs, us, maxiter=1000)
 
 # Extract DDP data and plot
 ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
