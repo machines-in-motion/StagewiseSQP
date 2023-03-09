@@ -114,11 +114,6 @@ class GNMS(SolverAbstract):
         This function tries the step 
         """
 
-
-        # self.xs_try = [np.zeros(m.state.nx) for m in self.models()] 
-        # self.xs_try[0][:] = self.problem.x0.copy()
-        # self.us_try = [np.zeros(m.nu) for m in self.problem.runningModels] 
-
         self.merit_try = 0
         self.cost_try = 0
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
@@ -161,19 +156,21 @@ class GNMS(SolverAbstract):
 
             h = r + B.T@(self.s[t+1] + self.S[t+1]@self.gap[t])
             G = P + B.T@self.S[t+1]@A
-            self.H = R + B.T@self.S[t+1]@B
+            self.H = R + B.T@self.S[t+1]@B 
+            self.H += 1e-9 * np.eye(len(self.H))
             if len(G.shape) == 1:
                 G = np.resize(G,(1,G.shape[0]))
             ## Making sure H is PD
 
             # print(H.shape, R.shape, B.shape, G.shape)
-            while True:
-                try:
-                    Lb_uu = scl.cho_factor(self.H, lower=True)
-                    break 
-                except:
-                    print("increasing H")
-                    self.H += 100*self.regMin*np.eye(len(self.H))
+            Lb_uu = scl.cho_factor(self.H, lower=True)
+            # while True:
+            #     try:
+            #         Lb_uu = scl.cho_factor(self.H, lower=True)
+            #         break 
+            #     except:
+            #         print("increasing H")
+            #         self.H += 100*self.regMin*np.eye(len(self.H))
 
             H = self.H.copy()
             self.L[t][:,:] = -1*scl.cho_solve(Lb_uu, G)
@@ -253,7 +250,6 @@ class GNMS(SolverAbstract):
         self.gap_norm = 0
         self.cost = 0
         self.cost_try = 0
-        self.expected_decrease = 0
 
 
     def check_optimality(self):

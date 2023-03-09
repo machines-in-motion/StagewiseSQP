@@ -6,6 +6,7 @@ import crocoddyl
 import matplotlib.pyplot as plt
 from gnms import GNMS
 from gnms_cpp import GNMSCPP
+from cilqr import CILQR
 
 class DifferentialActionModelCartpole(crocoddyl.DifferentialActionModelAbstract):
 
@@ -67,8 +68,8 @@ terminalCartpole = DifferentialActionModelCartpole()
 terminalCartpoleDAM = crocoddyl.DifferentialActionModelNumDiff(terminalCartpole, True)
 terminalCartpoleIAM = crocoddyl.IntegratedActionModelEuler(terminalCartpoleDAM)
 
-terminalCartpole.costWeights[0] = 100
-terminalCartpole.costWeights[1] = 100
+terminalCartpole.costWeights[0] = 200
+terminalCartpole.costWeights[1] = 200
 terminalCartpole.costWeights[2] = 1.
 terminalCartpole.costWeights[3] = 0.1
 terminalCartpole.costWeights[4] = 0.01
@@ -76,14 +77,15 @@ terminalCartpole.costWeights[5] = 0.0001
 problem = crocoddyl.ShootingProblem(x0, [cartpoleIAM] * T, terminalCartpoleIAM)
 # Solving it using DDP
 # ddp = crocoddyl.SolverDDP(problem)
-ddp = GNMS(problem)
+# ddp = GNMS(problem)
+ddp = CILQR(problem)
 
 ddp.setCallbacks([crocoddyl.CallbackVerbose()])
 xs = [x0] * (ddp.problem.T + 1)
 us = [np.zeros(1)] * ddp.problem.T 
 
 # ddp.solve(xs, us, maxiter=300)
-ddp.solve(maxiter=300)
+ddp.solve(maxiter=150)
 
 fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1)
 ax1.plot(np.array(ddp.xs)[:, 0], label="ddp")

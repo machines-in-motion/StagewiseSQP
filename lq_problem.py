@@ -2,6 +2,7 @@ import numpy as np
 import crocoddyl
 import matplotlib.pyplot as plt
 from clqr import CLQR
+from cilqr import CILQR
 
 LINE_WIDTH = 100
 
@@ -166,7 +167,8 @@ if __name__ == "__main__":
     problem = crocoddyl.ShootingProblem(x0, [lq_running] * horizon, lq_terminal)
     print(" Constructing shooting problem completed ".center(LINE_WIDTH, "-"))
 
-    ddp_py = CLQR(problem)
+    # ddp_py = CLQR(problem)
+    ddp_py = CILQR(problem)
 
     print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
     # ddp_py.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
