@@ -4,9 +4,11 @@
 
 import numpy as np
 from numpy import linalg
-
+import proxsuite
 import crocoddyl
 from crocoddyl import SolverAbstract
+from scipy import sparse
+import osqp
 import scipy.linalg as scl
 
 LINE_WIDTH = 100 
@@ -28,7 +30,7 @@ class CLQR(SolverAbstract):
     def __init__(self, shootingProblem):
         SolverAbstract.__init__(self, shootingProblem)
         
-        self.rho_op = 1e3
+        self.rho_op = 1e1
 
         self.allocateData()
 
@@ -66,6 +68,89 @@ class CLQR(SolverAbstract):
             self.computeUpdates()
             self.update_lagrangian_parameters()
 
+
+
+    def computeDirectionOSQP(self):
+        self.calc(True)
+        
+        P = np.zeros((self.problem.T*(self.nx + self.nu), self.problem.T*(self.nx + self.nu)))
+        q = np.zeros(self.problem.T*(self.nx + self.nu))
+        
+        Asize = self.problem.T*(self.nx + self.nu)
+        A = np.zeros((self.problem.T*self.nx, Asize))
+        B = np.zeros(self.problem.T*self.nx)
+
+        for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
+            if t>=1:
+                index_x = (t-1) * self.nx
+                P[index_x:index_x+self.nx, index_x:index_x+self.nx] = data.Lxx.copy()
+                q[index_x:index_x+self.nx] = data.Lx.copy()
+
+            index_u = self.problem.T*self.nx + t * self.nu
+            P[index_u:index_u+self.nu, index_u:index_u+self.nu] = data.Luu.copy()
+            q[index_u:index_u+self.nu] = data.Lu.copy()
+
+
+            
+            index_u = self.problem.T*self.nx + t * self.nu
+            A[t * self.nx: (t+1) * self.nx, index_u:index_u+self.nu] = - data.Fu 
+            A[t * self.nx: (t+1) * self.nx, t * self.nx: (t+1) * self.nx] = np.eye(self.nx)
+
+            if t >=1:
+                A[t * self.nx: (t+1) * self.nx, (t-1) * self.nx: t * self.nx] = - data.Fx
+
+            B[t * self.nx: (t+1) * self.nx] = self.gap[t]
+
+
+        P[self.problem.T*self.nx-self.nx:self.problem.T*self.nx, self.problem.T*self.nx-self.nx:self.problem.T*self.nx] = self.problem.terminalData.Lxx.copy()
+        q[self.problem.T*self.nx-self.nx:self.problem.T*self.nx] = self.problem.terminalData.Lx.copy()
+
+
+        n = self.problem.T*(self.nx + self.nu)
+        n_eq = self.problem.T*self.nx
+        n_in = self.problem.T*(self.nx + self.nu)
+
+        C = np.eye(n_in)
+        l = np.zeros(n_in)
+        u = np.zeros(n_in)
+
+        for t in range(self.problem.T): 
+            l[t * self.nx: (t+1) * self.nx] = self.lxmin[t+1]
+            u[t * self.nx: (t+1) * self.nx] = self.lxmax[t+1]
+            index_u = self.problem.T*self.nx + t * self.nu
+            l[index_u: index_u + self.nu] = self.lumin[t]
+            u[index_u: index_u + self.nu] = self.lumax[t]
+
+        print(q)
+
+        # solve it
+        qp = proxsuite.proxqp.dense.QP(n, n_eq, n_in)
+        qp.init(P, q, A, B, C, l, u)        
+        qp.solve()
+        # print an optimal solution
+        # print("optimal x: {}".format(qp.results.x))
+
+
+
+
+        # A = sparse.csr_matrix(A)
+        # P = sparse.csr_matrix(P)
+        # q = sparse.csr_matrix(q)
+        # l = sparse.csr_matrix(B)
+        # u = sparse.csr_matrix(B)
+        # prob = osqp.OSQP()
+        # prob.setup(P, q, A, l, u, warm_start=True)
+        # res = prob.solve()
+        self.dx[0] = np.zeros(self.nx)
+        for t in range(self.problem.T):
+            self.dx[t+1] = qp.results.x[t * self.nx: (t+1) * self.nx] 
+            index_u = self.problem.T*self.nx + t * self.nu
+            self.du[t] = qp.results.x[index_u:index_u+self.nu]
+
+        self.x_grad_norm = np.linalg.norm(self.dx)/(self.problem.T+1)
+        self.u_grad_norm = np.linalg.norm(self.du)/self.problem.T
+
+
     def update_lagrangian_parameters(self):
         ## hard coding clipping now
 
@@ -88,7 +173,7 @@ class CLQR(SolverAbstract):
 
         xz_old = self.xz[-1]
     
-        self.xz[-1] = self.dx[-1] + self.xy[-1] #np.clip(self.dx[-1] + self.xy[-1], self.lxmin[-1], self.lxmax[-1])
+        self.xz[-1] = np.clip(self.dx[-1] + self.xy[-1], self.lxmin[-1], self.lxmax[-1])
         norm_dz += np.linalg.norm(self.xz[-1] - xz_old)
         self.xy[-1] += self.dx[-1] - self.xz[-1] 
         norm_r += np.linalg.norm(self.xz[-1] - self.dx[-1])
@@ -172,10 +257,14 @@ class CLQR(SolverAbstract):
 
         init_xs[0][:] = self.problem.x0.copy() # Initial condition guess must be x0
         self.setCandidate(init_xs, init_us, False)
-        self.computeDirection(10)
+        # self.computeDirection(200)
+        self.computeDirectionOSQP()
         self.acceptStep(alpha = 1.0)
         
         print("Total cost", self.cost, "gap norms", self.gap_norm, "dx norm", self.x_grad_norm, "du norm", self.u_grad_norm)
+        self.calc(True)
+        print("Total cost", self.cost, "gap norms", self.gap_norm, "dx norm", self.x_grad_norm, "du norm", self.u_grad_norm)
+
 
 
     def allocateData(self):
@@ -192,7 +281,7 @@ class CLQR(SolverAbstract):
         self.uy = [np.zeros(m.nu) for m  in self.problem.runningModels] 
         #
         cl = np.inf
-        tmp = np.array([0.8,0.2, np.inf, np.inf])
+        tmp = np.array([0.2, 0.1, np.inf, np.inf])
         self.lxmin = [-cl*np.ones(m.state.nx) for m  in self.models()]
         self.lxmax = [tmp for m  in self.models()]
         self.lumin = [-cl*np.ones(m.nu) for m  in self.problem.runningModels] 
@@ -215,6 +304,8 @@ class CLQR(SolverAbstract):
         self.cost = 0
         self.cost_try = 0
 
+        self.nx = self.problem.terminalModel.state.nx 
+        self.nu = self.problem.runningModels[0].nu
 
     def check_optimality(self):
         """
