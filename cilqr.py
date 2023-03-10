@@ -4,10 +4,12 @@
 
 import numpy as np
 from numpy import linalg
+import proxsuite
 
 import crocoddyl
 from crocoddyl import SolverAbstract
 import scipy.linalg as scl
+import osqp
 
 def rev_enumerate(l):
     return reversed(list(enumerate(l)))
@@ -112,6 +114,83 @@ class CILQR(SolverAbstract):
         self.u_grad_norm = np.linalg.norm(self.du)/self.problem.T
         # print("x_norm", self.x_grad_norm,"u_norm", self.u_grad_norm )
 
+
+    def computeDirectionOSQP(self):
+        self.calc(True)
+        
+        P = np.zeros((self.problem.T*(self.nx + self.nu), self.problem.T*(self.nx + self.nu)))
+        q = np.zeros(self.problem.T*(self.nx + self.nu))
+        
+        Asize = self.problem.T*(self.nx + self.nu)
+        A = np.zeros((self.problem.T*self.nx, Asize))
+        B = np.zeros(self.problem.T*self.nx)
+
+        for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
+            if t>=1:
+                index_x = (t-1) * self.nx
+                P[index_x:index_x+self.nx, index_x:index_x+self.nx] = data.Lxx.copy()
+                q[index_x:index_x+self.nx] = data.Lx.copy()
+
+            index_u = self.problem.T*self.nx + t * self.nu
+            P[index_u:index_u+self.nu, index_u:index_u+self.nu] = data.Luu.copy()
+            q[index_u:index_u+self.nu] = data.Lu.copy()
+
+
+            
+            index_u = self.problem.T*self.nx + t * self.nu
+            A[t * self.nx: (t+1) * self.nx, index_u:index_u+self.nu] = - data.Fu 
+            A[t * self.nx: (t+1) * self.nx, t * self.nx: (t+1) * self.nx] = np.eye(self.nx)
+
+            if t >=1:
+                A[t * self.nx: (t+1) * self.nx, (t-1) * self.nx: t * self.nx] = - data.Fx
+
+            B[t * self.nx: (t+1) * self.nx] = self.gap[t]
+
+
+        P[self.problem.T*self.nx-self.nx:self.problem.T*self.nx, self.problem.T*self.nx-self.nx:self.problem.T*self.nx] = self.problem.terminalData.Lxx.copy()
+        q[self.problem.T*self.nx-self.nx:self.problem.T*self.nx] = self.problem.terminalData.Lx.copy()
+
+
+        n = self.problem.T*(self.nx + self.nu)
+        n_eq = self.problem.T*self.nx
+        n_in = self.problem.T*(self.nx + self.nu)
+
+        C = np.eye(n_in)
+        l = np.zeros(n_in)
+        u = np.zeros(n_in)
+
+        for t in range(self.problem.T): 
+            l[t * self.nx: (t+1) * self.nx] = self.lxmin[t+1] - self.xs[t+1]
+            u[t * self.nx: (t+1) * self.nx] = self.lxmax[t+1] - self.xs[t+1] 
+            index_u = self.problem.T*self.nx + t * self.nu
+            l[index_u: index_u + self.nu] = self.lumin[t] - self.us[t]
+            u[index_u: index_u + self.nu] = self.lumax[t] - self.us[t]
+
+        # solve it
+        qp = proxsuite.proxqp.sparse.QP(n, n_eq, n_in)
+        qp.init(P, q, A, B, C, l, u)        
+        qp.solve()
+        # print an optimal solution
+        # print("optimal x: {}".format(qp.results.x))
+
+        # A = sparse.csr_matrix(A)
+        # P = sparse.csr_matrix(P)
+        # q = sparse.csr_matrix(q)
+        # l = sparse.csr_matrix(B)
+        # u = sparse.csr_matrix(B)
+        # prob = osqp.OSQP()
+        # prob.setup(P, q, A, l, u, warm_start=True)
+        # res = prob.solve()
+        self.dx[0] = np.zeros(self.nx)
+        for t in range(self.problem.T):
+            self.dx[t+1] = qp.results.x[t * self.nx: (t+1) * self.nx] 
+            index_u = self.problem.T*self.nx + t * self.nu
+            self.du[t] = qp.results.x[index_u:index_u+self.nu]
+
+        self.x_grad_norm = np.linalg.norm(self.dx)/(self.problem.T+1)
+        self.u_grad_norm = np.linalg.norm(self.du)/self.problem.T
+
+
     def tryStep(self, alpha):
         """
         This function tries the step 
@@ -195,7 +274,8 @@ class CILQR(SolverAbstract):
         init_xs[0][:] = self.problem.x0.copy() # Initial condition guess must be x0
         self.setCandidate(init_xs, init_us, False)
         for i in range(maxiter):
-            self.computeDirection(50)
+            # self.computeDirection(50)
+            self.computeDirectionOSQP()
             alpha = 0.5
             self.tryStep(alpha)
             max_search = 20
@@ -229,8 +309,8 @@ class CILQR(SolverAbstract):
         #
         cl = np.inf
         clip_state_max = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [np.inf, np.inf, np.inf, np.inf,  np.inf,  np.inf ,  np.inf])
-        clip_state_min = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [np.inf, np.inf, np.inf, np.inf,  np.inf,  np.inf ,  np.inf])
-        clip_ctrl = np.array([np.inf, 100, np.inf, np.inf, np.inf, np.inf , np.inf] )
+        clip_state_min = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.5]*7)
+        clip_ctrl = np.array([np.inf, np.inf , np.inf, np.inf, np.inf, np.inf , np.inf] )
 
         self.lxmin = [-clip_state_min*np.ones(m.state.nx) for m  in self.models()]
         self.lxmax = [clip_state_max for m  in self.models()]
@@ -261,6 +341,8 @@ class CILQR(SolverAbstract):
         self.cost_try = 0
         self.merit = 0
         self.merit_old = 0
+        self.nx = self.problem.terminalModel.state.nx 
+        self.nu = self.problem.runningModels[0].nu
         
     def check_optimality(self):
         """

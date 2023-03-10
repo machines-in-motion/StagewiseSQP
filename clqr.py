@@ -121,17 +121,12 @@ class CLQR(SolverAbstract):
             l[index_u: index_u + self.nu] = self.lumin[t]
             u[index_u: index_u + self.nu] = self.lumax[t]
 
-        print(q)
-
         # solve it
         qp = proxsuite.proxqp.dense.QP(n, n_eq, n_in)
         qp.init(P, q, A, B, C, l, u)        
         qp.solve()
         # print an optimal solution
         # print("optimal x: {}".format(qp.results.x))
-
-
-
 
         # A = sparse.csr_matrix(A)
         # P = sparse.csr_matrix(P)
