@@ -3,6 +3,7 @@ import crocoddyl
 import matplotlib.pyplot as plt
 from clqr import CLQR
 from cilqr import CILQR
+from gnms_cpp import GNMSCPP
 
 LINE_WIDTH = 100
 
@@ -168,22 +169,29 @@ if __name__ == "__main__":
     print(" Constructing shooting problem completed ".center(LINE_WIDTH, "-"))
 
     # ddp_py = CLQR(problem)
-    ddp_py = CILQR(problem)
+    ddp_py = GNMSCPP(problem)
 
     print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
-    # ddp_py.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
+    ddp_py.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
     xs = [x0] * (horizon + 1)
     us = [np.zeros(2)] * horizon
     converged = ddp_py.solve(xs, us, 2)
     
-    # ddp_cpp = crocoddyl.SolverGNMS(problem)
+    ddp_cpp = crocoddyl.SolverGNMS(problem)
     # ddp = crocoddyl.SolverFDDP(problem)
+    ddp_cpp.with_callbacks = True
 
-    # print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
-    # ddp_cpp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
-    # xs = [x0] * (horizon + 1)
-    # us = [np.zeros(2)] * horizon
-    # converged = ddp_cpp.solve(xs, us, 2)
+    ddp_cpp.x_ub = np.array([0.8, 0.2, np.inf, np.inf])
+    ddp_cpp.x_lb = np.array([-np.inf, -np.inf, -np.inf, -np.inf])
+    ddp_cpp.u_ub = np.array([np.inf, np.inf, np.inf, np.inf])
+    ddp_cpp.u_lb = np.array([-np.inf, -np.inf, -np.inf, -np.inf])
+    
+
+    print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
+    ddp_cpp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
+    xs = [x0] * (horizon + 1)
+    us = [np.zeros(2)] * horizon
+    converged = ddp_cpp.solve(xs, us, 2)
     
     # converged = True
     
@@ -195,9 +203,9 @@ if __name__ == "__main__":
     if True:
         print(" DDP solver has CONVERGED ".center(LINE_WIDTH, "-"))
         plt.figure("trajectory plot")
-        plt.plot(np.array(ddp_py.xs)[:, 0], np.array(ddp_py.xs)[:, 1], label="ddp_py")
+        # plt.plot(np.array(ddp_py.xs)[:, 0], np.array(ddp_py.xs)[:, 1], label="ddp_py")
 
-        # plt.plot(np.array(ddp_cpp.xs)[:, 0], np.array(ddp_cpp.xs)[:, 1], label="ddp_cpp")
+        plt.plot(np.array(ddp_cpp.xs)[:, 0], np.array(ddp_cpp.xs)[:, 1], label="ddp_cpp")
         plt.xlabel("x")
         plt.ylabel("y")
         plt.title("DDP")

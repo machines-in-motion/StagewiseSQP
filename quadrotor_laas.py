@@ -78,6 +78,7 @@ GNMS_reccord = []
 
 GNMS = crocoddyl.SolverGNMS(problem)
 GNMS.th_stop = 1e-20
+GNMS.with_callbacks = True
 # GNMS.setCallbacks([crocoddyl.CallbackVerbose()])
 
 
