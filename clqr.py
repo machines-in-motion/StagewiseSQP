@@ -10,6 +10,7 @@ from crocoddyl import SolverAbstract
 from scipy import sparse
 import osqp
 import scipy.linalg as scl
+import time 
 
 LINE_WIDTH = 100 
 
@@ -34,7 +35,7 @@ class CLQR(SolverAbstract):
         self.constraintModel = constraintModel
         self.allocateData()
         self.allocateQPData()
-        assert method == "ProxQP" or method=="sparceADMM"
+        assert method == "ProxQP" or method=="sparceADMM"  or method=="OSQP"
         
         self.method = method
         
@@ -63,8 +64,8 @@ class CLQR(SolverAbstract):
         self.cost += self.problem.terminalData.cost 
 
     def computeDirection(self):
-        if self.method == "ProxQP":
-            self.computeDirectionOSQP()
+        if self.method == "ProxQP" or self.method=="OSQP":
+            self.computeDirectionFullQP()
         else:
             self.calc(True)
             for i in range(self.max_iters):
@@ -85,7 +86,7 @@ class CLQR(SolverAbstract):
                     print("iter ", i, " r ", self.norm_r, " dz ", self.norm_dz )
 
 
-    def computeDirectionOSQP(self):
+    def computeDirectionFullQP(self):
         self.calc(True)
         
         P = np.zeros((self.problem.T*(self.nx + self.nu), self.problem.T*(self.nx + self.nu)))
@@ -136,26 +137,38 @@ class CLQR(SolverAbstract):
             l[index_u: index_u + self.nu] = self.lumin[t] - self.us[t]
             u[index_u: index_u + self.nu] = self.lumax[t] - self.us[t]
 
-        # solve it
-        qp = proxsuite.proxqp.sparse.QP(n, n_eq, n_in)
-        qp.init(P, q, A, B, C, l, u)        
-        qp.solve()
-        # print an optimal solution
-        # print("optimal x: {}".format(qp.results.x))
+        if self.method == "ProxQP":
+            qp = proxsuite.proxqp.sparse.QP(n, n_eq, n_in)
+            qp.init(P, q, A, B, C, l, u)      
+            t1 = time.time()
+            qp.solve()
+            print("solve time = ", time.time()-t1)
+            res = qp.results
+            print("n_iter = ", qp.results.info.iter)
+            print("n_iter_ext = ", qp.results.info.iter_ext)
 
-        # A = sparse.csr_matrix(A)
-        # P = sparse.csr_matrix(P)
-        # q = sparse.csr_matrix(q)
-        # l = sparse.csr_matrix(B)
-        # u = sparse.csr_matrix(B)
-        # prob = osqp.OSQP()
-        # prob.setup(P, q, A, l, u, warm_start=True)
-        # res = prob.solve()
+        elif self.method == "OSQP":
+            Aeq = sparse.csr_matrix(A)
+            Aineq = sparse.eye(n_in)
+            Aosqp = sparse.vstack([Aeq, Aineq])
+
+            losqp = np.hstack([B, l])
+            uosqp = np.hstack([B, u])
+
+            P = sparse.csr_matrix(P)
+            prob = osqp.OSQP()
+            prob.setup(P, q, Aosqp, losqp, uosqp, warm_start=True)     
+
+            t1 = time.time()
+            res = prob.solve()
+            print("solve time = ", time.time()-t1)
+        # import pdb; pdb.set_trace()
+
         self.dx[0] = np.zeros(self.nx)
         for t in range(self.problem.T):
-            self.dx[t+1] = qp.results.x[t * self.nx: (t+1) * self.nx] 
+            self.dx[t+1] = res.x[t * self.nx: (t+1) * self.nx] 
             index_u = self.problem.T*self.nx + t * self.nu
-            self.du[t] = qp.results.x[index_u:index_u+self.nu]
+            self.du[t] = res.x[index_u:index_u+self.nu]
 
         self.x_grad_norm = np.linalg.norm(self.dx)/(self.problem.T+1)
         self.u_grad_norm = np.linalg.norm(self.du)/self.problem.T
@@ -288,7 +301,6 @@ class CLQR(SolverAbstract):
         self.uy = [np.zeros(m.nu) for m  in self.problem.runningModels] 
 
     def allocateData(self):
-        print("hello")
         self.xs_try = [np.zeros(m.state.nx) for m in self.models()] 
         self.xs_try[0][:] = self.problem.x0.copy()
         self.us_try = [np.zeros(m.nu) for m in self.problem.runningModels] 

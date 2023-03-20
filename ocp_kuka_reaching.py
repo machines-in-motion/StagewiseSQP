@@ -109,7 +109,8 @@ constraintModel = [lxmin, lxmax, lumin, lumax]
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 # ddp = GNMSCPP(problem) 
-ddp = CILQR(problem, constraintModel, "ProxQP")
+ddp = CILQR(problem, constraintModel, "OSQP")
+# ddp = CILQR(problem, constraintModel, "ProxQP")
 # ddp = CILQR(problem, constraintModel, "sparceADMM")
 
 
