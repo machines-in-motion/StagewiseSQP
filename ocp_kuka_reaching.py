@@ -92,16 +92,27 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 
+clip_state_max = np.array([np.inf]*14)
+clip_state_min = np.array([np.inf]*7 + [0.5]*7)
+clip_ctrl = np.array([np.inf, np.inf , np.inf, np.inf, np.inf, np.inf , np.inf] )
+lxmin = [-clip_state_min] * T
+lxmax = [clip_state_max] * T
+lxmin  += [ -np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7) ]
+lxmax  += [np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7) ]
+lumin = [-1*clip_ctrl ] * T
+lumax = [clip_ctrl ] * T
 
-N_iter = 60
+constraintModel = [lxmin, lxmax, lumin, lumax] 
+
 
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 # ddp = GNMSCPP(problem) 
-ddp = CILQR(problem) 
-# ddp = crocoddyl.SolverFDDP(problem) 
-ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
+ddp = CILQR(problem, constraintModel, "ProxQP")
+# ddp = CILQR(problem, constraintModel, "sparceADMM")
+
+
 ddp.solve(xs, us, maxiter=1000)
 
 # Extract DDP data and plot
