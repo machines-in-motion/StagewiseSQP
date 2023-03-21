@@ -117,42 +117,6 @@ class DifferentialActionModelLQ(crocoddyl.DifferentialActionModelAbstract):
 
 
 
-class IntegratedActionModelLQ(crocoddyl.IntegratedActionModelEuler): 
-    def __init__(self, diffModel, dt=1.e-2):
-        super().__init__(diffModel, dt)
-        self.diffModel = diffModel 
-        self.intModel = crocoddyl.IntegratedActionModelEuler(self.diffModel, dt) 
-        self.Fxx = np.zeros([self.state.ndx, self.state.ndx, self.state.ndx])
-        self.Fxu = np.zeros([self.state.ndx, self.state.ndx, self.nu])
-        self.Fuu = np.zeros([self.state.ndx, self.nu, self.nu])
-    
-    def calcFxx(self, x, u): 
-        self.Fxx[0, 2, 2] = -2 * self.diffModel.dynamics.c_drag * self.dt ** 2
-        self.Fxx[1, 3, 3] = -2 * self.diffModel.dynamics.c_drag * self.dt ** 2
-        self.Fxx[2, 2, 2] = -2 * self.diffModel.dynamics.c_drag * self.dt
-        self.Fxx[3, 3, 3] = -2 * self.diffModel.dynamics.c_drag * self.dt
-
-
-    def calc(self, data, x, u=None):
-        if u is None:
-            self.intModel.calc(data, x)
-        else:
-            self.intModel.calc(data, x, u)
-        
-    def calcDiff(self, data, x, u=None):
-        if u is None:
-            self.intModel.calcDiff(data, x)
-            u = np.zeros(self.nu)
-        else:
-            self.intModel.calcDiff(data, x, u)
-        self.calcFxx(x,u)
-        
-
-
-
-
-
-
 if __name__ == "__main__":
     print(" Testing with DDP ".center(LINE_WIDTH, "#"))
     lq_diff_running = DifferentialActionModelLQ()
@@ -161,15 +125,28 @@ if __name__ == "__main__":
     dt = 0.1
     horizon = 30
     x0 = np.zeros(4)
-    lq_running = IntegratedActionModelLQ(lq_diff_running, dt)
-    lq_terminal = IntegratedActionModelLQ(lq_diff_terminal, dt)
+    lq_running = crocoddyl.IntegratedActionModelEuler(lq_diff_running, dt)
+    lq_terminal = crocoddyl.IntegratedActionModelEuler(lq_diff_terminal, dt)
     print(" Constructing integrated models completed ".center(LINE_WIDTH, "-"))
 
     problem = crocoddyl.ShootingProblem(x0, [lq_running] * horizon, lq_terminal)
     print(" Constructing shooting problem completed ".center(LINE_WIDTH, "-"))
 
-    # ddp_py = CLQR(problem)
-    ddp_py = GNMSCPP(problem)
+
+    nx = 4
+    nu = 2
+    lxmin = [-np.inf*np.ones(nx)] * (horizon+1)
+    lxmax = [np.array([0.2, 0.1, np.inf, np.inf])] * (horizon+1)
+    lumin = [-np.inf*np.ones(nu)] * horizon
+    lumax = [np.inf*np.ones(nu)] * horizon
+    
+    constraintModel = [lxmin, lxmax, lumin, lumax] 
+
+    ddp_py = CLQR(problem, constraintModel, "ProxQP")
+    # ddp_py = CLQR(problem, constraintModel, "OSQP")
+    # ddp_py = CLQR(problem, constraintModel, "sparceADMM")
+    # ddp_py = CILQR(problem, constraintModel, "sparceADMM")
+    # ddp_py = CILQR(problem, constraintModel, "ProxQP")
 
     print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
     ddp_py.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
@@ -177,35 +154,18 @@ if __name__ == "__main__":
     us = [np.zeros(2)] * horizon
     converged = ddp_py.solve(xs, us, 2)
     
-    ddp_cpp = crocoddyl.SolverGNMS(problem)
-    # ddp = crocoddyl.SolverFDDP(problem)
-    ddp_cpp.with_callbacks = True
 
-    ddp_cpp.x_ub = np.array([0.8, 0.2, np.inf, np.inf])
-    ddp_cpp.x_lb = np.array([-np.inf, -np.inf, -np.inf, -np.inf])
-    ddp_cpp.u_ub = np.array([np.inf, np.inf, np.inf, np.inf])
-    ddp_cpp.u_lb = np.array([-np.inf, -np.inf, -np.inf, -np.inf])
-    
 
-    print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
-    ddp_cpp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
-    xs = [x0] * (horizon + 1)
-    us = [np.zeros(2)] * horizon
-    converged = ddp_cpp.solve(xs, us, 2)
-    
-    # converged = True
-    
-    # assert np.linalg.norm(np.array(ddp_py.xs) - np.array(ddp_cpp.xs)) < 1e-4
-    # assert np.linalg.norm(np.array(ddp_py.us) - np.array(ddp_cpp.us)) < 1e-4
-    # print("........  PASSED UNIT TEST ........................................")
+
+
 
     # assert False
     if True:
         print(" DDP solver has CONVERGED ".center(LINE_WIDTH, "-"))
         plt.figure("trajectory plot")
-        # plt.plot(np.array(ddp_py.xs)[:, 0], np.array(ddp_py.xs)[:, 1], label="ddp_py")
+        plt.plot(np.array(ddp_py.xs)[:, 0], np.array(ddp_py.xs)[:, 1], label="ddp_py")
 
-        plt.plot(np.array(ddp_cpp.xs)[:, 0], np.array(ddp_cpp.xs)[:, 1], label="ddp_cpp")
+        # plt.plot(np.array(ddp_cpp.xs)[:, 0], np.array(ddp_cpp.xs)[:, 1], label="ddp_cpp")
         plt.xlabel("x")
         plt.ylabel("y")
         plt.title("DDP")
