@@ -140,10 +140,12 @@ if __name__ == "__main__":
     lumin = [-np.inf*np.ones(nu)] * horizon
     lumax = [np.inf*np.ones(nu)] * horizon
     
-    constraintModel = [lxmin, lxmax, lumin, lumax] 
+    Cx = [np.eye(nx)]*(horizon+1)
+    Cu = [np.eye(nu)]*(horizon)
 
-    ddp_py = CLQR(problem, constraintModel, "ProxQP")
-    # ddp_py = CLQR(problem, constraintModel, "OSQP")
+    constraintModel = [lxmin, lxmax, lumin, lumax, Cx, Cu] 
+    # ddp_py = CLQR(problem, constraintModel, "ProxQP")
+    ddp_py = CLQR(problem, constraintModel, "OSQP")
     # ddp_py = CLQR(problem, constraintModel, "sparceADMM")
     # ddp_py = CILQR(problem, constraintModel, "sparceADMM")
     # ddp_py = CILQR(problem, constraintModel, "ProxQP")

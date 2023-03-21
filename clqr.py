@@ -3,14 +3,10 @@
 ## Date : 8/03/2023
 
 import numpy as np
-from numpy import linalg
-import proxsuite
-import crocoddyl
 from crocoddyl import SolverAbstract
-from scipy import sparse
-import osqp
 import scipy.linalg as scl
-import time 
+from qpsolvers import QPSolvers
+
 
 LINE_WIDTH = 100 
 
@@ -27,19 +23,20 @@ def raiseIfNan(A, error=None):
         raise error
 
 
-class CLQR(SolverAbstract):
+class CLQR(SolverAbstract, QPSolvers):
     def __init__(self, shootingProblem, constraintModel, method):
         SolverAbstract.__init__(self, shootingProblem)
         
-        self.rho_op = 1e3
+        self.rho_op = 1e1
+        self.sigma = 1.6
+        self.alpha = 1.0
         self.constraintModel = constraintModel
         self.allocateData()
         self.allocateQPData()
-        assert method == "ProxQP" or method=="sparceADMM"  or method=="OSQP"
         
-        self.method = method
+        QPSolvers.__init__(self, method)
         
-        self.max_iters = 10000
+        self.max_iters = 1000
 
     def models(self):
         mod = [m for m in self.problem.runningModels]
@@ -69,10 +66,10 @@ class CLQR(SolverAbstract):
         else:
             self.calc(True)
             for i in range(self.max_iters):
-                if i == 0:
-                    self.rho = 0.0 # This is the proxQP trick
-                else:
-                    self.rho = self.rho_op
+                # if i == 0:
+                #     self.rho = 0.0 # This is the proxQP trick
+                # else:
+                self.rho = self.rho_op
                 self.backwardPass()  
                 self.computeUpdates()
                 self.update_lagrangian_parameters()
@@ -85,95 +82,6 @@ class CLQR(SolverAbstract):
                 if i%100 == 0:
                     print("iter ", i, " r ", self.norm_r, " dz ", self.norm_dz )
 
-
-    def computeDirectionFullQP(self):
-        self.calc(True)
-        
-        P = np.zeros((self.problem.T*(self.nx + self.nu), self.problem.T*(self.nx + self.nu)))
-        q = np.zeros(self.problem.T*(self.nx + self.nu))
-        
-        Asize = self.problem.T*(self.nx + self.nu)
-        A = np.zeros((self.problem.T*self.nx, Asize))
-        B = np.zeros(self.problem.T*self.nx)
-
-        for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
-            if t>=1:
-                index_x = (t-1) * self.nx
-                P[index_x:index_x+self.nx, index_x:index_x+self.nx] = data.Lxx.copy()
-                q[index_x:index_x+self.nx] = data.Lx.copy()
-
-            index_u = self.problem.T*self.nx + t * self.nu
-            P[index_u:index_u+self.nu, index_u:index_u+self.nu] = data.Luu.copy()
-            q[index_u:index_u+self.nu] = data.Lu.copy()
-
-
-            
-            index_u = self.problem.T*self.nx + t * self.nu
-            A[t * self.nx: (t+1) * self.nx, index_u:index_u+self.nu] = - data.Fu 
-            A[t * self.nx: (t+1) * self.nx, t * self.nx: (t+1) * self.nx] = np.eye(self.nx)
-
-            if t >=1:
-                A[t * self.nx: (t+1) * self.nx, (t-1) * self.nx: t * self.nx] = - data.Fx
-
-            B[t * self.nx: (t+1) * self.nx] = self.gap[t]
-
-
-        P[self.problem.T*self.nx-self.nx:self.problem.T*self.nx, self.problem.T*self.nx-self.nx:self.problem.T*self.nx] = self.problem.terminalData.Lxx.copy()
-        q[self.problem.T*self.nx-self.nx:self.problem.T*self.nx] = self.problem.terminalData.Lx.copy()
-
-
-        n = self.problem.T*(self.nx + self.nu)
-        n_eq = self.problem.T*self.nx
-        n_in = self.problem.T*(self.nx + self.nu)
-
-        C = np.eye(n_in)
-        l = np.zeros(n_in)
-        u = np.zeros(n_in)
-
-        for t in range(self.problem.T): 
-            l[t * self.nx: (t+1) * self.nx] = self.lxmin[t+1] - self.xs[t+1]
-            u[t * self.nx: (t+1) * self.nx] = self.lxmax[t+1] - self.xs[t+1] 
-            index_u = self.problem.T*self.nx + t * self.nu
-            l[index_u: index_u + self.nu] = self.lumin[t] - self.us[t]
-            u[index_u: index_u + self.nu] = self.lumax[t] - self.us[t]
-
-        if self.method == "ProxQP":
-            qp = proxsuite.proxqp.sparse.QP(n, n_eq, n_in)
-            qp.init(P, q, A, B, C, l, u)      
-            t1 = time.time()
-            qp.solve()
-            print("solve time = ", time.time()-t1)
-            res = qp.results
-            print("n_iter = ", qp.results.info.iter)
-            print("n_iter_ext = ", qp.results.info.iter_ext)
-
-        elif self.method == "OSQP":
-            Aeq = sparse.csr_matrix(A)
-            Aineq = sparse.eye(n_in)
-            Aosqp = sparse.vstack([Aeq, Aineq])
-
-            losqp = np.hstack([B, l])
-            uosqp = np.hstack([B, u])
-
-            P = sparse.csr_matrix(P)
-            prob = osqp.OSQP()
-            prob.setup(P, q, Aosqp, losqp, uosqp, warm_start=True)     
-
-            t1 = time.time()
-            res = prob.solve()
-            print("solve time = ", time.time()-t1)
-        # import pdb; pdb.set_trace()
-
-        self.dx[0] = np.zeros(self.nx)
-        for t in range(self.problem.T):
-            self.dx[t+1] = res.x[t * self.nx: (t+1) * self.nx] 
-            index_u = self.problem.T*self.nx + t * self.nu
-            self.du[t] = res.x[index_u:index_u+self.nu]
-
-        self.x_grad_norm = np.linalg.norm(self.dx)/(self.problem.T+1)
-        self.u_grad_norm = np.linalg.norm(self.du)/self.problem.T
-
-
     def update_lagrangian_parameters(self):
         ## hard coding clipping now
 
@@ -184,10 +92,10 @@ class CLQR(SolverAbstract):
             xz_old = self.xz[t]
             uz_old = self.uz[t]
 
-            self.xz[t] = np.clip(self.dx[t] + self.xy[t], self.lxmin[t] - self.xs[t], self.lxmax[t] - self.xs[t])
-            self.uz[t] = np.clip(self.du[t] + self.uy[t], self.lumin[t] - self.us[t], self.lumax[t] - self.us[t])
-            self.xy[t] += self.dx[t] - self.xz[t] 
-            self.uy[t] += self.du[t] - self.uz[t] 
+            self.xz[t] = np.clip(self.Cx[t]@self.dx[t] + self.xy[t]/self.rho, self.lxmin[t] - self.xs[t], self.lxmax[t] - self.xs[t])
+            self.uz[t] = np.clip(self.Cu[t]@self.du[t] + self.uy[t]/self.rho, self.lumin[t] - self.us[t], self.lumax[t] - self.us[t])
+            self.xy[t] += self.rho*(self.Cx[t]@self.dx[t] - self.xz[t] )
+            self.uy[t] += self.rho*(self.Cu[t]@self.du[t] - self.uz[t] )
 
             self.norm_dz += np.linalg.norm(self.xz[t] - xz_old) + np.linalg.norm(self.uz[t] - uz_old) 
             self.norm_r += np.linalg.norm(self.xz[t] - self.dx[t])
@@ -195,9 +103,10 @@ class CLQR(SolverAbstract):
 
         xz_old = self.xz[-1]
     
-        self.xz[-1] = np.clip(self.dx[-1] + self.xy[-1], self.lxmin[-1] - self.xs[-1], self.lxmax[-1] - self.xs[-1])
+        self.xz[-1] = np.clip(self.Cx[-1]@self.dx[-1] + self.xy[-1]/self.rho, self.lxmin[-1] - self.xs[-1], self.lxmax[-1] - self.xs[-1])
+        self.xy[-1] += self.rho*(self.Cx[-1]@self.dx[-1] - self.xz[-1] )
+
         self.norm_dz += np.linalg.norm(self.xz[-1] - xz_old)
-        self.xy[-1] += self.dx[-1] - self.xz[-1] 
         self.norm_r += np.linalg.norm(self.xz[-1] - self.dx[-1])
 
         # print(self.norm_r, self.norm_dz )
@@ -205,8 +114,12 @@ class CLQR(SolverAbstract):
     def computeUpdates(self): 
         """ computes step updates dx and du """
         self.expected_decrease = 0
+        self.dx_old[0] = self.dx[0].copy()
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
                 # here we compute the direction 
+                self.du_old[t] = self.du[t].copy()
+                self.dx_old[t+1] = self.dx[t+1].copy()
+
                 self.du[t][:] = self.L[t].dot(self.dx[t]) + self.l[t] 
                 A = data.Fx
                 B = data.Fu      
@@ -232,14 +145,16 @@ class CLQR(SolverAbstract):
         self.setCandidate(self.xs_try, self.us_try, False)
 
     def backwardPass(self): 
-        self.S[-1][:,:] = self.problem.terminalData.Lxx + self.rho*np.eye(self.problem.terminalModel.state.nx)
-        self.s[-1][:] = self.problem.terminalData.Lx + self.rho*(self.xy[-1] - self.xz[-1])[:]
+        self.S[-1][:,:] = self.problem.terminalData.Lxx + self.sigma*np.eye(self.problem.terminalModel.state.nx) \
+                                                        + self.rho*(self.Cx[-1].T @ self.Cx[-1])
+        self.s[-1][:] = self.problem.terminalData.Lx + self.Cx[-1].T@(self.xy[-1] - self.rho*self.xz[-1])[:] \
+                                                    + (- self.sigma * self.dx_old[-1])
         for t, (model, data) in rev_enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
 
-            r = data.Lu + self.rho*(self.uy[t] - self.uz[t])[:]
-            q = data.Lx + self.rho*(self.xy[t] - self.xz[t])[:]
-            R = data.Luu + self.rho*np.eye(model.nu)
-            Q = data.Lxx + self.rho*np.eye(model.state.nx)
+            r = data.Lu + self.Cu[t].T@(self.uy[t] - self.rho*self.uz[t])[:] + (- self.sigma * self.du_old[t])
+            q = data.Lx + self.Cx[t].T@(self.xy[t] - self.rho*self.xz[t])[:] + ( - self.sigma * self.dx_old[t])
+            R = data.Luu + self.sigma*np.eye(model.nu) + self.rho*(self.Cu[t].T @ self.Cu[t])
+            Q = data.Lxx + self.sigma*np.eye(model.state.nx) + self.rho*(self.Cx[t].T @ self.Cx[t])
             P = data.Lxu.T
             A = data.Fx
             B = data.Fu 
@@ -270,8 +185,6 @@ class CLQR(SolverAbstract):
             self.s[t] = q + A.T @ (self.S[t+1] @ self.gap[t] + self.s[t+1]) + \
                             G.T@self.l[t][:]+ self.L[t].T@(h + H@self.l[t][:])
 
-
-
     def solve(self, init_xs=None, init_us=None, maxiter=100, isFeasible=False, regInit=None):
         #___________________ Initialize ___________________#
         if init_xs is None or len(init_xs) < 1:
@@ -299,6 +212,8 @@ class CLQR(SolverAbstract):
         self.uz = [np.zeros(m.nu) for m  in self.problem.runningModels] 
         self.xy = [np.zeros(m.state.nx) for m  in self.models()]
         self.uy = [np.zeros(m.nu) for m  in self.problem.runningModels] 
+        self.xw = [np.zeros(m.state.nx) for m  in self.models()]
+        self.uw = [np.zeros(m.nu) for m  in self.problem.runningModels] 
 
     def allocateData(self):
         self.xs_try = [np.zeros(m.state.nx) for m in self.models()] 
@@ -307,11 +222,15 @@ class CLQR(SolverAbstract):
         # 
         self.dx = [np.zeros(m.state.ndx) for m  in self.models()]
         self.du = [np.zeros(m.nu) for m  in self.problem.runningModels] 
+        self.dx_old = [np.zeros(m.state.ndx) for m  in self.models()]
+        self.du_old = [np.zeros(m.nu) for m  in self.problem.runningModels] 
         #
         self.lxmin = self.constraintModel[0]
         self.lxmax = self.constraintModel[1]
         self.lumin = self.constraintModel[2]
         self.lumax = self.constraintModel[3]
+        self.Cx = self.constraintModel[4] # list of constraint matrices x
+        self.Cu = self.constraintModel[5] # list Constraint matrices u
         #
         self.S = [np.zeros([m.state.ndx, m.state.ndx]) for m in self.models()]   
         self.s = [np.zeros(m.state.ndx) for m in self.models()]   
@@ -329,6 +248,8 @@ class CLQR(SolverAbstract):
         self.gap_norm = 0
         self.cost = 0
         self.cost_try = 0
+        # 
+        
 
         self.nx = self.problem.terminalModel.state.nx 
         self.nu = self.problem.runningModels[0].nu
