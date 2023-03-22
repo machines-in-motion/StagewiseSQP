@@ -27,7 +27,7 @@ class CLQR(SolverAbstract, QPSolvers):
     def __init__(self, shootingProblem, constraintModel, method):
         SolverAbstract.__init__(self, shootingProblem)
         
-        self.rho_op = 1e0
+        self.rho_op = 1e-1
         self.sigma = 1e-6
         self.alpha = 1.6
         self.eps_abs = 1e-3
@@ -80,7 +80,7 @@ class CLQR(SolverAbstract, QPSolvers):
                     print("Final iter ", i, " primal_residual ", self.norm_primal, " dual_residual ", self.norm_dual,\
                             "optimal rho", self.rho)
                     break
-                # self.rho *= np.sqrt((self.norm_primal*self.norm_dual_rel)/(self.norm_dual*self.norm_primal_rel))
+                self.rho *= np.sqrt((self.norm_primal*self.norm_dual_rel)/(self.norm_dual*self.norm_primal_rel))
 
                 if i%100 == 0:
                     print("iter ", i, " primal_residual ", self.norm_primal, " dual_residual ", self.norm_dual )
@@ -123,6 +123,7 @@ class CLQR(SolverAbstract, QPSolvers):
         self.dx[-1] = self.alpha*self.dx[-1] + (1- self.alpha)*self.dx_old[-1]
 
         self.norm_dual = max(self.norm_dual, max(abs(self.Cx[-1].T@(self.xz[-1] - xz_old))))
+        self.norm_dual *= self.rho
         self.norm_primal = max(self.norm_primal, max(abs(self.xz[-1] - self.Cx[t]@self.dx[-1])))
         self.norm_primal_rel = max(self.norm_primal_rel, max(abs(self.Cx[-1]@self.dx[-1])),\
                                         max(abs(self.xz[-1])))
