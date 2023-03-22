@@ -78,7 +78,7 @@ class CILQR(CLQR):
             self.merit =  self.cost + self.mu*self.gap_norm
             print("iter", i, "merit", self.merit, "cost", self.cost, "gap norms", self.gap_norm, "dx norm", self.x_grad_norm, "du norm", self.u_grad_norm, "alpha", alpha)
 
-            alpha = 1.
+            alpha = 0.5
             self.tryStep(alpha)
             max_search = 20
             for k in range(max_search):
@@ -99,63 +99,4 @@ class CILQR(CLQR):
                 break
 
         print("Final :", " merit", self.merit, "cost", self.cost, "gap norms", self.gap_norm, "dx norm", self.x_grad_norm, "du norm", self.u_grad_norm, "alpha", alpha)
-
-
-    def allocateData(self):
-        self.xs_try = [np.zeros(m.state.nx) for m in self.models()] 
-        self.xs_try[0][:] = self.problem.x0.copy()
-        self.us_try = [np.zeros(m.nu) for m in self.problem.runningModels] 
-        #
-        self.dx = [np.zeros(m.state.ndx) for m  in self.models()]
-        self.du = [np.zeros(m.nu) for m  in self.problem.runningModels] 
-        # 
-        self.lxmin = self.constraintModel[0]
-        self.lxmax = self.constraintModel[1]
-        self.lumin = self.constraintModel[2]
-        self.lumax = self.constraintModel[3]
-        #
-        self.S = [np.zeros([m.state.ndx, m.state.ndx]) for m in self.models()]   
-        self.s = [np.zeros(m.state.ndx) for m in self.models()]   
-        self.L = [np.zeros([m.nu, m.state.ndx]) for m in self.problem.runningModels]
-        self.l = [np.zeros([m.nu]) for m in self.problem.runningModels]
-        #
-        self.x_grad = [np.zeros(m.state.ndx) for m in self.models()]
-        self.u_grad = [np.zeros(m.nu) for m in self.problem.runningModels]
-
-        self.gap = [np.zeros(m.state.ndx) for m in self.models()] # gaps
-        self.gap_try = [np.zeros(m.state.ndx) for m in self.models()] # gaps for line search
-
-        self.x_grad_norm = 0
-        self.u_grad_norm = 0
-        self.gap_norm = 0
-        self.cost = 0
-        self.cost_try = 0
-        self.merit = 0
-        self.merit_old = 0
-        self.nx = self.problem.terminalModel.state.nx 
-        self.nu = self.problem.runningModels[0].nu
-        
-    def check_optimality(self):
-        """
-        This function checks if the convexified lqr problem reaches optimality before we take the next step of the SQP
-        """
-        error = 0
-        for t, (model, data) in rev_enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
-
-            r = data.Lu
-            q = data.Lx
-            R = data.Luu
-            Q = data.Lxx
-            P = data.Lxu.T
-            A = data.Fx
-            B = data.Fu 
-
-            # print(self.gap[t].shape, np.shape(self.S[t+1]))
-
-            h = r + B.T@(self.s[t+1] + self.S[t+1]@self.gap[t])
-            G = P + B.T@self.S[t+1]@A
-            H = R + B.T@self.S[t+1]@B
-
-            error += np.linalg.norm(H@self.du[t] + h + G@self.dx[t]) ## optimality check
-
-        assert error < 1e-6
+    

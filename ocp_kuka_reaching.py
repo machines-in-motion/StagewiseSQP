@@ -102,19 +102,23 @@ lxmax  += [np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + 
 lumin = [-1*clip_ctrl ] * T
 lumax = [clip_ctrl ] * T
 
-constraintModel = [lxmin, lxmax, lumin, lumax] 
+
+Cx = [np.eye(nx)]*(T+1)
+Cu = [np.eye(nu)]*(T)
+
+constraintModel = [lxmin, lxmax, lumin, lumax, Cx, Cu] 
 
 
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 # ddp = GNMSCPP(problem) 
-ddp = CILQR(problem, constraintModel, "OSQP")
+# ddp = CILQR(problem, constraintModel, "OSQP")
 # ddp = CILQR(problem, constraintModel, "ProxQP")
-# ddp = CILQR(problem, constraintModel, "sparceADMM")
+ddp = CILQR(problem, constraintModel, "sparceADMM")
 
 
-ddp.solve(xs, us, maxiter=1000)
+ddp.solve(xs, us, maxiter=50)
 
 # Extract DDP data and plot
 ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
