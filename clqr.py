@@ -81,21 +81,16 @@ class CLQR(SolverAbstract, QPSolvers):
                             "optimal rho", self.rho)
                     break
 
-                # self.rho *= np.sqrt((self.norm_primal*self.norm_dual_rel)/(self.norm_dual*self.norm_primal_rel))
-                # if self.norm_primal > 10 * self.norm_dual:
-                #     self.rho *= 2
-                # if self.norm_dual > 10 * self.norm_primal:
-                #     self.rho /= 2
-                
+                self.rho *= np.sqrt((self.norm_primal*self.norm_dual_rel)/(self.norm_dual*self.norm_primal_rel))
 
                 if i%100 == 0:
                     print("iter ", i, " primal_residual ", self.norm_primal, " dual_residual ", self.norm_dual )
 
     def update_lagrangian_parameters(self):
 
-        self.norm_primal = 0
-        self.norm_dual = 0
-        self.norm_primal_rel, self.norm_dual_rel = [0,0], 0
+        self.norm_primal = -np.inf
+        self.norm_dual = -np.inf
+        self.norm_primal_rel, self.norm_dual_rel = [-np.inf,-np.inf], -np.inf
         
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
             xz_old = self.xz[t]
@@ -114,11 +109,11 @@ class CLQR(SolverAbstract, QPSolvers):
             self.dx[t] = self.alpha*self.dx[t] + (1- self.alpha)*self.dx_old[t]
             self.du[t] = self.alpha*self.du[t] + (1- self.alpha)*self.du_old[t]
 
-            self.norm_dual = np.linalg.norm(self.Cx[t].T@(self.xz[t] - xz_old)) + np.linalg.norm(self.Cu[t].T@(self.uz[t] - uz_old))
-            self.norm_primal = np.linalg.norm(self.xz[t] - self.Cx[t]@self.dx[t]) + np.linalg.norm(self.uz[t] - self.Cu[t]@self.du[t])
-            self.norm_primal_rel[0] += np.linalg.norm(self.Cx[t]@self.dx[t]) + np.linalg.norm(self.Cu[t]@self.du[t])
-            self.norm_primal_rel[1] += np.linalg.norm(self.xz[t]) + np.linalg.norm(self.uz[t])
-            self.norm_dual_rel = np.linalg.norm(self.Cx[t].T@self.xy[t]) + np.linalg.norm(self.Cu[t].T@self.uy[t])
+            self.norm_dual = max(self.norm_dual, max(abs(self.Cx[t].T@(self.xz[t] - xz_old))), max(abs(self.Cu[t].T@(self.uz[t] - uz_old))))
+            self.norm_primal = max(self.norm_primal, max(abs(self.xz[t] - self.Cx[t]@self.dx[t])), max(abs(self.uz[t] - self.Cu[t]@self.du[t])))
+            self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(self.Cx[t]@self.dx[t])), max(abs(self.Cu[t]@self.du[t])))
+            self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.xz[t])), max(abs(self.uz[t])))
+            self.norm_dual_rel = max(self.norm_dual_rel, max(abs(self.Cx[t].T@self.xy[t])), max(abs(self.Cu[t].T@self.uy[t])))
 
         xz_old = self.xz[-1]
     
@@ -127,12 +122,14 @@ class CLQR(SolverAbstract, QPSolvers):
         self.xy[-1] += self.rho*(self.alpha*self.Cx[-1]@self.dx[-1] + (1 - self.alpha)*xz_old - self.xz[-1])
         self.dx[-1] = self.alpha*self.dx[-1] + (1- self.alpha)*self.dx_old[-1]
 
-        self.norm_dual = np.linalg.norm(self.Cx[-1].T@(self.xz[-1] - xz_old))
+        self.norm_dual = max(self.norm_dual, max(abs(self.Cx[-1].T@(self.xz[-1] - xz_old))))
         self.norm_dual *= self.rho
-        self.norm_primal = np.linalg.norm(self.xz[-1] - self.Cx[t]@self.dx[-1])
-        self.norm_primal_rel[0] += np.linalg.norm(self.Cx[-1]@self.dx[-1]) + np.linalg.norm(self.Cu[-1]@self.du[-1])
+        self.norm_primal = max(self.norm_primal, max(abs(self.xz[-1] - self.Cx[-1]@self.dx[-1])))
+        self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(self.Cx[-1]@self.dx[-1])))
+        self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.xz[-1])))
         self.norm_primal_rel = max(self.norm_primal_rel)
-        self.norm_dual_rel = np.linalg.norm(self.Cx[t].T@self.xy[t])
+
+        self.norm_dual_rel = max(self.norm_dual_rel, max(abs(self.Cx[-1].T@self.xy[-1])))
 
     def computeUpdates(self): 
         """ computes step updates dx and du """
