@@ -118,7 +118,7 @@ us = [np.zeros(nu)] * T
 ddp = CILQR(problem, constraintModel, "sparceADMM")
 
 
-ddp.solve(xs, us, maxiter=50)
+ddp.solve(xs, us, maxiter=2)
 
 # Extract DDP data and plot
 ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
