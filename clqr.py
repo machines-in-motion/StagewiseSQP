@@ -27,7 +27,7 @@ class CLQR(SolverAbstract, QPSolvers):
     def __init__(self, shootingProblem, constraintModel, method):
         SolverAbstract.__init__(self, shootingProblem)
         
-        self.rho = 1e-3
+        self.rho = 1e-2
         self.sigma = 1e-6
         self.alpha = 1.6
         self.eps_abs = 1e-3
@@ -39,7 +39,7 @@ class CLQR(SolverAbstract, QPSolvers):
         
         QPSolvers.__init__(self, method)
         
-        self.max_iters = 10000
+        self.max_iters = 5000
 
     def models(self):
         mod = [m for m in self.problem.runningModels]
@@ -110,16 +110,12 @@ class CLQR(SolverAbstract, QPSolvers):
             self.xy[t] += self.rho*(self.alpha*self.Cx[t]@self.dx[t] + (1 - self.alpha)*xz_old - self.xz[t] )
             self.uy[t] += self.rho*(self.alpha*self.Cu[t]@self.du[t] + (1 - self.alpha)*uz_old - self.uz[t] )
 
-            ## OSQP alpha step
-            # self.dx[t] = self.alpha*self.dx[t] + (1- self.alpha)*self.dx_old[t]
-            # self.du[t] = self.alpha*self.du[t] + (1- self.alpha)*self.du_old[t]
-
-            self.norm_dual += np.linalg.norm(self.Cx[t].T@(self.xz[t] - xz_old)) + np.linalg.norm(self.Cu[t].T@(self.uz[t] - uz_old))
-            self.norm_primal += np.linalg.norm(self.xz[t] - self.Cx[t]@self.dx[t]) + np.linalg.norm(self.uz[t] - self.Cu[t]@self.du[t])
+            self.norm_dual += np.linalg.norm(self.Cx[t].T@(self.xz[t] - xz_old))**2 + np.linalg.norm(self.Cu[t].T@(self.uz[t] - uz_old))**2
+            self.norm_primal += np.linalg.norm(self.xz[t] - self.Cx[t]@self.dx[t])**2 + np.linalg.norm(self.uz[t] - self.Cu[t]@self.du[t])**2
             
-            self.norm_primal_rel[0] += np.linalg.norm(self.Cx[t]@self.dx[t]) + np.linalg.norm(self.Cu[t]@self.du[t])
-            self.norm_primal_rel[1] += np.linalg.norm(self.xz[t]) + np.linalg.norm(self.uz[t])
-            self.norm_dual_rel += np.linalg.norm(self.Cx[t].T@self.xy[t]) + np.linalg.norm(self.Cu[t].T@self.uy[t])
+            self.norm_primal_rel[0] += np.linalg.norm(self.Cx[t]@self.dx[t])**2 + np.linalg.norm(self.Cu[t]@self.du[t])**2
+            self.norm_primal_rel[1] += np.linalg.norm(self.xz[t])**2 + np.linalg.norm(self.uz[t])**2
+            self.norm_dual_rel += np.linalg.norm(self.Cx[t].T@self.xy[t])**2 + np.linalg.norm(self.Cu[t].T@self.uy[t])**2
 
         xz_old = self.xz[-1]
     
@@ -127,16 +123,17 @@ class CLQR(SolverAbstract, QPSolvers):
                                 self.lxmin[-1] - self.xs[-1], self.lxmax[-1] - self.xs[-1])
         self.xy[-1] += self.rho*(self.alpha*self.Cx[-1]@self.dx[-1] + (1 - self.alpha)*xz_old - self.xz[-1])
         
-        # self.dx[-1] = self.alpha*self.dx[-1] + (1- self.alpha)*self.dx_old[-1]
+        self.norm_dual += np.linalg.norm(self.Cx[-1].T@(self.xz[-1] - xz_old))**2
+        self.norm_dual = self.rho*np.sqrt(self.norm_dual)
+        self.norm_primal += np.linalg.norm(self.xz[-1] - self.Cx[t]@self.dx[-1])**2
+        self.norm_primal = np.sqrt(self.norm_primal)
 
-        self.norm_dual += np.linalg.norm(self.Cx[-1].T@(self.xz[-1] - xz_old))
-        self.norm_dual *= self.rho
-        self.norm_primal += np.linalg.norm(self.xz[-1] - self.Cx[t]@self.dx[-1])
-        
-        self.norm_primal_rel[0] += np.linalg.norm(self.Cx[-1]@self.dx[-1]) + np.linalg.norm(self.Cu[-1]@self.du[-1])
-        self.norm_primal_rel[1] += np.linalg.norm(self.xz[-1])
+        self.norm_primal_rel[0] += np.linalg.norm(self.Cx[-1]@self.dx[-1])**2 + np.linalg.norm(self.Cu[-1]@self.du[-1])**2
+        self.norm_primal_rel[1] += np.linalg.norm(self.xz[-1])**2
+        self.norm_primal_rel = [np.sqrt(self.norm_primal_rel[0]), np.sqrt(self.norm_primal_rel[1])]
         self.norm_primal_rel = max(self.norm_primal_rel)
-        self.norm_dual_rel += np.linalg.norm(self.Cx[t].T@self.xy[t])
+        self.norm_dual_rel += np.linalg.norm(self.Cx[-1].T@self.xy[-1])**2
+        self.norm_dual_rel = np.sqrt(self.norm_dual_rel)
 
     def update_lagrangian_parameters_infinity(self):
 
@@ -215,12 +212,12 @@ class CLQR(SolverAbstract, QPSolvers):
     def backwardPass(self): 
         self.S[-1][:,:] = self.problem.terminalData.Lxx + self.sigma*np.eye(self.problem.terminalModel.state.nx) \
                                                         + self.rho*(self.Cx[-1].T @ self.Cx[-1])
-        self.s[-1][:] = self.problem.terminalData.Lx + self.Cx[-1].T@(self.xy[-1] - self.rho*self.xz[-1])[:] \
+        self.s[-1][:] = self.problem.terminalData.Lx + self.rho*self.Cx[-1].T@(self.xy[-1]/self.rho - self.xz[-1])[:] \
                                                     + (- self.sigma * self.dx_old[-1])
         for t, (model, data) in rev_enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
 
-            r = data.Lu + self.Cu[t].T@(self.uy[t] - self.rho*self.uz[t])[:] + (- self.sigma * self.du_old[t])
-            q = data.Lx + self.Cx[t].T@(self.xy[t] - self.rho*self.xz[t])[:] + ( - self.sigma * self.dx_old[t])
+            r = data.Lu + self.rho*self.Cu[t].T@(self.uy[t]/self.rho - self.uz[t])[:] + (- self.sigma * self.du_old[t])
+            q = data.Lx + self.rho*self.Cx[t].T@(self.xy[t]/self.rho - self.xz[t])[:] + ( - self.sigma * self.dx_old[t])
             R = data.Luu + self.sigma*np.eye(model.nu) + self.rho*(self.Cu[t].T @ self.Cu[t])
             Q = data.Lxx + self.sigma*np.eye(model.state.nx) + self.rho*(self.Cx[t].T @ self.Cx[t])
             P = data.Lxu.T

@@ -97,7 +97,7 @@ clip_state_min = np.array([np.inf]*7 + [0.5]*7)
 clip_ctrl = np.array([np.inf, np.inf , np.inf, np.inf, np.inf, np.inf , np.inf] )
 lxmin = [-clip_state_min] * T
 lxmax = [clip_state_max] * T
-lxmin  += [ -np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7) ]
+lxmin  += [ -np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [-0.001]*7) ]
 lxmax  += [np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7) ]
 lumin = [-1*clip_ctrl ] * T
 lumax = [clip_ctrl ] * T
@@ -118,12 +118,12 @@ us = [np.zeros(nu)] * T
 ddp = CILQR(problem, constraintModel, "sparceADMM")
 
 
-ddp.solve(xs, us, maxiter=2)
+ddp.solve(xs, us, maxiter=1)
 
 # Extract DDP data and plot
 ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
 
-ocp_utils.plot_ocp_results(ddp_data, which_plots=['u', 'x'], labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
+# ocp_utils.plot_ocp_results(ddp_data, which_plots=['u', 'x'], labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
 
 # xs_ddp = [x0] * (T+1)
 # us_ddp = [np.zeros(nu)] * T 
