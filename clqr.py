@@ -6,7 +6,7 @@ import numpy as np
 from crocoddyl import SolverAbstract
 import scipy.linalg as scl
 from qpsolvers import QPSolvers
-
+from py_osqp import CustomOSQP
 
 LINE_WIDTH = 100 
 
@@ -23,7 +23,7 @@ def raiseIfNan(A, error=None):
         raise error
 
 
-class CLQR(SolverAbstract, QPSolvers):
+class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
     def __init__(self, shootingProblem, constraintModel, method):
         SolverAbstract.__init__(self, shootingProblem)
         
@@ -38,6 +38,7 @@ class CLQR(SolverAbstract, QPSolvers):
         self.allocateQPData()
         
         QPSolvers.__init__(self, method)
+        CustomOSQP.__init__(self)
         
         self.max_iters = 5000
 
@@ -66,6 +67,8 @@ class CLQR(SolverAbstract, QPSolvers):
     def computeDirection(self):
         if self.method == "ProxQP" or self.method=="OSQP":
             self.computeDirectionFullQP()
+        elif self.method == "CustomOSQP":
+            self.optimize_osqp()
         else:
             self.calc(True)
             # self.rho = self.rho_op

@@ -15,7 +15,7 @@ class QPSolvers:
 
     def __init__(self, method):
         
-        assert method == "ProxQP" or method=="sparceADMM"  or method=="OSQP"
+        assert method == "ProxQP" or method=="sparceADMM"  or method=="OSQP" or method=="CustomOSQP" 
 
         self.method = method
 

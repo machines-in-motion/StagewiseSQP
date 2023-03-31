@@ -146,7 +146,9 @@ if __name__ == "__main__":
     constraintModel = [lxmin, lxmax, lumin, lumax, Cx, Cu] 
     # ddp_py = CLQR(problem, constraintModel, "ProxQP")
     # ddp_py = CLQR(problem, constraintModel, "OSQP")
-    ddp_py = CLQR(problem, constraintModel, "sparceADMM")
+    # ddp_py = CLQR(problem, constraintModel, "sparceADMM")
+    ddp_py = CLQR(problem, constraintModel, "CustomOSQP")
+
     # ddp_py = CILQR(problem, constraintModel, "sparceADMM")
     # ddp_py = CILQR(problem, constraintModel, "ProxQP")
 
