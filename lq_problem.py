@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from clqr import CLQR
 from cilqr import CILQR
 from gnms_cpp import GNMSCPP
+from constraintmodel import FullConstraintModel
 
 LINE_WIDTH = 100
 
@@ -135,20 +136,22 @@ if __name__ == "__main__":
 
     nx = 4
     nu = 2
-    lxmin = [-np.inf*np.ones(nx)] * (horizon+1)
-    lxmax = [np.array([0.5, 0.1, np.inf, np.inf])] * (horizon+1)
-    lumin = [-np.inf*np.ones(nu)] * horizon
-    lumax = [np.inf*np.ones(nu)] * horizon
     
-    Cx = [np.eye(nx)]*(horizon+1)
-    Cu = [np.eye(nu)]*(horizon)
 
-    constraintModel = [lxmin, lxmax, lumin, lumax, Cx, Cu] 
-    # ddp_py = CLQR(problem, constraintModel, "ProxQP")
-    # ddp_py = CLQR(problem, constraintModel, "OSQP")
-    ddp_py = CLQR(problem, constraintModel, "sparceADMM")
-    # ddp_py = CILQR(problem, constraintModel, "sparceADMM")
-    # ddp_py = CILQR(problem, constraintModel, "ProxQP")
+
+
+    lxmin = -np.inf*np.ones(nx)
+    lxmax = np.array([0.5, 0.1, np.inf, np.inf])
+    lumin = -np.inf*np.ones(nu)
+    lumax = np.inf*np.ones(nu)
+    ConstraintModel = FullConstraintModel(lxmin, lxmax, lumin, lumax)
+
+
+    # ddp_py = CLQR(problem, [ConstraintModel]*(horizon+1), "ProxQP")
+    # ddp_py = CLQR(problem, [ConstraintModel]*(horizon+1), "OSQP")
+    ddp_py = CLQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
+    # ddp_py = CILQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
+    # ddp_py = CILQR(problem, [ConstraintModel]*(horizon+1), "ProxQP")
 
     print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
     ddp_py.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])

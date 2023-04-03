@@ -59,16 +59,31 @@ class QPSolvers:
         n_eq = self.problem.T*self.nx
         n_in = self.problem.T*(self.nx + self.nu)
 
-        C = np.eye(n_in)
+
+        n_in_x = sum([cmodel.ncx for cmodel in self.constraintModel[1:]])
+        n_in_u = sum([cmodel.ncu for cmodel in self.constraintModel[:-1]])
+
+        n_in = n_in_x + n_in_u
+        C = np.zeros((n_in, n_in))
         l = np.zeros(n_in)
         u = np.zeros(n_in)
 
-        for t in range(self.problem.T): 
-            l[t * self.nx: (t+1) * self.nx] = self.lxmin[t+1] - self.xs[t+1]
-            u[t * self.nx: (t+1) * self.nx] = self.lxmax[t+1] - self.xs[t+1] 
-            index_u = self.problem.T*self.nx + t * self.nu
-            l[index_u: index_u + self.nu] = self.lumin[t] - self.us[t]
-            u[index_u: index_u + self.nu] = self.lumax[t] - self.us[t]
+        nin_count = 0
+        for t, cmodel in enumerate(self.constraintModel[1:]): 
+            cx, _ =  cmodel.calc(self.xs[t+1])
+            Cx, _ =  cmodel.calcDiff(self.xs[t], self.us[t])
+            l[nin_count: nin_count + cmodel.ncx] = cmodel.lxmin - cx
+            u[nin_count: nin_count + cmodel.ncx] = cmodel.lxmax - cx 
+            C[nin_count: nin_count + cmodel.ncx, nin_count: nin_count + cmodel.ncx] = Cx
+            nin_count += cmodel.ncx
+         
+        for t, cmodel in enumerate(self.constraintModel[:-1]): 
+            _, cu =  cmodel.calc(self.xs[t], self.us[t])
+            _, Cu =  cmodel.calcDiff(self.xs[t], self.us[t])
+            l[nin_count: nin_count + cmodel.ncu] = self.constraintModel[t].lumin - cu
+            u[nin_count: nin_count + cmodel.ncu] = self.constraintModel[t].lumax - cu
+            C[nin_count: nin_count + cmodel.ncu, nin_count: nin_count + cmodel.ncu] = Cu
+            nin_count += cmodel.ncu
 
         if self.method == "ProxQP":
             qp = proxsuite.proxqp.sparse.QP(n, n_eq, n_in)

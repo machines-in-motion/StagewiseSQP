@@ -91,49 +91,49 @@ class CLQR(SolverAbstract, QPSolvers):
                 if i%100 == 0:
                     print("iter ", i, " primal_residual ", self.norm_primal, " dual_residual ", self.norm_dual ,  " rho", self.rho)
 
-    def update_lagrangian_parameters(self):
+    # def update_lagrangian_parameters(self):
 
-        self.norm_primal = 0
-        self.norm_dual = 0
-        self.norm_primal_rel, self.norm_dual_rel = [0,0], 0
+    #     self.norm_primal = 0
+    #     self.norm_dual = 0
+    #     self.norm_primal_rel, self.norm_dual_rel = [0,0], 0
         
-        for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
-            xz_old = self.xz[t]
-            uz_old = self.uz[t]
+    #     for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
+    #         xz_old = self.xz[t]
+    #         uz_old = self.uz[t]
 
 
-            self.xz[t] = np.clip(self.alpha*self.Cx[t]@self.dx[t] + (1 - self.alpha)*xz_old + self.xy[t]/self.rho,\
-                                    self.lxmin[t] - self.xs[t], self.lxmax[t] - self.xs[t])
-            self.uz[t] = np.clip(self.alpha*self.Cu[t]@self.du[t] + (1 - self.alpha)*uz_old + self.uy[t]/self.rho,\
-                                self.lumin[t] - self.us[t], self.lumax[t] - self.us[t])
+    #         self.xz[t] = np.clip(self.alpha*self.Cx[t]@self.dx[t] + (1 - self.alpha)*xz_old + self.xy[t]/self.rho,\
+    #                                 self.lxmin[t] - self.xs[t], self.lxmax[t] - self.xs[t])
+    #         self.uz[t] = np.clip(self.alpha*self.Cu[t]@self.du[t] + (1 - self.alpha)*uz_old + self.uy[t]/self.rho,\
+    #                             self.lumin[t] - self.us[t], self.lumax[t] - self.us[t])
             
-            self.xy[t] += self.rho*(self.alpha*self.Cx[t]@self.dx[t] + (1 - self.alpha)*xz_old - self.xz[t] )
-            self.uy[t] += self.rho*(self.alpha*self.Cu[t]@self.du[t] + (1 - self.alpha)*uz_old - self.uz[t] )
+    #         self.xy[t] += self.rho*(self.alpha*self.Cx[t]@self.dx[t] + (1 - self.alpha)*xz_old - self.xz[t] )
+    #         self.uy[t] += self.rho*(self.alpha*self.Cu[t]@self.du[t] + (1 - self.alpha)*uz_old - self.uz[t] )
 
-            self.norm_dual += np.linalg.norm(self.Cx[t].T@(self.xz[t] - xz_old))**2 + np.linalg.norm(self.Cu[t].T@(self.uz[t] - uz_old))**2
-            self.norm_primal += np.linalg.norm(self.xz[t] - self.Cx[t]@self.dx[t])**2 + np.linalg.norm(self.uz[t] - self.Cu[t]@self.du[t])**2
+    #         self.norm_dual += np.linalg.norm(self.Cx[t].T@(self.xz[t] - xz_old))**2 + np.linalg.norm(self.Cu[t].T@(self.uz[t] - uz_old))**2
+    #         self.norm_primal += np.linalg.norm(self.xz[t] - self.Cx[t]@self.dx[t])**2 + np.linalg.norm(self.uz[t] - self.Cu[t]@self.du[t])**2
             
-            self.norm_primal_rel[0] += np.linalg.norm(self.Cx[t]@self.dx[t])**2 + np.linalg.norm(self.Cu[t]@self.du[t])**2
-            self.norm_primal_rel[1] += np.linalg.norm(self.xz[t])**2 + np.linalg.norm(self.uz[t])**2
-            self.norm_dual_rel += np.linalg.norm(self.Cx[t].T@self.xy[t])**2 + np.linalg.norm(self.Cu[t].T@self.uy[t])**2
+    #         self.norm_primal_rel[0] += np.linalg.norm(self.Cx[t]@self.dx[t])**2 + np.linalg.norm(self.Cu[t]@self.du[t])**2
+    #         self.norm_primal_rel[1] += np.linalg.norm(self.xz[t])**2 + np.linalg.norm(self.uz[t])**2
+    #         self.norm_dual_rel += np.linalg.norm(self.Cx[t].T@self.xy[t])**2 + np.linalg.norm(self.Cu[t].T@self.uy[t])**2
 
-        xz_old = self.xz[-1]
+    #     xz_old = self.xz[-1]
     
-        self.xz[-1] = np.clip(self.alpha*self.Cx[-1]@self.dx[-1] + (1 - self.alpha)*xz_old + self.xy[-1]/self.rho, \
-                                self.lxmin[-1] - self.xs[-1], self.lxmax[-1] - self.xs[-1])
-        self.xy[-1] += self.rho*(self.alpha*self.Cx[-1]@self.dx[-1] + (1 - self.alpha)*xz_old - self.xz[-1])
+    #     self.xz[-1] = np.clip(self.alpha*self.Cx[-1]@self.dx[-1] + (1 - self.alpha)*xz_old + self.xy[-1]/self.rho, \
+    #                             self.lxmin[-1] - self.xs[-1], self.lxmax[-1] - self.xs[-1])
+    #     self.xy[-1] += self.rho*(self.alpha*self.Cx[-1]@self.dx[-1] + (1 - self.alpha)*xz_old - self.xz[-1])
         
-        self.norm_dual += np.linalg.norm(self.Cx[-1].T@(self.xz[-1] - xz_old))**2
-        self.norm_dual = self.rho*np.sqrt(self.norm_dual)
-        self.norm_primal += np.linalg.norm(self.xz[-1] - self.Cx[t]@self.dx[-1])**2
-        self.norm_primal = np.sqrt(self.norm_primal)
+    #     self.norm_dual += np.linalg.norm(self.Cx[-1].T@(self.xz[-1] - xz_old))**2
+    #     self.norm_dual = self.rho*np.sqrt(self.norm_dual)
+    #     self.norm_primal += np.linalg.norm(self.xz[-1] - self.Cx[t]@self.dx[-1])**2
+    #     self.norm_primal = np.sqrt(self.norm_primal)
 
-        self.norm_primal_rel[0] += np.linalg.norm(self.Cx[-1]@self.dx[-1])**2 + np.linalg.norm(self.Cu[-1]@self.du[-1])**2
-        self.norm_primal_rel[1] += np.linalg.norm(self.xz[-1])**2
-        self.norm_primal_rel = [np.sqrt(self.norm_primal_rel[0]), np.sqrt(self.norm_primal_rel[1])]
-        self.norm_primal_rel = max(self.norm_primal_rel)
-        self.norm_dual_rel += np.linalg.norm(self.Cx[-1].T@self.xy[-1])**2
-        self.norm_dual_rel = np.sqrt(self.norm_dual_rel)
+    #     self.norm_primal_rel[0] += np.linalg.norm(self.Cx[-1]@self.dx[-1])**2 + np.linalg.norm(self.Cu[-1]@self.du[-1])**2
+    #     self.norm_primal_rel[1] += np.linalg.norm(self.xz[-1])**2
+    #     self.norm_primal_rel = [np.sqrt(self.norm_primal_rel[0]), np.sqrt(self.norm_primal_rel[1])]
+    #     self.norm_primal_rel = max(self.norm_primal_rel)
+    #     self.norm_dual_rel += np.linalg.norm(self.Cx[-1].T@self.xy[-1])**2
+    #     self.norm_dual_rel = np.sqrt(self.norm_dual_rel)
 
     def update_lagrangian_parameters_infinity(self):
 
@@ -141,38 +141,47 @@ class CLQR(SolverAbstract, QPSolvers):
         self.norm_dual = -np.inf
         self.norm_primal_rel, self.norm_dual_rel = [-np.inf,-np.inf], -np.inf
         
-        for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
+        for t, (model, data, cmodel) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas, self.constraintModel[:-1])):
+            cx, cu =  cmodel.calc(self.xs[t], self.us[t])
+            Cx, Cu =  cmodel.calcDiff(self.xs[t], self.us[t])
+
+
             xz_old = self.xz[t]
             uz_old = self.uz[t]
 
-            self.xz[t] = np.clip(self.alpha*self.Cx[t]@self.dx[t] + (1 - self.alpha)*xz_old + self.xy[t]/self.rho,\
-                                    self.lxmin[t] - self.xs[t], self.lxmax[t] - self.xs[t])
-            self.uz[t] = np.clip(self.alpha*self.Cu[t]@self.du[t] + (1 - self.alpha)*uz_old + self.uy[t]/self.rho,\
-                                self.lumin[t] - self.us[t], self.lumax[t] - self.us[t])
+            self.xz[t] = np.clip(self.alpha*Cx@self.dx[t] + (1 - self.alpha)*xz_old + self.xy[t]/self.rho,\
+                                    cmodel.lxmin - cx, cmodel.lxmax - cx)
+            self.uz[t] = np.clip(self.alpha*Cu@self.du[t] + (1 - self.alpha)*uz_old + self.uy[t]/self.rho,\
+                                cmodel.lumin - cu, cmodel.lumax - cu)
             
-            self.xy[t] += self.rho*(self.alpha*self.Cx[t]@self.dx[t] + (1 - self.alpha)*xz_old - self.xz[t] )
-            self.uy[t] += self.rho*(self.alpha*self.Cu[t]@self.du[t] + (1 - self.alpha)*uz_old - self.uz[t] )
+            self.xy[t] += self.rho*(self.alpha*Cx@self.dx[t] + (1 - self.alpha)*xz_old - self.xz[t] )
+            self.uy[t] += self.rho*(self.alpha*Cu@self.du[t] + (1 - self.alpha)*uz_old - self.uz[t] )
 
-            self.norm_dual = max(self.norm_dual, max(abs(self.Cx[t].T@(self.xz[t] - xz_old))), max(abs(self.Cu[t].T@(self.uz[t] - uz_old))))
-            self.norm_primal = max(self.norm_primal, max(abs(self.xz[t] - self.Cx[t]@self.dx[t])), max(abs(self.uz[t] - self.Cu[t]@self.du[t])))
-            self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(self.Cx[t]@self.dx[t])), max(abs(self.Cu[t]@self.du[t])))
+            self.norm_dual = max(self.norm_dual, max(abs(Cx.T@(self.xz[t] - xz_old))), max(abs(Cu.T@(self.uz[t] - uz_old))))
+            self.norm_primal = max(self.norm_primal, max(abs(self.xz[t] - Cx@self.dx[t])), max(abs(self.uz[t] - Cu@self.du[t])))
+            self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cx@self.dx[t])), max(abs(Cu@self.du[t])))
             self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.xz[t])), max(abs(self.uz[t])))
-            self.norm_dual_rel = max(self.norm_dual_rel, max(abs(self.Cx[t].T@self.xy[t])), max(abs(self.Cu[t].T@self.uy[t])))
+            self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.xy[t])), max(abs(Cu.T@self.uy[t])))
+
+
+        cmodel = self.constraintModel[-1]
+        cx, _ =  cmodel.calc(self.xs[-1])
+        Cx, _ =  cmodel.calcDiff(self.xs[-1])
 
         xz_old = self.xz[-1]
     
-        self.xz[-1] = np.clip(self.alpha*self.Cx[-1]@self.dx[-1] + (1 - self.alpha)*xz_old + self.xy[-1]/self.rho, \
-                                self.lxmin[-1] - self.xs[-1], self.lxmax[-1] - self.xs[-1])
-        self.xy[-1] += self.rho*(self.alpha*self.Cx[-1]@self.dx[-1] + (1 - self.alpha)*xz_old - self.xz[-1])
+        self.xz[-1] = np.clip(self.alpha*Cx@self.dx[-1] + (1 - self.alpha)*xz_old + self.xy[-1]/self.rho, \
+                                cmodel.lxmin - cx, cmodel.lxmax - cx)
+        self.xy[-1] += self.rho*(self.alpha*Cx@self.dx[-1] + (1 - self.alpha)*xz_old - self.xz[-1])
 
-        self.norm_dual = max(self.norm_dual, max(abs(self.Cx[-1].T@(self.xz[-1] - xz_old))))
+        self.norm_dual = max(self.norm_dual, max(abs(Cx.T@(self.xz[-1] - xz_old))))
         self.norm_dual *= self.rho
-        self.norm_primal = max(self.norm_primal, max(abs(self.xz[-1] - self.Cx[-1]@self.dx[-1])))
-        self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(self.Cx[-1]@self.dx[-1])))
+        self.norm_primal = max(self.norm_primal, max(abs(self.xz[-1] - Cx@self.dx[-1])))
+        self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cx@self.dx[-1])))
         self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.xz[-1])))
         self.norm_primal_rel = max(self.norm_primal_rel)
 
-        self.norm_dual_rel = max(self.norm_dual_rel, max(abs(self.Cx[-1].T@self.xy[-1])))
+        self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.xy[-1])))
 
 
     def computeUpdates(self): 
@@ -210,16 +219,18 @@ class CLQR(SolverAbstract, QPSolvers):
         self.setCandidate(self.xs_try, self.us_try, False)
 
     def backwardPass(self): 
+        Cx, _ =  self.constraintModel[-1].calcDiff(self.xs[-1])
         self.S[-1][:,:] = self.problem.terminalData.Lxx + self.sigma*np.eye(self.problem.terminalModel.state.nx) \
-                                                        + self.rho*(self.Cx[-1].T @ self.Cx[-1])
-        self.s[-1][:] = self.problem.terminalData.Lx + self.rho*self.Cx[-1].T@(self.xy[-1]/self.rho - self.xz[-1])[:] \
+                                                        + self.rho*(Cx.T @ Cx)
+        self.s[-1][:] = self.problem.terminalData.Lx + self.rho*Cx.T@(self.xy[-1]/self.rho - self.xz[-1])[:] \
                                                     + (- self.sigma * self.dx_old[-1])
         for t, (model, data) in rev_enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
 
-            r = data.Lu + self.rho*self.Cu[t].T@(self.uy[t]/self.rho - self.uz[t])[:] + (- self.sigma * self.du_old[t])
-            q = data.Lx + self.rho*self.Cx[t].T@(self.xy[t]/self.rho - self.xz[t])[:] + ( - self.sigma * self.dx_old[t])
-            R = data.Luu + self.sigma*np.eye(model.nu) + self.rho*(self.Cu[t].T @ self.Cu[t])
-            Q = data.Lxx + self.sigma*np.eye(model.state.nx) + self.rho*(self.Cx[t].T @ self.Cx[t])
+            Cx, Cu =  self.constraintModel[t].calcDiff(self.xs[t], self.us[t])
+            r = data.Lu + self.rho*Cu.T@(self.uy[t]/self.rho - self.uz[t])[:] + (- self.sigma * self.du_old[t])
+            q = data.Lx + self.rho*Cx.T@(self.xy[t]/self.rho - self.xz[t])[:] + ( - self.sigma * self.dx_old[t])
+            R = data.Luu + self.sigma*np.eye(model.nu) + self.rho*(Cu.T @ Cu)
+            Q = data.Lxx + self.sigma*np.eye(model.state.nx) + self.rho*(Cx.T @ Cx)
             P = data.Lxu.T
             A = data.Fx
             B = data.Fu 
@@ -290,12 +301,12 @@ class CLQR(SolverAbstract, QPSolvers):
         self.dx_old = [np.zeros(m.state.ndx) for m  in self.models()]
         self.du_old = [np.zeros(m.nu) for m  in self.problem.runningModels] 
         #
-        self.lxmin = self.constraintModel[0]
-        self.lxmax = self.constraintModel[1]
-        self.lumin = self.constraintModel[2]
-        self.lumax = self.constraintModel[3]
-        self.Cx = self.constraintModel[4] # list of constraint matrices x
-        self.Cu = self.constraintModel[5] # list Constraint matrices u
+        # self.lxmin = self.constraintModel[0]
+        # self.lxmax = self.constraintModel[1]
+        # self.lumin = self.constraintModel[2]
+        # self.lumax = self.constraintModel[3]
+        # self.Cx = self.constraintModel[4] # list of constraint matrices x
+        # self.Cu = self.constraintModel[5] # list Constraint matrices u
         #
         self.S = [np.zeros([m.state.ndx, m.state.ndx]) for m in self.models()]   
         self.s = [np.zeros(m.state.ndx) for m in self.models()]   
