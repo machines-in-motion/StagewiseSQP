@@ -113,9 +113,10 @@ constraintModel = [lxmin, lxmax, lumin, lumax, Cx, Cu]
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 # ddp = GNMSCPP(problem) 
-# ddp = CILQR(problem, constraintModel, "OSQP")
+ddp = CILQR(problem, constraintModel, "OSQP")
 # ddp = CILQR(problem, constraintModel, "ProxQP")
-ddp = CILQR(problem, constraintModel, "sparceADMM")
+# ddp = CILQR(problem, constraintModel, "sparceADMM")
+# ddp = CILQR(problem, constraintModel, "CustomOSQP")
 
 
 ddp.solve(xs, us, maxiter=1)
