@@ -9,19 +9,22 @@ import proxsuite
 import time 
 from scipy import sparse
 import scipy.linalg as scl
+from py_osqp import CustomOSQP
 
 
-class QPSolvers:
+class QPSolvers(CustomOSQP):
 
     def __init__(self, method):
         
-        assert method == "ProxQP" or method=="sparceADMM"  or method=="OSQP"
+        assert method == "ProxQP" or method=="sparceADMM"  or method=="OSQP" or method=="CustomOSQP" 
 
+        CustomOSQP.__init__(self)
         self.method = method
 
     def computeDirectionFullQP(self):
         self.calc(True)
-        
+        self.n_vars  = self.problem.T*(self.nx + self.nu)
+
         P = np.zeros((self.problem.T*(self.nx + self.nu), self.problem.T*(self.nx + self.nu)))
         q = np.zeros(self.problem.T*(self.nx + self.nu))
         
@@ -56,9 +59,8 @@ class QPSolvers:
 
 
         n = self.problem.T*(self.nx + self.nu)
-        n_eq = self.problem.T*self.nx
-        n_in = self.problem.T*(self.nx + self.nu)
-
+        self.n_eq = self.problem.T*self.nx
+        self.n_in = self.problem.T*(self.nx + self.nu)
 
         n_in_x = sum([cmodel.ncx for cmodel in self.constraintModel[1:]])
         n_in_u = sum([cmodel.ncu for cmodel in self.constraintModel[:-1]])
@@ -67,7 +69,6 @@ class QPSolvers:
         C = np.zeros((n_in, n_in))
         l = np.zeros(n_in)
         u = np.zeros(n_in)
-
         nin_count = 0
         for t, cmodel in enumerate(self.constraintModel[1:]): 
             cx, _ =  cmodel.calc(self.xs[t+1])
@@ -86,18 +87,18 @@ class QPSolvers:
             nin_count += cmodel.ncu
 
         if self.method == "ProxQP":
-            qp = proxsuite.proxqp.sparse.QP(n, n_eq, n_in)
+            qp = proxsuite.proxqp.sparse.QP(n, self.n_eq, self.n_in)
             qp.init(P, q, A, B, C, l, u)      
             t1 = time.time()
             qp.solve()
             print("solve time = ", time.time()-t1)
-            res = qp.results
+            res = qp.results.x
             print("n_iter = ", qp.results.info.iter)
             print("n_iter_ext = ", qp.results.info.iter_ext)
 
         elif self.method == "OSQP":
             Aeq = sparse.csr_matrix(A)
-            Aineq = sparse.eye(n_in)
+            Aineq = sparse.eye(self.n_in)
             Aosqp = sparse.vstack([Aeq, Aineq])
 
             losqp = np.hstack([B, l])
@@ -108,15 +109,46 @@ class QPSolvers:
             prob.setup(P, q, Aosqp, losqp, uosqp, warm_start=True, scaling=False)     
 
             t1 = time.time()
-            res = prob.solve()
+            res = prob.solve().x
             print("solve time = ", time.time()-t1)
         # import pdb; pdb.set_trace()
 
+        elif self.method == "CustomOSQP":
+            Aeq = sparse.csr_matrix(A)
+            Aineq = sparse.eye(self.n_in)
+            self.Aosqp = sparse.vstack([Aeq, Aineq])
+
+            self.losqp = np.hstack([B, l])
+            self.uosqp = np.hstack([B, u])
+
+            self.P = P
+            self.q_arr = np.array(q)
+            
+            self.xs_vec = np.array(self.xs).flatten()[self.nx:]
+            self.us_vec = np.array(self.us).flatten()
+            self.xz_vec = np.array(self.xz).flatten()[self.nx:]
+            self.uz_vec = np.array(self.uz).flatten()
+            self.xy_vec = np.array(self.xy).flatten()[self.nx:]
+            self.uy_vec = np.array(self.uy).flatten()
+            self.x_k = np.hstack((self.xs_vec, self.us_vec))
+            # self.z_k = np.hstack((self.xz_vec, self.uz_vec))
+            # self.y_k = np.hstack((self.xy_vec, self.uy_vec))
+            self.z_k = np.zeros(self.n_in + self.n_eq)
+            self.y_k = np.zeros(self.n_in + self.n_eq)
+
+            ## initializing rho
+            self.rho = self.rho_op * np.ones(self.n_eq + self.n_in)
+            self.rho[:self.n_eq] *= 1e3
+            self.rho_estimate = self.rho_op
+
+            res = self.optimize_osqp(maxiters=1000)
+
+
         self.dx[0] = np.zeros(self.nx)
         for t in range(self.problem.T):
-            self.dx[t+1] = res.x[t * self.nx: (t+1) * self.nx] 
+            self.dx[t+1] = res[t * self.nx: (t+1) * self.nx] 
             index_u = self.problem.T*self.nx + t * self.nu
-            self.du[t] = res.x[index_u:index_u+self.nu]
+            self.du[t] = res[index_u:index_u+self.nu]
 
         self.x_grad_norm = np.linalg.norm(self.dx)/(self.problem.T+1)
         self.u_grad_norm = np.linalg.norm(self.du)/self.problem.T

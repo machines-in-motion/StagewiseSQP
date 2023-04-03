@@ -137,9 +137,7 @@ if __name__ == "__main__":
     nx = 4
     nu = 2
     
-
-
-
+    
     lxmin = -np.inf*np.ones(nx)
     lxmax = np.array([0.5, 0.1, np.inf, np.inf])
     lumin = -np.inf*np.ones(nu)
