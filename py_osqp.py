@@ -20,18 +20,24 @@ class CustomOSQP():
 
     def solve_linear_system(self):
 
-        A_block_leftcol = sparse.vstack([self.P + self.sigma * np.eye(self.n_vars), self.Aosqp])
-        A_block_rightcol = sparse.vstack([self.Aosqp.T, (-1/self.rho)*np.eye(self.n_in + self.n_eq)])
-        A_block = sparse.hstack([A_block_leftcol, A_block_rightcol])
+        # A_block_leftcol = sparse.vstack([self.P + self.sigma * np.eye(self.n_vars), self.Aosqp])
+        # A_block_rightcol = sparse.vstack([self.Aosqp.T, (-1/self.rho)*np.eye(self.n_in + self.n_eq)])
+        # A_block = sparse.hstack([A_block_leftcol, A_block_rightcol])
 
-        b_block = np.hstack((self.sigma*self.x_k - self.q_arr, self.z_k - np.divide(self.y_k, self.rho)))
+        # b_block = np.hstack((self.sigma*self.x_k - self.q, self.z_k - np.divide(self.y_k, self.rho)))
+        # xv_k_1 = spsolve(A_block, b_block)
+        # self.xtilde_k_1, self.v_k_1 = xv_k_1[:self.n_vars], xv_k_1[self.n_vars:]
+        # self.ztilde_k_1 = self.z_k + np.divide(self.v_k_1 - self.y_k, self.rho)
+        
+        rho_mat = self.rho*np.eye(len(self.rho))
+        A_block = self.P + self.sigma * np.eye(self.n_vars) + (self.Aosqp.T@rho_mat@self.Aosqp)
+        b_block = self.sigma*self.x_k - self.q + self.Aosqp.T@(np.multiply(self.rho,self.z_k) - self.y_k)
 
-        xv_k_1 = spsolve(A_block, b_block)
-        self.xtilde_k_1, self.v_k_1 = xv_k_1[:self.n_vars], xv_k_1[self.n_vars:]
+        self.xtilde_k_1 = spsolve(A_block, b_block)
+        self.ztilde_k_1 = self.Aosqp@self.xtilde_k_1
 
     def update_lagrangian_params(self):
 
-        self.ztilde_k_1 = self.z_k + np.divide(self.v_k_1 - self.y_k, self.rho)
         self.x_k_1 = self.alpha * self.xtilde_k_1 + (1-self.alpha)*self.x_k
         self.z_k_1 = np.clip(self.alpha*self.ztilde_k_1 + (1 - self.alpha)*self.z_k + np.divide(self.y_k,self.rho), self.losqp, self.uosqp)
         self.y_k_1 = self.y_k + np.multiply(self.rho, (self.alpha*self.ztilde_k_1 + (1 - self.alpha)*self.z_k - self.z_k_1))
@@ -39,10 +45,10 @@ class CustomOSQP():
         self.x_k, self.z_k, self.y_k = self.x_k_1, self.z_k_1, self.y_k_1
 
         self.r_prim = max(abs(self.Aosqp @ self.x_k - self.z_k))
-        self.r_dual = max(abs(self.P @ self.x_k + self.q_arr + self.Aosqp.T @ self.y_k))
+        self.r_dual = max(abs(self.P @ self.x_k + self.q + self.Aosqp.T @ self.y_k))
 
         self.eps_rel_prim = max(abs(np.hstack((self.Aosqp @ self.x_k, self.z_k))))
-        self.eps_rel_dual = max(abs(np.hstack((self.P @ self.x_k, self.Aosqp.T @ self.y_k, self.q_arr))))
+        self.eps_rel_dual = max(abs(np.hstack((self.P @ self.x_k, self.Aosqp.T @ self.y_k, self.q))))
 
     def update_rho(self):
         

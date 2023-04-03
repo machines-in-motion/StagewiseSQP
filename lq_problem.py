@@ -123,7 +123,7 @@ if __name__ == "__main__":
     lq_diff_terminal = DifferentialActionModelLQ(isTerminal=True)
     print(" Constructing differential models completed ".center(LINE_WIDTH, "-"))
     dt = 0.1
-    horizon = 30
+    horizon = 10
     x0 = np.zeros(4)
     lq_running = crocoddyl.IntegratedActionModelEuler(lq_diff_running, dt)
     lq_terminal = crocoddyl.IntegratedActionModelEuler(lq_diff_terminal, dt)
@@ -136,7 +136,9 @@ if __name__ == "__main__":
     nx = 4
     nu = 2
     lxmin = [-np.inf*np.ones(nx)] * (horizon+1)
-    lxmax = [np.array([0.5, 0.1, np.inf, np.inf])] * (horizon+1)
+    # lxmax = [np.array([0.5, 0.1, np.inf, np.inf])] * (horizon+1)
+    lxmax = [np.array([np.inf, np.inf, np.inf, np.inf])] * (horizon+1)
+
     lumin = [-np.inf*np.ones(nu)] * horizon
     lumax = [np.inf*np.ones(nu)] * horizon
     
@@ -145,9 +147,9 @@ if __name__ == "__main__":
 
     constraintModel = [lxmin, lxmax, lumin, lumax, Cx, Cu] 
     # ddp_py = CLQR(problem, constraintModel, "ProxQP")
-    # ddp_py = CLQR(problem, constraintModel, "OSQP")
+    ddp_py = CLQR(problem, constraintModel, "OSQP")
     # ddp_py = CLQR(problem, constraintModel, "sparceADMM")
-    ddp_py = CLQR(problem, constraintModel, "CustomOSQP")
+    # ddp_py = CLQR(problem, constraintModel, "CustomOSQP")
 
     # ddp_py = CILQR(problem, constraintModel, "sparceADMM")
     # ddp_py = CILQR(problem, constraintModel, "ProxQP")
@@ -158,10 +160,6 @@ if __name__ == "__main__":
     us = [np.zeros(2)] * horizon
     converged = ddp_py.solve(xs, us, 2)
     
-
-
-
-
 
     # assert False
     if True:

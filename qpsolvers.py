@@ -111,7 +111,7 @@ class QPSolvers(CustomOSQP):
             self.uosqp = np.hstack([B, u])
 
             self.P = P
-            self.q_arr = np.array(q)
+            self.q = np.array(q)
             
             self.xs_vec = np.array(self.xs).flatten()[self.nx:]
             self.us_vec = np.array(self.us).flatten()
