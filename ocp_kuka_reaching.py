@@ -10,6 +10,7 @@ np.set_printoptions(precision=4, linewidth=180)
 import ocp_utils
 from gnms import GNMS
 from gnms_cpp import GNMSCPP
+from constraintmodel import FullConstraintModel
 
 from clqr import CLQR
 from cilqr import CILQR
@@ -91,40 +92,33 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 
+    
 
 clip_state_max = np.array([np.inf]*14)
-clip_state_min = np.array([np.inf]*7 + [0.5]*7)
+clip_state_min = -np.array([np.inf]*7 + [0.5]*7)
 clip_ctrl = np.array([np.inf, np.inf , np.inf, np.inf, np.inf, np.inf , np.inf] )
-lxmin = [-clip_state_min] * T
-lxmax = [clip_state_max] * T
-lxmin  += [ -np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [-0.001]*7) ]
-lxmax  += [np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7) ]
-lumin = [-1*clip_ctrl ] * T
-lumax = [clip_ctrl ] * T
 
+ConstraintModel = FullConstraintModel(clip_state_min, clip_state_max, -clip_ctrl, clip_ctrl)
+clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7)
+TerminalConstraintModel = FullConstraintModel(-clip_state_end, clip_state_end, -clip_ctrl, clip_ctrl)
 
-Cx = [np.eye(nx)]*(T+1)
-Cu = [np.eye(nu)]*(T)
-
-constraintModel = [lxmin, lxmax, lumin, lumax, Cx, Cu] 
-
-
+constraintModels = [ConstraintModel] * T + [TerminalConstraintModel]
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 # ddp = GNMSCPP(problem) 
-ddp = CILQR(problem, constraintModel, "OSQP")
-# ddp = CILQR(problem, constraintModel, "ProxQP")
-# ddp = CILQR(problem, constraintModel, "sparceADMM")
-# ddp = CILQR(problem, constraintModel, "CustomOSQP")
+ddp = CILQR(problem, constraintModels, "OSQP")
+# ddp = CILQR(problem, constraintModels, "ProxQP")
+# ddp = CILQR(problem, constraintModels, "sparceADMM")
+# ddp = CILQR(problem, constraintModels, "CustomOSQP")
 
 
-ddp.solve(xs, us, maxiter=1)
+ddp.solve(xs, us, maxiter=20)
 
 # Extract DDP data and plot
 ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
 
-# ocp_utils.plot_ocp_results(ddp_data, which_plots=['u', 'x'], labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
+ocp_utils.plot_ocp_results(ddp_data, which_plots=['u', 'x'], labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
 
 # xs_ddp = [x0] * (T+1)
 # us_ddp = [np.zeros(nu)] * T 
