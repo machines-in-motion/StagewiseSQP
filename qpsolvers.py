@@ -21,7 +21,7 @@ class QPSolvers(CustomOSQP):
         CustomOSQP.__init__(self)
         self.method = method
 
-    def computeDirectionFullQP(self):
+    def computeDirectionFullQP(self, maxit = 500):
         self.calc(True)
         self.n_vars  = self.problem.T*(self.nx + self.nu)
 
@@ -106,10 +106,14 @@ class QPSolvers(CustomOSQP):
 
             P = sparse.csr_matrix(P)
             prob = osqp.OSQP()
-            prob.setup(P, q, Aosqp, losqp, uosqp, warm_start=False, scaling=False)     
+            prob.setup(P, q, Aosqp, losqp, uosqp, warm_start=False, scaling=False,  max_iter = maxit, \
+                            adaptive_rho=True, verbose = True)     
 
             t1 = time.time()
-            res = prob.solve().x
+            tmp = prob.solve()
+            res = tmp.x
+            self.y_k = tmp.y
+            # self.r_prim = tmp.primal_residual
             print("solve time = ", time.time()-t1)
         # import pdb; pdb.set_trace()
 
@@ -131,12 +135,11 @@ class QPSolvers(CustomOSQP):
             self.xy_vec = np.array(self.xy).flatten()[self.nx:]
             self.uy_vec = np.array(self.uy).flatten()
             self.x_k = np.hstack((self.xs_vec, self.us_vec))
-            # self.z_k = np.hstack((self.xz_vec, self.uz_vec))
-            # self.y_k = np.hstack((self.xy_vec, self.uy_vec))
+
             self.z_k = np.zeros(self.n_in + self.n_eq)
             self.y_k = np.zeros(self.n_in + self.n_eq)
 
-            res = self.optimize_osqp(maxiters=1000)
+            res = self.optimize_osqp(maxiters=maxit)
 
 
         self.dx[0] = np.zeros(self.nx)

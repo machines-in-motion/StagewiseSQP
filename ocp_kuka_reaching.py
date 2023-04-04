@@ -107,14 +107,15 @@ constraintModels = [ConstraintModel] * T + [TerminalConstraintModel]
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 # ddp = GNMSCPP(problem) 
-ddp = CILQR(problem, constraintModels, "OSQP")
+# ddp = CILQR(problem, constraintModels, "OSQP")
 # ddp = CILQR(problem, constraintModels, "ProxQP")
 # ddp = CILQR(problem, constraintModels, "sparceADMM")
-# ddp = CILQR(problem, constraintModels, "CustomOSQP")
+ddp = CILQR(problem, constraintModels, "CustomOSQP")
 
 
-ddp.solve(xs, us, maxiter=20)
+ddp.solve(xs, us, maxiter=1)
 
+assert False
 # Extract DDP data and plot
 ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
 

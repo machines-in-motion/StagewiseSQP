@@ -274,15 +274,15 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         self.computeDirection()
         self.acceptStep(alpha = 1.0)
         
-        print("\nInitial ")
-        print("Total cost", self.cost, "gap norms", self.gap_norm)
+        # print("\nInitial ")
+        # print("Total cost", self.cost, "gap norms", self.gap_norm)
 
-        print("\nStep ")
-        print("dx norm", self.x_grad_norm, "du norm", self.u_grad_norm)
-        self.calc(True)
+        # print("\nStep ")
+        # print("dx norm", self.x_grad_norm, "du norm", self.u_grad_norm)
+        # self.calc(True)
 
-        print("\nFinal ")
-        print("Total cost", self.cost, "gap norms", self.gap_norm)
+        # print("\nFinal ")
+        # print("Total cost", self.cost, "gap norms", self.gap_norm)
 
     def allocateQPData(self):
         self.xz = [np.zeros(m.state.nx) for m  in self.models()]
