@@ -10,7 +10,7 @@ np.set_printoptions(precision=4, linewidth=180)
 import ocp_utils
 from gnms import GNMS
 from gnms_cpp import GNMSCPP
-from constraintmodel import FullConstraintModel
+from constraintmodel import FullConstraintModel, EndEffConstraintModel
 
 from clqr import CLQR
 from cilqr import CILQR
@@ -61,7 +61,7 @@ xRegCost = crocoddyl.CostModelResidual(state, xResidual)
   # endeff frame translation cost
 endeff_frame_id = model.getFrameId("contact")
 # endeff_translation = robot.data.oMf[endeff_frame_id].translation.copy()
-endeff_translation = np.array([-1, 1, 1]) # move endeff +10 cm along x in WORLD frame
+endeff_translation = np.array([0.7, 0, 1]) # move endeff +30 cm along x in WORLD frame
 frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(state, endeff_frame_id, endeff_translation)
 frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
 
@@ -94,31 +94,25 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
     
 
-clip_state_max = np.array([np.inf]*14)
-clip_state_min = -np.array([np.inf]*7 + [0.5]*7)
-clip_ctrl = np.array([np.inf, np.inf , np.inf, np.inf, np.inf, np.inf , np.inf] )
-
-ConstraintModel = FullConstraintModel(clip_state_min, clip_state_max, -clip_ctrl, clip_ctrl)
-clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7)
-TerminalConstraintModel = FullConstraintModel(-clip_state_end, clip_state_end, -clip_ctrl, clip_ctrl)
-
-constraintModels = [ConstraintModel] * T + [TerminalConstraintModel]
+lmin = np.array([-np.inf, -np.inf, -np.inf])
+lmax = np.array([np.inf, np.inf, np.inf])
+constraintModels = [EndEffConstraintModel(robot, lmin, lmax)] * T + [EndEffConstraintModel(robot, endeff_translation, endeff_translation)]
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 # ddp = GNMSCPP(problem) 
-ddp = CILQR(problem, constraintModels, "OSQP")
-# ddp = CILQR(problem, constraintModels, "ProxQP")
+ddp = CILQR(problem, constraintModels, "ProxQP")
+# ddp = CILQR(problem, constraintModels, "OSQP")
 # ddp = CILQR(problem, constraintModels, "sparceADMM")
 # ddp = CILQR(problem, constraintModels, "CustomOSQP")
 
 
-ddp.solve(xs, us, maxiter=20)
+ddp.solve(xs, us, maxiter=100)
 
 # Extract DDP data and plot
 ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
 
-ocp_utils.plot_ocp_results(ddp_data, which_plots=['u', 'x'], labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
+ocp_utils.plot_ocp_results(ddp_data, which_plots="all", labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
 
 # xs_ddp = [x0] * (T+1)
 # us_ddp = [np.zeros(nu)] * T 

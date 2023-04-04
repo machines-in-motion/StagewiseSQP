@@ -60,32 +60,37 @@ class QPSolvers(CustomOSQP):
 
         n = self.problem.T*(self.nx + self.nu)
         self.n_eq = self.problem.T*self.nx
-        self.n_in = self.problem.T*(self.nx + self.nu)
 
         n_in_x = sum([cmodel.ncx for cmodel in self.constraintModel[1:]])
         n_in_u = sum([cmodel.ncu for cmodel in self.constraintModel[:-1]])
 
-        n_in = n_in_x + n_in_u
-        C = np.zeros((n_in, n_in))
-        l = np.zeros(n_in)
-        u = np.zeros(n_in)
+        self.n_in = n_in_x + n_in_u
+        C = np.zeros((self.n_in, self.problem.T*(self.nx + self.nu)))
+        l = np.zeros(self.n_in)
+        u = np.zeros(self.n_in)
         nin_count = 0
         for t, cmodel in enumerate(self.constraintModel[1:]): 
+            if cmodel.ncx == 0:
+                continue
             cx, _ =  cmodel.calc(self.xs[t+1])
             Cx, _ =  cmodel.calcDiff(self.xs[t], self.us[t])
             l[nin_count: nin_count + cmodel.ncx] = cmodel.lxmin - cx
             u[nin_count: nin_count + cmodel.ncx] = cmodel.lxmax - cx 
-            C[nin_count: nin_count + cmodel.ncx, nin_count: nin_count + cmodel.ncx] = Cx
+            C[nin_count: nin_count + cmodel.ncx, t*self.nx: (t+1)*self.nx] = Cx
             nin_count += cmodel.ncx
-         
+        
+        index_x = self.problem.T*self.nx
         for t, cmodel in enumerate(self.constraintModel[:-1]): 
+            if cmodel.ncu == 0:
+                continue
             _, cu =  cmodel.calc(self.xs[t], self.us[t])
             _, Cu =  cmodel.calcDiff(self.xs[t], self.us[t])
             l[nin_count: nin_count + cmodel.ncu] = self.constraintModel[t].lumin - cu
             u[nin_count: nin_count + cmodel.ncu] = self.constraintModel[t].lumax - cu
-            C[nin_count: nin_count + cmodel.ncu, nin_count: nin_count + cmodel.ncu] = Cu
+            C[nin_count: nin_count + cmodel.ncu, index_x+t*self.nu: index_x+(t+1)*self.nu] = Cu
             nin_count += cmodel.ncu
 
+        # import pdb; pdb.set_trace()
         if self.method == "ProxQP":
             qp = proxsuite.proxqp.sparse.QP(n, self.n_eq, self.n_in)
             qp.init(P, q, A, B, C, l, u)      
@@ -93,12 +98,12 @@ class QPSolvers(CustomOSQP):
             qp.solve()
             print("solve time = ", time.time()-t1)
             res = qp.results.x
-            print("n_iter = ", qp.results.info.iter)
-            print("n_iter_ext = ", qp.results.info.iter_ext)
+            # print("n_iter = ", qp.results.info.iter)
+            # print("n_iter_ext = ", qp.results.info.iter_ext)
 
         elif self.method == "OSQP":
             Aeq = sparse.csr_matrix(A)
-            Aineq = sparse.eye(self.n_in)
+            Aineq = sparse.csr_matrix(C)
             Aosqp = sparse.vstack([Aeq, Aineq])
 
             losqp = np.hstack([B, l])

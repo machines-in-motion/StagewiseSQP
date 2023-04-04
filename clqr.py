@@ -285,12 +285,13 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         print("Total cost", self.cost, "gap norms", self.gap_norm)
 
     def allocateQPData(self):
-        self.xz = [np.zeros(m.state.nx) for m  in self.models()]
-        self.uz = [np.zeros(m.nu) for m  in self.problem.runningModels] 
-        self.xy = [np.zeros(m.state.nx) for m  in self.models()]
-        self.uy = [np.zeros(m.nu) for m  in self.problem.runningModels] 
-        self.xw = [np.zeros(m.state.nx) for m  in self.models()]
-        self.uw = [np.zeros(m.nu) for m  in self.problem.runningModels] 
+        self.xz = [np.zeros(cmodel.ncx) for cmodel in self.constraintModel]
+        self.uz = [np.zeros(cmodel.ncu) for cmodel in self.constraintModel] 
+        self.xy = [np.zeros(cmodel.ncx) for cmodel in self.constraintModel]
+        self.uy = [np.zeros(cmodel.ncu) for cmodel in self.constraintModel] 
+
+        # self.xw = [np.zeros(m.state.nx) for m  in self.models()]
+        # self.uw = [np.zeros(m.nu) for m  in self.problem.runningModels] 
 
     def allocateData(self):
         self.xs_try = [np.zeros(m.state.nx) for m in self.models()] 
@@ -301,13 +302,6 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         self.du = [np.zeros(m.nu) for m  in self.problem.runningModels] 
         self.dx_old = [np.zeros(m.state.ndx) for m  in self.models()]
         self.du_old = [np.zeros(m.nu) for m  in self.problem.runningModels] 
-        #
-        # self.lxmin = self.constraintModel[0]
-        # self.lxmax = self.constraintModel[1]
-        # self.lumin = self.constraintModel[2]
-        # self.lumax = self.constraintModel[3]
-        # self.Cx = self.constraintModel[4] # list of constraint matrices x
-        # self.Cu = self.constraintModel[5] # list Constraint matrices u
         #
         self.S = [np.zeros([m.state.ndx, m.state.ndx]) for m in self.models()]   
         self.s = [np.zeros(m.state.ndx) for m in self.models()]   
