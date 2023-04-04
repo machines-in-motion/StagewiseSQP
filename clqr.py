@@ -65,7 +65,7 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         self.cost += self.problem.terminalData.cost 
 
     def computeDirection(self):
-        if self.method == "ProxQP" or self.method=="OSQP" or self.method == "CustomOSQP":
+        if self.method == "ProxQP" or self.method=="OSQP" or self.method == "CustomOSQP" or self.method == "Boyd":
             self.computeDirectionFullQP()
         else:
             self.calc(True)
@@ -274,15 +274,15 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         self.computeDirection()
         self.acceptStep(alpha = 1.0)
         
-        print("\nInitial ")
-        print("Total cost", self.cost, "gap norms", self.gap_norm)
+        # print("\nInitial ")
+        # print("Total cost", self.cost, "gap norms", self.gap_norm)
 
-        print("\nStep ")
-        print("dx norm", self.x_grad_norm, "du norm", self.u_grad_norm)
-        self.calc(True)
+        # print("\nStep ")
+        # print("dx norm", self.x_grad_norm, "du norm", self.u_grad_norm)
+        # self.calc(True)
 
-        print("\nFinal ")
-        print("Total cost", self.cost, "gap norms", self.gap_norm)
+        # print("\nFinal ")
+        # print("Total cost", self.cost, "gap norms", self.gap_norm)
 
     def allocateQPData(self):
         self.xz = [np.zeros(cmodel.ncx) for cmodel in self.constraintModel]

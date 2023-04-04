@@ -124,7 +124,7 @@ if __name__ == "__main__":
     lq_diff_terminal = DifferentialActionModelLQ(isTerminal=True)
     print(" Constructing differential models completed ".center(LINE_WIDTH, "-"))
     dt = 0.1
-    horizon = 30
+    horizon = 10
     x0 = np.zeros(4)
     lq_running = crocoddyl.IntegratedActionModelEuler(lq_diff_running, dt)
     lq_terminal = crocoddyl.IntegratedActionModelEuler(lq_diff_terminal, dt)
@@ -145,24 +145,22 @@ if __name__ == "__main__":
     ConstraintModel = FullConstraintModel(lxmin, lxmax, lumin, lumax)
 
 
-    # ddp_py = CLQR(problem, [ConstraintModel]*(horizon+1), "ProxQP")
-    # ddp_py = CLQR(problem, [ConstraintModel]*(horizon+1), "OSQP")
-    ddp_py = CLQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
-    # ddp_py = CILQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
-    # ddp_py = CILQR(problem, [ConstraintModel]*(horizon+1), "ProxQP")
+    # ddp_osqp = CLQR(problem, [ConstraintModel]*(horizon+1), "OSQP")
+    ddp_custom = CLQR(problem, [ConstraintModel]*(horizon+1), "CustomOSQP")
+    ddp_boyd = CLQR(problem, [ConstraintModel]*(horizon+1), "Boyd")
 
-    print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
-    ddp_py.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
+    # print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
+    # ddp_py.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
     xs = [x0] * (horizon + 1)
     us = [np.zeros(2)] * horizon
-    converged = ddp_py.solve(xs, us, 2)
-    
+    converged = ddp_boyd.solve(xs, us, 2)
+    print(100*"*")
 
-
-
-
-
-    # assert False
+    converged = ddp_custom.solve(xs, us, 2)
+    print(100*"*")
+    # print("NORM Y_K", np.linalg.norm(ddp_custom.y_k - ddp_boyd.y_k))
+    print("NORM X_K", np.linalg.norm(np.array(ddp_custom.xs) - np.array(ddp_boyd.xs)))
+    assert False
     if True:
         print(" DDP solver has CONVERGED ".center(LINE_WIDTH, "-"))
         plt.figure("trajectory plot")
