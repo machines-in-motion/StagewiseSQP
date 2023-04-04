@@ -10,15 +10,17 @@ import time
 from scipy import sparse
 import scipy.linalg as scl
 from py_osqp import CustomOSQP
+from py_boyd import BoydADMM
 
-
-class QPSolvers(CustomOSQP):
+class QPSolvers(CustomOSQP, BoydADMM):
 
     def __init__(self, method):
         
-        assert method == "ProxQP" or method=="sparceADMM"  or method=="OSQP" or method=="CustomOSQP" 
+        assert method == "ProxQP" or method=="sparceADMM"  or method=="OSQP"\
+              or method=="CustomOSQP" or method =="Boyd" 
 
         CustomOSQP.__init__(self)
+        BoydADMM.__init__(self)
         self.method = method
 
     def computeDirectionFullQP(self, maxit = 500):
@@ -117,11 +119,11 @@ class QPSolvers(CustomOSQP):
             print("solve time = ", time.time()-t1)
         # import pdb; pdb.set_trace()
 
-        elif self.method == "CustomOSQP":
+        elif self.method == "CustomOSQP" :
             Aeq = sparse.csr_matrix(A)
             Aineq = sparse.eye(self.n_in)
             self.Aosqp = sparse.vstack([Aeq, Aineq])
-
+            
             self.losqp = np.hstack([B, l])
             self.uosqp = np.hstack([B, u])
 
@@ -141,6 +143,28 @@ class QPSolvers(CustomOSQP):
 
             res = self.optimize_osqp(maxiters=maxit)
 
+        elif self.method == "Boyd":
+            self.A_eq = sparse.csr_matrix(A)
+            self.A_in = sparse.eye(self.n_in)
+            self.b = B
+            self.losqp = l
+            self.uosqp = u
+
+            self.P = P
+            self.q = np.array(q)
+            
+            self.xs_vec = np.array(self.xs).flatten()[self.nx:]
+            self.us_vec = np.array(self.us).flatten()
+            self.xz_vec = np.array(self.xz).flatten()[self.nx:]
+            self.uz_vec = np.array(self.uz).flatten()
+            self.xy_vec = np.array(self.xy).flatten()[self.nx:]
+            self.uy_vec = np.array(self.uy).flatten()
+            self.x_k = np.hstack((self.xs_vec, self.us_vec))
+
+            self.z_k = np.zeros(self.n_in)
+            self.y_k = np.zeros(self.n_in)
+
+            res = self.optimize_boyd(maxiters=maxit)
 
         self.dx[0] = np.zeros(self.nx)
         for t in range(self.problem.T):

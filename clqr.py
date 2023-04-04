@@ -65,7 +65,7 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         self.cost += self.problem.terminalData.cost 
 
     def computeDirection(self):
-        if self.method == "ProxQP" or self.method=="OSQP" or self.method == "CustomOSQP":
+        if self.method == "ProxQP" or self.method=="OSQP" or self.method == "CustomOSQP" or self.method == "Boyd":
             self.computeDirectionFullQP()
         else:
             self.calc(True)
