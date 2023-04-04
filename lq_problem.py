@@ -124,7 +124,7 @@ if __name__ == "__main__":
     lq_diff_terminal = DifferentialActionModelLQ(isTerminal=True)
     print(" Constructing differential models completed ".center(LINE_WIDTH, "-"))
     dt = 0.1
-    horizon = 10
+    horizon = 100
     x0 = np.zeros(4)
     lq_running = crocoddyl.IntegratedActionModelEuler(lq_diff_running, dt)
     lq_terminal = crocoddyl.IntegratedActionModelEuler(lq_diff_terminal, dt)
@@ -145,8 +145,8 @@ if __name__ == "__main__":
     ConstraintModel = FullConstraintModel(lxmin, lxmax, lumin, lumax)
 
 
-    # ddp_osqp = CLQR(problem, [ConstraintModel]*(horizon+1), "OSQP")
-    ddp_custom = CLQR(problem, [ConstraintModel]*(horizon+1), "CustomOSQP")
+    ddp_osqp = CLQR(problem, [ConstraintModel]*(horizon+1), "OSQP")
+    # ddp_custom = CLQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
     ddp_boyd = CLQR(problem, [ConstraintModel]*(horizon+1), "Boyd")
 
     # print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))

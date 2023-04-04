@@ -126,7 +126,7 @@ class QPSolvers(CustomOSQP, BoydADMM):
 
         elif self.method == "CustomOSQP" :
             Aeq = sparse.csr_matrix(A)
-            Aineq = sparse.eye(self.n_in)
+            Aineq = sparse.csr_matrix(C)
             self.Aosqp = sparse.vstack([Aeq, Aineq])
             
             self.losqp = np.hstack([B, l])
@@ -150,7 +150,7 @@ class QPSolvers(CustomOSQP, BoydADMM):
 
         elif self.method == "Boyd":
             self.A_eq = sparse.csr_matrix(A)
-            self.A_in = sparse.eye(self.n_in)
+            self.A_in = sparse.csr_matrix(C)
             self.b = B
             self.losqp = l
             self.uosqp = u

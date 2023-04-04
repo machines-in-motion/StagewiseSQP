@@ -35,8 +35,9 @@ class BoydADMM():
         A_block = sparse.hstack([A_block_leftcol, A_block_rightcol])
         A_block = sparse.csr_matrix(A_block)
 
-        tmp = self.A_in.T@(self.z_k - np.divide(self.y_k, self.rho))
-        b_block = np.hstack((np.multiply(self.rho_vec, tmp) - self.q + self.sigma*self.x_k, self.b))
+        tmp = self.A_in.T@(np.multiply(self.rho_vec, self.z_k - np.divide(self.y_k, self.rho_vec)))
+        # import pdb; pdb.set_trace()
+        b_block = np.hstack((tmp - self.q + self.sigma*self.x_k, self.b))
         
         xv_k_1 = spsolve(A_block, b_block)
         self.xtilde_k_1, self.v_k_1 = xv_k_1[:self.n_vars], xv_k_1[self.n_vars:]
@@ -48,25 +49,25 @@ class BoydADMM():
         self.y_k_1 = self.y_k + np.multiply(self.rho_vec, (self.x_k_1 - self.z_k_1))
 
 
-        dual_vec = np.multiply(self.rho_vec, (self.z_k_1 - self.z_k))
-        self.r_dual = max(abs(dual_vec))
+        # dual_vec = np.multiply(self.rho_vec, (self.z_k_1 - self.z_k))
+        # self.r_dual = max(abs(dual_vec))
         self.x_k, self.z_k, self.y_k = self.xtilde_k_1, self.z_k_1, self.y_k_1
 
         self.r_prim = max(max(abs(self.A_in @ self.x_k - self.z_k)), max(abs(self.A_eq @ self.x_k - self.b)))
 
         self.eps_rel_prim = max(abs(np.hstack((self.A_in @ self.x_k, self.z_k))))
-        self.eps_rel_dual = max(abs(self.A_in.T @ self.y_k))
+        # self.eps_rel_dual = max(abs(self.A_in.T @ self.y_k))
 
         ## This is the OSQP dual computation
-        # self.r_dual = max(abs(self.P @ self.x_k + self.q + self.A_in.T @ self.y_k + self.A_eq.T @ self.v_k_1))
+        self.r_dual = max(abs(self.P @ self.x_k + self.q + self.A_in.T @ self.y_k + self.A_eq.T @ self.v_k_1))
 
-        # tmp = max(abs(self.q))
-        # tmp2 = max(abs(self.A_in.T @ self.y_k))
-        # tmp3 = max(abs(self.P @ self.x_k))
-        # tmp4 = max(abs(self.A_eq.T @ self.v_k_1))
-        # self.eps_rel_dual = max(tmp, tmp2)
-        # self.eps_rel_dual = max(self.eps_rel_dual, tmp3)
-        # self.eps_rel_dual = max(self.eps_rel_dual, tmp4)
+        tmp = max(abs(self.q))
+        tmp2 = max(abs(self.A_in.T @ self.y_k))
+        tmp3 = max(abs(self.P @ self.x_k))
+        tmp4 = max(abs(self.A_eq.T @ self.v_k_1))
+        self.eps_rel_dual = max(tmp, tmp2)
+        self.eps_rel_dual = max(self.eps_rel_dual, tmp3)
+        self.eps_rel_dual = max(self.eps_rel_dual, tmp4)
 
 
     def update_rho_boyd(self, iter):

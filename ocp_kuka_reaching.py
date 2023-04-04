@@ -87,13 +87,13 @@ terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
 # terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
 
 # Create the shooting problem
-T = 100
+T = 30
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 
 # choose scenario: 0 or 1
-option = 0
+option = 1
 
 if option == 0:    
   clip_state_max = np.array([np.inf]*14)
@@ -118,14 +118,14 @@ xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 # ddp = GNMSCPP(problem) 
 # ddp = CILQR(problem, constraintModels, "OSQP")
-# ddp = CILQR(problem, constraintModels, "ProxQP")
+ddp = CILQR(problem, constraintModels, "ProxQP")
 # ddp = CILQR(problem, constraintModels, "sparceADMM")
 # ddp = CILQR(problem, constraintModels, "CustomOSQP")
-ddp_boyd = CILQR(problem, constraintModels, "Boyd")
+# ddp = CILQR(problem, constraintModels, "Boyd")
 
 
-# ddp.solve(xs, us, maxiter=10)
-ddp_boyd.solve(xs, us, maxiter=5)
+ddp.solve(xs, us, maxiter=100)
+# ddp_boyd.solve(xs, us, maxiter=5)
 
 # print("NORM X_K", np.linalg.norm(np.array(ddp.xs) - np.array(ddp_boyd.xs)))
 
