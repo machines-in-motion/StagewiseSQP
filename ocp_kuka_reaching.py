@@ -114,10 +114,10 @@ ddp = CILQR(problem, constraintModels, "CustomOSQP")
 ddp_boyd = CILQR(problem, constraintModels, "Boyd")
 
 
-ddp.solve(xs, us, maxiter=1)
-ddp_boyd.solve(xs, us, maxiter=1)
+# ddp.solve(xs, us, maxiter=1)
+ddp_boyd.solve(xs, us, maxiter=5)
 
-print("NORM X_K", np.linalg.norm(np.array(ddp.xs) - np.array(ddp_boyd.xs)))
+# print("NORM X_K", np.linalg.norm(np.array(ddp.xs) - np.array(ddp_boyd.xs)))
 
 
 assert False

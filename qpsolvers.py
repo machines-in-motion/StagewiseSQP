@@ -23,7 +23,7 @@ class QPSolvers(CustomOSQP, BoydADMM):
         BoydADMM.__init__(self)
         self.method = method
 
-    def computeDirectionFullQP(self, maxit = 500):
+    def computeDirectionFullQP(self, maxit = 5000):
         self.calc(True)
         self.n_vars  = self.problem.T*(self.nx + self.nu)
 

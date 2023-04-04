@@ -52,15 +52,22 @@ class BoydADMM():
         self.r_dual = max(abs(dual_vec))
         self.x_k, self.z_k, self.y_k = self.xtilde_k_1, self.z_k_1, self.y_k_1
 
-        self.r_prim = max(abs(self.A_in @ self.x_k - self.z_k))
-        # self.r_dual = max(abs(self.P @ self.x_k + self.q + self.A_in.T @ self.y_k))
+        self.r_prim = max(max(abs(self.A_in @ self.x_k - self.z_k)), max(abs(self.A_eq @ self.x_k - self.b)))
 
         self.eps_rel_prim = max(abs(np.hstack((self.A_in @ self.x_k, self.z_k))))
-        tmp = max(abs(self.q))
-        tmp2 = max(abs(self.A_in.T @ self.y_k))
-        tmp3 = max(abs(self.P @ self.x_k))
-        self.eps_rel_dual = max(tmp, tmp2)
-        self.eps_rel_dual = max(self.eps_rel_dual, tmp3)
+        self.eps_rel_dual = max(abs(self.A_in.T @ self.y_k))
+
+        ## This is the OSQP dual computation
+        # self.r_dual = max(abs(self.P @ self.x_k + self.q + self.A_in.T @ self.y_k + self.A_eq.T @ self.v_k_1))
+
+        # tmp = max(abs(self.q))
+        # tmp2 = max(abs(self.A_in.T @ self.y_k))
+        # tmp3 = max(abs(self.P @ self.x_k))
+        # tmp4 = max(abs(self.A_eq.T @ self.v_k_1))
+        # self.eps_rel_dual = max(tmp, tmp2)
+        # self.eps_rel_dual = max(self.eps_rel_dual, tmp3)
+        # self.eps_rel_dual = max(self.eps_rel_dual, tmp4)
+
 
     def update_rho_boyd(self, iter):
         
