@@ -92,11 +92,27 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 
-    
+# choose scenario: 0 or 1
+option = 0
 
-lmin = np.array([-np.inf, -np.inf, -np.inf])
-lmax = np.array([np.inf, np.inf, np.inf])
-constraintModels = [EndEffConstraintModel(robot, lmin, lmax)] * T + [EndEffConstraintModel(robot, endeff_translation, endeff_translation)]
+if option == 0:    
+  clip_state_max = np.array([np.inf]*14)
+  clip_state_min = -np.array([np.inf]*7 + [0.5]*7)
+  clip_ctrl = np.array([np.inf, np.inf , np.inf, np.inf, np.inf, np.inf , np.inf] )
+  ConstraintModel = FullConstraintModel(clip_state_min, clip_state_max, -clip_ctrl, clip_ctrl)
+  clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7)
+  TerminalConstraintModel = FullConstraintModel(-clip_state_end, clip_state_end, -clip_ctrl, clip_ctrl)
+  constraintModels = [ConstraintModel] * T + [TerminalConstraintModel]
+
+
+elif option == 1:
+  lmin = np.array([-np.inf, -np.inf, -np.inf])
+  lmax = np.array([np.inf, np.inf, np.inf])
+  constraintModels = [EndEffConstraintModel(robot, lmin, lmax)] * T + [EndEffConstraintModel(robot, endeff_translation, endeff_translation)]
+
+
+
+
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
@@ -104,17 +120,17 @@ us = [np.zeros(nu)] * T
 # ddp = CILQR(problem, constraintModels, "OSQP")
 # ddp = CILQR(problem, constraintModels, "ProxQP")
 # ddp = CILQR(problem, constraintModels, "sparceADMM")
-ddp = CILQR(problem, constraintModels, "CustomOSQP")
+# ddp = CILQR(problem, constraintModels, "CustomOSQP")
 ddp_boyd = CILQR(problem, constraintModels, "Boyd")
 
 
-# ddp.solve(xs, us, maxiter=1)
+# ddp.solve(xs, us, maxiter=10)
 ddp_boyd.solve(xs, us, maxiter=5)
 
 # print("NORM X_K", np.linalg.norm(np.array(ddp.xs) - np.array(ddp_boyd.xs)))
 
 
-assert False
+# assert False
 # Extract DDP data and plot
 ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
 
