@@ -56,8 +56,8 @@ class QPSolvers(CustomOSQP, BoydADMM):
             B[t * self.nx: (t+1) * self.nx] = self.gap[t]
 
 
-        P[self.problem.T*self.nx-self.nx:self.problem.T*self.nx, self.problem.T*self.nx-self.nx:self.problem.T*self.nx] = self.problem.terminalData.Lxx.copy()
-        q[self.problem.T*self.nx-self.nx:self.problem.T*self.nx] = self.problem.terminalData.Lx.copy()
+        P[(self.problem.T-1)*self.nx:self.problem.T*self.nx, self.problem.T*self.nx-self.nx:self.problem.T*self.nx] = self.problem.terminalData.Lxx.copy()
+        q[(self.problem.T-1)*self.nx:self.problem.T*self.nx] = self.problem.terminalData.Lx.copy()
 
 
         n = self.problem.T*(self.nx + self.nu)
@@ -75,7 +75,7 @@ class QPSolvers(CustomOSQP, BoydADMM):
             if cmodel.ncx == 0:
                 continue
             cx, _ =  cmodel.calc(self.xs[t+1])
-            Cx, _ =  cmodel.calcDiff(self.xs[t], self.us[t])
+            Cx, _ =  cmodel.calcDiff(self.xs[t+1])
             l[nin_count: nin_count + cmodel.ncx] = cmodel.lxmin - cx
             u[nin_count: nin_count + cmodel.ncx] = cmodel.lxmax - cx 
             C[nin_count: nin_count + cmodel.ncx, t*self.nx: (t+1)*self.nx] = Cx
@@ -98,7 +98,7 @@ class QPSolvers(CustomOSQP, BoydADMM):
             qp.init(P, q, A, B, C, l, u)      
             t1 = time.time()
             qp.solve()
-            print("solve time = ", time.time()-t1)
+            # print("solve time = ", time.time()-t1)
             res = qp.results.x
             # print("n_iter = ", qp.results.info.iter)
             # print("n_iter_ext = ", qp.results.info.iter_ext)
