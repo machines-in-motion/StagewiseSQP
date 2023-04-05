@@ -118,8 +118,8 @@ xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 # ddp = GNMSCPP(problem) 
 # ddp = CILQR(problem, constraintModels, "OSQP")
-ddp = CILQR(problem, constraintModels, "ProxQP")
-# ddp = CILQR(problem, constraintModels, "sparceADMM")
+# ddp = CILQR(problem, constraintModels, "ProxQP")
+ddp = CILQR(problem, constraintModels, "sparceADMM")
 # ddp = CILQR(problem, constraintModels, "CustomOSQP")
 # ddp = CILQR(problem, constraintModels, "Boyd")
 

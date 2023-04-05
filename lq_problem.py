@@ -145,26 +145,26 @@ if __name__ == "__main__":
     ConstraintModel = FullConstraintModel(lxmin, lxmax, lumin, lumax)
 
 
-    ddp_osqp = CLQR(problem, [ConstraintModel]*(horizon+1), "OSQP")
-    # ddp_custom = CLQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
+    # ddp_osqp = CLQR(problem, [ConstraintModel]*(horizon+1), "OSQP")
+    ddp_custom = CLQR(problem, [ConstraintModel]*(horizon+1), "CustomOSQP")
     ddp_boyd = CLQR(problem, [ConstraintModel]*(horizon+1), "Boyd")
+    # ddp_clqr = CLQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
 
     # print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
     # ddp_py.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
     xs = [x0] * (horizon + 1)
     us = [np.zeros(2)] * horizon
-    converged = ddp_boyd.solve(xs, us, 2)
+    # converged = ddp_boyd.solve(xs, us, 2)
     print(100*"*")
 
-    converged = ddp_custom.solve(xs, us, 2)
+    converged = ddp_boyd.solve(xs, us, 2)
     print(100*"*")
     # print("NORM Y_K", np.linalg.norm(ddp_custom.y_k - ddp_boyd.y_k))
-    print("NORM X_K", np.linalg.norm(np.array(ddp_custom.xs) - np.array(ddp_boyd.xs)))
-    assert False
+    # print("NORM X_K", np.linalg.norm(np.array(ddp_custom.xs) - np.array(ddp_boyd.xs)))
     if True:
         print(" DDP solver has CONVERGED ".center(LINE_WIDTH, "-"))
         plt.figure("trajectory plot")
-        plt.plot(np.array(ddp_py.xs)[:, 0], np.array(ddp_py.xs)[:, 1], label="ddp_py")
+        plt.plot(np.array(ddp_boyd.xs)[:, 0], np.array(ddp_boyd.xs)[:, 1], label="ddp_py")
 
         # plt.plot(np.array(ddp_cpp.xs)[:, 0], np.array(ddp_cpp.xs)[:, 1], label="ddp_cpp")
         plt.xlabel("x")
