@@ -78,7 +78,7 @@ class CILQR(CLQR):
             self.merit =  self.cost + self.mu*self.gap_norm
             print("iter", i, "merit", self.merit, "cost", self.cost, "gap norms", self.gap_norm, "dx norm", self.x_grad_norm, "du norm", self.u_grad_norm, "alpha", alpha)
 
-            alpha = 0.5
+            alpha = 1.
             self.tryStep(alpha)
             max_search = 20
             for k in range(max_search):
@@ -87,7 +87,7 @@ class CILQR(CLQR):
                     return False
                 # print("iter_try", k, "Total merit", self.merit_try, "Total cost", self.cost_try, "gap norms", self.gap_norm_try, "step length", alpha)
 
-                if self.merit < self.merit_try:     # backward pass with regularization 
+                if self.cost < self.cost_try and self.gap_norm < self.gap_norm_try:     # backward pass with regularization 
                     alpha *= 0.5
                     self.tryStep(alpha)
                 else:
