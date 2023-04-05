@@ -29,6 +29,18 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
     def __init__(self, shootingProblem, constraintModel, method):
         SolverAbstract.__init__(self, shootingProblem)
         
+        self.constraintModel = constraintModel
+
+        self.reset_params()
+        self.allocateData()
+        self.allocateQPData()
+
+        QPSolvers.__init__(self, method)
+        CustomOSQP.__init__(self)
+        self.max_iters = 5000
+
+    def reset_params(self):
+        
         self.sigma = 1e-6
         self.rho_sparse= 1e-1
         self.rho_min = 1e-6
@@ -43,14 +55,6 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         self.eps_rel = 1e-3
         self.regMin = 1e-6
 
-        self.constraintModel = constraintModel
-        self.allocateData()
-        self.allocateQPData()
-        
-        QPSolvers.__init__(self, method)
-        CustomOSQP.__init__(self)
-        
-        self.max_iters = 5000
 
     def models(self):
         mod = [m for m in self.problem.runningModels]
@@ -78,16 +82,16 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         if self.method == "ProxQP" or self.method=="OSQP" or self.method == "CustomOSQP" or self.method == "Boyd":
             self.computeDirectionFullQP()
         else:
-            maxit = 100
+            maxit = 25
 
-            # QPSolvers.__init__(self, "Boyd")
-            # res = self.computeDirectionFullQP(maxit)
+            QPSolvers.__init__(self, "Boyd")
+            res = self.computeDirectionFullQP(maxit)
 
-            # self.dx_test[0] = np.zeros(self.nx)
-            # for t in range(self.problem.T):
-            #     self.dx_test[t+1] = res[t * self.nx: (t+1) * self.nx] 
-            #     index_u = self.problem.T*self.nx + t * self.nu
-            #     self.du_test[t] = res[index_u:index_u+self.nu]
+            self.dx_test[0] = np.zeros(self.nx)
+            for t in range(self.problem.T):
+                self.dx_test[t+1] = self.x_k[t * self.nx: (t+1) * self.nx] 
+                index_u = self.problem.T*self.nx + t * self.nu
+                self.du_test[t] = self.x_k[index_u:index_u+self.nu]
                 
             self.calc(True)
             for iter in range(1, maxit+1):
@@ -95,8 +99,6 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
                 self.backwardPass()  
                 self.computeUpdates()
                 self.update_lagrangian_parameters_infinity()
-                # for i in range(len(self.dx)):
-                #     print(self.dx_tilde_test[i], self.dx_test[i])
                 self.update_rho_sparse(iter)
 
                 if (iter) % self.rho_update_interval == 0 and iter > 1:
@@ -107,6 +109,9 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
                         self.norm_dual < self.eps_abs + self.eps_rel*self.norm_dual_rel:
                             print("QP converged")
                             break
+
+            for i in range(len(self.dx)):
+                print(np.linalg.norm(self.du[i] - self.du_test[i]))
 
             print("Norm linalg Dx", np.linalg.norm(np.array(self.dx) - np.array(self.dx_test)))
             print("Norm linalg Du", np.linalg.norm(np.array(self.du) - np.array(self.du_test)))
@@ -284,8 +289,10 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         self.setCandidate(init_xs, init_us, False)
         self.computeDirection()
         self.acceptStep(alpha = 1.0)
+        # self.reset_params()
         
     def allocateQPData(self):
+
         self.xz = [np.zeros(cmodel.ncx) for cmodel in self.constraintModel]
         self.uz = [np.zeros(cmodel.ncu) for cmodel in self.constraintModel] 
         self.xy = [np.zeros(cmodel.ncx) for cmodel in self.constraintModel]

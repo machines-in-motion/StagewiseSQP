@@ -121,13 +121,13 @@ us = [np.zeros(nu)] * T
 # ddp = GNMSCPP(problem) 
 # ddp = CILQR(problem, constraintModels, "OSQP")
 # ddp = CILQR(problem, constraintModels, "ProxQP")
-# ddp = CILQR(problem, constraintModels, "sparceADMM")
+ddp = CILQR(problem, constraintModels, "sparceADMM")
 # ddp = CILQR(problem, constraintModels, "CustomOSQP")
-ddp = CILQR(problem, constraintModels, "Boyd")
+# ddp = CILQR(problem, constraintModels, "Boyd")
 
 
 
-ddp.solve(xs, us, maxiter=4000)
+ddp.solve(xs, us, maxiter=1)
 # ddp_boyd.solve(xs, us, maxiter=5)
 
 # print("NORM X_K", np.linalg.norm(np.array(ddp.xs) - np.array(ddp_boyd.xs)))
