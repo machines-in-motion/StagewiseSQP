@@ -61,7 +61,7 @@ xRegCost = crocoddyl.CostModelResidual(state, xResidual)
   # endeff frame translation cost
 endeff_frame_id = model.getFrameId("contact")
 # endeff_translation = robot.data.oMf[endeff_frame_id].translation.copy()
-endeff_translation = np.array([0.7, 0, 1]) # move endeff +30 cm along x in WORLD frame
+endeff_translation = np.array([0.7, 0, 1.1]) # move endeff +30 cm along x in WORLD frame
 frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(state, endeff_frame_id, endeff_translation)
 frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
 
@@ -106,9 +106,11 @@ if option == 0:
 
 
 elif option == 1:
-  lmin = np.array([-np.inf, -np.inf, -np.inf])
-  lmax = np.array([np.inf, np.inf, np.inf])
-  constraintModels = [EndEffConstraintModel(robot, lmin, lmax)] * T + [EndEffConstraintModel(robot, endeff_translation, endeff_translation)]
+  lmin = np.array([-np.inf, endeff_translation[1], endeff_translation[2]])
+  lmax =  np.array([np.inf, endeff_translation[1], endeff_translation[2]])
+  # lmin = np.array([-np.inf, -np.inf, -np.inf])
+  # lmax =  np.array([np.inf, np.inf, np.inf])
+  constraintModels = [EndEffConstraintModel(robot, lmin, lmax)] * (T+1)
 
 
 
@@ -124,7 +126,8 @@ ddp = CILQR(problem, constraintModels, "sparceADMM")
 # ddp = CILQR(problem, constraintModels, "Boyd")
 
 
-ddp.solve(xs, us, maxiter=100)
+
+ddp.solve(xs, us, maxiter=4000)
 # ddp_boyd.solve(xs, us, maxiter=5)
 
 # print("NORM X_K", np.linalg.norm(np.array(ddp.xs) - np.array(ddp_boyd.xs)))
