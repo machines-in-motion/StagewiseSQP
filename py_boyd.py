@@ -48,7 +48,7 @@ class BoydADMM():
         self.z_k_1 = np.clip(self.x_k_1 + np.divide(self.y_k,self.rho_vec), self.losqp, self.uosqp)
         self.y_k_1 = self.y_k + np.multiply(self.rho_vec, (self.x_k_1 - self.z_k_1))
 
-        dual_vec = np.multiply(self.rho_vec, self.A_in.T @(self.z_k_1 - self.z_k))
+        dual_vec = self.A_in.T @ np.multiply(self.rho_vec, (self.z_k_1 - self.z_k))
         self.r_dual = max(abs(dual_vec))
         self.x_k, self.z_k, self.y_k = self.xtilde_k_1, self.z_k_1, self.y_k_1
 

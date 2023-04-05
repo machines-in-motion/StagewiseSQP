@@ -80,14 +80,14 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         else:
             maxit = 100
 
-            QPSolvers.__init__(self, "Boyd")
-            res = self.computeDirectionFullQP(maxit)
+            # QPSolvers.__init__(self, "Boyd")
+            # res = self.computeDirectionFullQP(maxit)
 
-            self.dx_test[0] = np.zeros(self.nx)
-            for t in range(self.problem.T):
-                self.dx_test[t+1] = res[t * self.nx: (t+1) * self.nx] 
-                index_u = self.problem.T*self.nx + t * self.nu
-                self.du_test[t] = res[index_u:index_u+self.nu]
+            # self.dx_test[0] = np.zeros(self.nx)
+            # for t in range(self.problem.T):
+            #     self.dx_test[t+1] = res[t * self.nx: (t+1) * self.nx] 
+            #     index_u = self.problem.T*self.nx + t * self.nu
+            #     self.du_test[t] = res[index_u:index_u+self.nu]
                 
             self.calc(True)
             for iter in range(1, maxit+1):
@@ -161,8 +161,8 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
             self.xy[t] += np.multiply(self.rho_vec_x[t], (self.dx_relaxed[t] - self.xz[t])) 
             self.uy[t] += np.multiply(self.rho_vec_u[t], (self.du_relaxed[t] - self.uz[t]))
 
-            dual_vec_x = np.multiply(self.rho_vec_x[t], Cx.T@(self.xz[t] - xz_k))
-            dual_vec_u = np.multiply(self.rho_vec_u[t], Cu.T@(self.uz[t] - uz_k))
+            dual_vec_x = Cx.T@ np.multiply(self.rho_vec_x[t], (self.xz[t] - xz_k))
+            dual_vec_u = Cu.T@ np.multiply(self.rho_vec_u[t], (self.uz[t] - uz_k))
 
             self.norm_dual = max(self.norm_dual, max(abs(dual_vec_x)), max(abs(dual_vec_u)))
             self.norm_primal = max(self.norm_primal, max(abs(Cx@self.dx[t] - self.xz[t])), max(abs(Cu@self.du[t] - self.uz[t])))
@@ -181,7 +181,7 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         self.xz[-1] = np.clip(self.dx_relaxed[-1] + np.divide(self.xy[-1], self.rho_vec_x[-1]), cmodel.lxmin - cx, cmodel.lxmax - cx)
         self.xy[-1] += np.multiply(self.rho_vec_x[-1], (self.dx_relaxed[-1] - self.xz[-1])) 
 
-        dual_vec_x = np.multiply(self.rho_vec_x[-1], Cx.T@(self.xz[-1] - xz_k))
+        dual_vec_x = Cx.T@np.multiply(self.rho_vec_x[-1], (self.xz[-1] - xz_k))
 
         self.norm_dual = max(self.norm_dual, max(abs(dual_vec_x)), max(abs(dual_vec_u)))
         self.norm_primal = max(self.norm_primal, max(abs(Cx@self.dx[-1] - self.xz[-1])))
