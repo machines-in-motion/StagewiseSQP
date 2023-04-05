@@ -48,26 +48,25 @@ class BoydADMM():
         self.z_k_1 = np.clip(self.x_k_1 + np.divide(self.y_k,self.rho_vec), self.losqp, self.uosqp)
         self.y_k_1 = self.y_k + np.multiply(self.rho_vec, (self.x_k_1 - self.z_k_1))
 
-
-        # dual_vec = np.multiply(self.rho_vec, (self.z_k_1 - self.z_k))
-        # self.r_dual = max(abs(dual_vec))
+        dual_vec = np.multiply(self.rho_vec, self.A_in.T @(self.z_k_1 - self.z_k))
+        self.r_dual = max(abs(dual_vec))
         self.x_k, self.z_k, self.y_k = self.xtilde_k_1, self.z_k_1, self.y_k_1
 
         self.r_prim = max(max(abs(self.A_in @ self.x_k - self.z_k)), max(abs(self.A_eq @ self.x_k - self.b)))
 
         self.eps_rel_prim = max(abs(np.hstack((self.A_in @ self.x_k, self.z_k))))
-        # self.eps_rel_dual = max(abs(self.A_in.T @ self.y_k))
+        self.eps_rel_dual = max(abs(self.A_in.T @ self.y_k))
 
         ## This is the OSQP dual computation
-        self.r_dual = max(abs(self.P @ self.x_k + self.q + self.A_in.T @ self.y_k + self.A_eq.T @ self.v_k_1))
+        # self.r_dual = max(abs(self.P @ self.x_k + self.q + self.A_in.T @ self.y_k + self.A_eq.T @ self.v_k_1))
 
-        tmp = max(abs(self.q))
-        tmp2 = max(abs(self.A_in.T @ self.y_k))
-        tmp3 = max(abs(self.P @ self.x_k))
-        tmp4 = max(abs(self.A_eq.T @ self.v_k_1))
-        self.eps_rel_dual = max(tmp, tmp2)
-        self.eps_rel_dual = max(self.eps_rel_dual, tmp3)
-        self.eps_rel_dual = max(self.eps_rel_dual, tmp4)
+        # tmp = max(abs(self.q))
+        # tmp2 = max(abs(self.A_in.T @ self.y_k))
+        # tmp3 = max(abs(self.P @ self.x_k))
+        # tmp4 = max(abs(self.A_eq.T @ self.v_k_1))
+        # self.eps_rel_dual = max(tmp, tmp2)
+        # self.eps_rel_dual = max(self.eps_rel_dual, tmp3)
+        # self.eps_rel_dual = max(self.eps_rel_dual, tmp4)
 
 
     def update_rho_boyd(self, iter):
@@ -124,9 +123,9 @@ class BoydADMM():
                 , "optimal rho estimate", pp(self.rho_estimate), "rho", pp(self.rho), "\n") 
                     converged = True               
                     break
-        if not converged:
-            print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
-                , "optimal rho estimate", pp(self.rho_estimate), "rho", pp(self.rho))
+        # if not converged:
+        #     print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
+        #         , "optimal rho estimate", pp(self.rho_estimate), "rho", pp(self.rho))
         return self.x_k
 
 
