@@ -61,7 +61,7 @@ xRegCost = crocoddyl.CostModelResidual(state, xResidual)
   # endeff frame translation cost
 endeff_frame_id = model.getFrameId("contact")
 # endeff_translation = robot.data.oMf[endeff_frame_id].translation.copy()
-endeff_translation = np.array([0.7, 0, 1]) # move endeff +30 cm along x in WORLD frame
+endeff_translation = np.array([0.7, 0, 1.1]) # move endeff +30 cm along x in WORLD frame
 frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(state, endeff_frame_id, endeff_translation)
 frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
 
