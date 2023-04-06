@@ -144,20 +144,21 @@ if __name__ == "__main__":
     lumax = np.inf*np.ones(nu)
     ConstraintModel = FullConstraintModel(lxmin, lxmax, lumin, lumax)
 
+    ddp = GNMSCPP(problem)
 
     # ddp_osqp = CLQR(problem, [ConstraintModel]*(horizon+1), "OSQP")
-    ddp_custom = CLQR(problem, [ConstraintModel]*(horizon+1), "CustomOSQP")
-    ddp_boyd = CLQR(problem, [ConstraintModel]*(horizon+1), "Boyd")
+    # ddp_custom = CLQR(problem, [ConstraintModel]*(horizon+1), "CustomOSQP")
+    # ddp_boyd = CLQR(problem, [ConstraintModel]*(horizon+1), "Boyd")
     # ddp_clqr = CLQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
 
     # print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
     # ddp_py.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
     xs = [x0] * (horizon + 1)
-    us = [np.zeros(2)] * horizon
+    us = [np.random.random(2)*100 for t in range(horizon)] 
     # converged = ddp_boyd.solve(xs, us, 2)
     print(100*"*")
 
-    converged = ddp_boyd.solve(xs, us, 2)
+    converged = ddp.solve(xs, us, 2)
     print(100*"*")
     # print("NORM Y_K", np.linalg.norm(ddp_custom.y_k - ddp_boyd.y_k))
     # print("NORM X_K", np.linalg.norm(np.array(ddp_custom.xs) - np.array(ddp_boyd.xs)))

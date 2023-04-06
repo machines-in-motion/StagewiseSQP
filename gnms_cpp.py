@@ -23,12 +23,22 @@ class GNMSCPP(SolverFDDP):
         self.merit = self.cost + self.mu*self.gap_norm
         # print(self.gap_norm)
 
-    def computeDirection(self):
+    def computeDirection(self, kkt_check=True):
         # print("using Python")
         self.calc()
-        self.KKT_check()
+        if kkt_check:
+
+            self.KKT_check()
+            print("KKT ", self.KKT)
+            if self.KKT < 1e-10:
+                print("Terminated -- KKT condition reached")
+                print("Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm)
+                return True
+
         self.backwardPass()
         self.computeUpdates()
+        return False
+
 
     def computeUpdates(self): 
         """ computes step updates dx and du """
@@ -60,9 +70,6 @@ class GNMSCPP(SolverFDDP):
             self.KKT += max(abs(data.Lu + data.Fu.T @ self.lag_mul[t+1]))
 
         self.KKT += max(abs(self.problem.terminalData.Lx - self.lag_mul[-1]))
-
-        print("\nInfinity norm of KKT condition ", self.KKT)
-        print("\n")
 
     def tryStep(self, alpha):
         # print("using python")
@@ -109,24 +116,20 @@ class GNMSCPP(SolverFDDP):
         self.setCandidate(init_xs, init_us, False)
 
         alpha = None
-        self.computeDirection()
-        # self.tryStep(1.0)
+        self.computeDirection(kkt_check=False)
+        print("iter", 0, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm)
 
         for i in range(maxiter):
-            recalc = True   # this will recalculated derivatives in Compute Direction 
-
             alpha = 1.
             self.tryStep(alpha)
             max_search = 10
-            # print("iter", i, "Total merit", self.merit, "Total merit try", self.merit_try, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
 
             for k in range(max_search):
                 if k == max_search - 1:
                     print("No improvement")
                     print("Terminated", "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
                     return False
-                # print("iter_try", k, "Total merit", self.merit_try, "Total cost", self.cost_try, "gap norms", self.gap_norm_try, "step length", alpha)
-                # if self.merit < self.merit_try:     # backward pass with regularization 
+
                 if self.gap_norm < self.gap_norm_try and self.cost < self.cost_try:
                     alpha *= 0.5
                     # print(alpha)
@@ -135,21 +138,13 @@ class GNMSCPP(SolverFDDP):
                     self.acceptStep()
                     break
 
-            print("iter", i, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
-            # print("iter", i, "Merit try", self.merit_try, "cost try", self.cost_try, "gap norms try", self.gap_norm_try)
+            converged = self.computeDirection()
 
-            # self.check_optimality()
-            self.computeDirection()
+            if converged:
+                return False
 
-            # print("grad norm", s
-            # elf.x_grad_norm + self.u_grad_norm)
-            # if abs(self.merit - self.merit_old) < 1e-4:
-            # if self.x_grad_norm + self.u_grad_norm < 1e-4:
-            if self.KKT < 1e-10:
-                print("KKT condition reached")
-                print("Terminated", "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
-                break
-
+            print("iter", i+1,"Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
+            
         return True 
 
     def models(self):
