@@ -26,6 +26,7 @@ class GNMSCPP(SolverFDDP):
     def computeDirection(self):
         # print("using Python")
         self.calc()
+        self.KKT_check()
         self.backwardPass()
         self.computeUpdates()
 
@@ -33,6 +34,7 @@ class GNMSCPP(SolverFDDP):
         """ computes step updates dx and du """
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
                 # here we compute the direction 
+                self.lag_mul[t] = self.Vxx[t] @ self.dx[t] + self.Vx[t]
                 self.du[t][:] = -self.K[t].dot(self.dx[t]) - self.k[t] 
                 A = data.Fx
                 B = data.Fu      
@@ -44,9 +46,23 @@ class GNMSCPP(SolverFDDP):
                     BL = -B@ self.K[t]
                 self.dx[t+1] = (A + BL)@self.dx[t] + bl + self.fs[t+1]  
 
+        self.lag_mul[-1] = self.Vxx[-1] @ self.dx[-1] + self.Vx[-1]
         self.x_grad_norm = sum(np.linalg.norm(self.dx, 1,  axis = 1))/self.problem.T
         self.u_grad_norm = sum(np.linalg.norm(self.du, 1,  axis = 1))/self.problem.T
         # print("x_norm", self.x_grad_norm, "u_norm", self.u_grad_norm )
+
+    def KKT_check(self):
+        self.KKT = 0
+        for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
+            # self.KKT += max(abs(data.Lxx @ self.dx[t] + data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t]))
+            # self.KKT += max(abs(data.Luu @ self.du[t] + data.Lu + data.Fu.T @ self.lag_mul[t+1]))
+            self.KKT += max(abs(data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t]))
+            self.KKT += max(abs(data.Lu + data.Fu.T @ self.lag_mul[t+1]))
+
+        self.KKT += max(abs(self.problem.terminalData.Lx - self.lag_mul[-1]))
+
+        print("\nInfinity norm of KKT condition ", self.KKT)
+        print("\n")
 
     def tryStep(self, alpha):
         # print("using python")
@@ -111,7 +127,7 @@ class GNMSCPP(SolverFDDP):
                     return False
                 # print("iter_try", k, "Total merit", self.merit_try, "Total cost", self.cost_try, "gap norms", self.gap_norm_try, "step length", alpha)
                 # if self.merit < self.merit_try:     # backward pass with regularization 
-                if self.gap_norm < self.gap_norm_try:
+                if self.gap_norm < self.gap_norm_try and self.cost < self.cost_try:
                     alpha *= 0.5
                     # print(alpha)
                     self.tryStep(alpha)
@@ -128,8 +144,9 @@ class GNMSCPP(SolverFDDP):
             # print("grad norm", s
             # elf.x_grad_norm + self.u_grad_norm)
             # if abs(self.merit - self.merit_old) < 1e-4:
-            if self.x_grad_norm + self.u_grad_norm < 1e-4:
-                print("No improvement observed")
+            # if self.x_grad_norm + self.u_grad_norm < 1e-4:
+            if self.KKT < 1e-10:
+                print("KKT condition reached")
                 print("Terminated", "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
                 break
 
@@ -147,6 +164,8 @@ class GNMSCPP(SolverFDDP):
         # 
         self.dx = [np.zeros(m.state.ndx) for m  in self.models()]
         self.du = [np.zeros(m.nu) for m  in self.problem.runningModels] 
+
+        self.lag_mul = [np.zeros(m.state.ndx) for m  in self.models()] 
 
         self.gap = [np.zeros(m.state.ndx) for m in self.models()] # gaps
         self.gap_try = [np.zeros(m.state.ndx) for m in self.models()] # gaps for line search

@@ -247,7 +247,7 @@ class GNMS(SolverAbstract):
             # if abs(self.merit - self.merit_old) < 1e-4:
             # if self.x_grad_norm + self.u_grad_norm < 1e-4:
             if self.KKT < 1e-10:
-                print("No improvement observed")
+                print("KKT condition reached")
                 print("Terminated", "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
                 break
 
