@@ -60,16 +60,44 @@ class GNMS(SolverAbstract):
 
     def computeDirection(self, recalc=True):
         self.calc()
+        self.KKT_check()
         self.backwardPass()  
         self.computeUpdates()
 
         # self.compute_expected_decrease()
+
+        # self.safety_check()
+
+    def safety_check(self):
+        KKT = 0
+        for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
+            KKT += max(abs(data.Lxx @ self.dx[t] + data.Lxu @ self.du[t] + data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t]))
+            KKT += max(abs(data.Luu @ self.du[t] + data.Lxu.T @ self.dx[t] + data.Lu + data.Fu.T @ self.lag_mul[t+1]))
+
+        KKT += max(abs(self.problem.terminalData.Lxx @ self.dx[-1] + self.problem.terminalData.Lx - self.lag_mul[-1]))
+        # print("\n THIS SHOULD BE ZERO ", KKT)
+
+        # print("\n")
+
+    def KKT_check(self):
+        self.KKT = 0
+        for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
+            # self.KKT += max(abs(data.Lxx @ self.dx[t] + data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t]))
+            # self.KKT += max(abs(data.Luu @ self.du[t] + data.Lu + data.Fu.T @ self.lag_mul[t+1]))
+            self.KKT += max(abs(data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t]))
+            self.KKT += max(abs(data.Lu + data.Fu.T @ self.lag_mul[t+1]))
+
+        self.KKT += max(abs(self.problem.terminalData.Lx - self.lag_mul[-1]))
+
+        print("\nInfinity norm of KKT condition ", self.KKT)
+        print("\n")
 
     def computeUpdates(self): 
         """ computes step updates dx and du """
         self.expected_decrease = 0
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
                 # here we compute the direction 
+                self.lag_mul[t] = self.S[t] @ self.dx[t] + self.s[t]
                 self.du[t][:] = self.L[t].dot(self.dx[t]) + self.l[t] 
                 A = data.Fx
                 B = data.Fu      
@@ -81,6 +109,7 @@ class GNMS(SolverAbstract):
                     BL = B@self.L[t]
                 self.dx[t+1] = (A + BL)@self.dx[t] + bl + self.gap[t]  
 
+        self.lag_mul[-1] = self.S[-1] @ self.dx[-1] + self.s[-1]
         self.x_grad_norm = np.linalg.norm(self.dx)/self.problem.T
         self.u_grad_norm = np.linalg.norm(self.du)/self.problem.T
         # print("x_norm", self.x_grad_norm,"u_norm", self.u_grad_norm )
@@ -177,8 +206,7 @@ class GNMS(SolverAbstract):
             self.l[t][:] = -1*scl.cho_solve(Lb_uu, h)
             
             self.S[t] = Q + A.T @ (self.S[t+1])@A - self.L[t].T@H@self.L[t] 
-            self.s[t] = q + A.T @ (self.S[t+1] @ self.gap[t] + self.s[t+1]) + \
-                            G.T@self.l[t][:]+ self.L[t].T@(h + H@self.l[t][:])
+            self.s[t] = q + A.T @ (self.S[t+1] @ self.gap[t] + self.s[t+1]) + G.T@self.l[t][:]+ self.L[t].T@(h + H@self.l[t][:])
 
     def solve(self, init_xs=None, init_us=None, maxiter=100, isFeasible=False, regInit=None):
         #___________________ Initialize ___________________#
@@ -217,7 +245,8 @@ class GNMS(SolverAbstract):
 
             # print("grad norm", self.x_grad_norm + self.u_grad_norm)
             # if abs(self.merit - self.merit_old) < 1e-4:
-            if self.x_grad_norm + self.u_grad_norm < 1e-4:
+            # if self.x_grad_norm + self.u_grad_norm < 1e-4:
+            if self.KKT < 1e-10:
                 print("No improvement observed")
                 print("Terminated", "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
                 break
@@ -232,6 +261,8 @@ class GNMS(SolverAbstract):
         self.dx = [np.zeros(m.state.ndx) for m  in self.models()]
         self.du = [np.zeros(m.nu) for m  in self.problem.runningModels] 
         # 
+        self.lag_mul = [np.zeros(m.state.ndx) for m  in self.models()] 
+        #
         self.S = [np.zeros([m.state.ndx, m.state.ndx]) for m in self.models()]   
         self.s = [np.zeros(m.state.ndx) for m in self.models()]   
         self.L = [np.zeros([m.nu, m.state.ndx]) for m in self.problem.runningModels]
