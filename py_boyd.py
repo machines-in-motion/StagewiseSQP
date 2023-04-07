@@ -15,7 +15,7 @@ class BoydADMM():
 
     def __init__(self):
 
-        self.sigma = 1e-6
+        self.sigma = 0
         self.rho = 1e-1
         self.rho_min = 1e-6
         self.rho_max = 1e6

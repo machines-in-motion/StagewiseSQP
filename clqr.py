@@ -45,7 +45,7 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
 
     def reset_params(self):
         
-        self.sigma = 1e-6
+        self.sigma = 0
         self.rho_sparse= 1e-1
         self.rho_min = 1e-6
         self.rho_max = 1e6
