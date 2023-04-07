@@ -75,7 +75,7 @@ class QPSolvers(CustomOSQP, BoydADMM):
         for t, cmodel in enumerate(self.constraintModel[1:]): 
             if cmodel.ncx == 0:
                 continue
-            data = self.problem.runningDatas[t+1] if t < self.problem.T else self.problem.terminalData
+            data = self.problem.runningDatas[t+1] if t < self.problem.T - 1 else self.problem.terminalData
             cx, _ =  cmodel.calc(data, self.xs[t+1])
             Cx, _ =  cmodel.calcDiff(data, self.xs[t+1])
             l[nin_count: nin_count + cmodel.ncx] = cmodel.lxmin - cx

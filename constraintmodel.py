@@ -15,10 +15,10 @@ class FullConstraintModel():
       self.ncu = len(lumin)
       self.ncxu = 0
 
-    def calc(self, x, u=None): 
+    def calc(self, data, x, u=None): 
       return x, u
 
-    def calcDiff(self, x, u=None): 
+    def calcDiff(self, data, x, u=None): 
       return self.Cx, self.Cu
 
 
@@ -42,7 +42,7 @@ class EndEffConstraintModel():
         self.ncu = self.pin_robot.nq
         self.ncxu = 0
 
-    def calc(self, x, u=None): 
+    def calc(self, data, x, u=None): 
         q = x[:self.pin_robot.nq]
 
         pin.updateFramePlacements(self.pin_robot.model, self.pin_robot.data)
@@ -54,7 +54,7 @@ class EndEffConstraintModel():
 
         return c, u
 
-    def calcDiff(self, x, u=None): 
+    def calcDiff(self, data, x, u=None): 
         q = x[:self.pin_robot.nq]
         pin.updateFramePlacements(self.pin_robot.model, self.pin_robot.data)
 
