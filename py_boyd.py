@@ -52,10 +52,19 @@ class BoydADMM():
         self.r_dual = max(abs(dual_vec))
         self.x_k, self.z_k, self.y_k = self.xtilde_k_1, self.z_k_1, self.y_k_1
 
-        self.r_prim = max(max(abs(self.A_in @ self.x_k - self.z_k)), max(abs(self.A_eq @ self.x_k - self.b)))
+        if self.A_in.shape[0] == 0:
+            tmp = 0
+            self.eps_rel_prim = 1e-10
+            self.eps_rel_dual = 1e-10
+        else:
+            tmp = max(abs(self.A_in @ self.x_k - self.z_k))
+            self.eps_rel_prim = max(abs(np.hstack((self.A_in @ self.x_k, self.z_k))))
+            self.eps_rel_dual = max(abs(self.A_in.T @ self.y_k))
 
-        self.eps_rel_prim = max(abs(np.hstack((self.A_in @ self.x_k, self.z_k))))
-        self.eps_rel_dual = max(abs(self.A_in.T @ self.y_k))
+        self.r_prim = max(tmp, max(abs(self.A_eq @ self.x_k - self.b)))
+
+        
+        
 
         ## This is the OSQP dual computation
         # self.r_dual = max(abs(self.P @ self.x_k + self.q + self.A_in.T @ self.y_k + self.A_eq.T @ self.v_k_1))
@@ -126,7 +135,7 @@ class BoydADMM():
         # if not converged:
         #     print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
         #         , "optimal rho estimate", pp(self.rho_estimate), "rho", pp(self.rho))
-        return self.x_k
+        return self.x_k.copy()
 
 
   

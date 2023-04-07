@@ -31,17 +31,19 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         
         self.constraintModel = constraintModel
 
-        self.reset_params()
         self.allocateData()
         self.allocateQPData()
 
         QPSolvers.__init__(self, method)
         CustomOSQP.__init__(self)
-        self.max_iters = 5000
+        self.max_iters = 500
+
+        self.reset_params()
+
 
     def reset_params(self):
         
-        self.sigma = 1e-6
+        self.sigma = 0 # 1e-6
         self.rho_sparse= 1e-1
         self.rho_min = 1e-6
         self.rho_max = 1e6
@@ -61,6 +63,7 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         mod += [self.problem.terminalModel]
         return mod  
         
+
     def calc(self, recalc = True):
         # compute cost and derivatives at deterministic nonlinear trajectory 
         if recalc:
@@ -75,26 +78,16 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
             self.cost += data.cost
         
         self.gap_norm = sum(np.linalg.norm(self.gap, 1, axis = 1))
-
         self.cost += self.problem.terminalData.cost 
+
 
     def computeDirection(self):
         if self.method == "ProxQP" or self.method=="OSQP" or self.method == "CustomOSQP" or self.method == "Boyd":
             self.computeDirectionFullQP()
+
         else:
-            maxit = 25
-
-            # QPSolvers.__init__(self, "Boyd")
-            # res = self.computeDirectionFullQP(maxit)
-
-            # self.dx_test[0] = np.zeros(self.nx)
-            # for t in range(self.problem.T):
-            #     self.dx_test[t+1] = self.x_k[t * self.nx: (t+1) * self.nx] 
-            #     index_u = self.problem.T*self.nx + t * self.nu
-            #     self.du_test[t] = self.x_k[index_u:index_u+self.nu]
-                
             self.calc(True)
-            for iter in range(1, maxit+1):
+            for iter in range(1, self.max_iters+1):
                 
                 self.backwardPass()  
                 self.computeUpdates()
@@ -105,18 +98,11 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
                     print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
                                     , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
             
-                if self.norm_primal < self.eps_abs + self.eps_rel*self.norm_primal_rel and\
-                        self.norm_dual < self.eps_abs + self.eps_rel*self.norm_dual_rel:
+                if self.norm_primal <= self.eps_abs + self.eps_rel*self.norm_primal_rel and\
+                        self.norm_dual <= self.eps_abs + self.eps_rel*self.norm_dual_rel:
                             print("QP converged")
                             break
-
-            # for i in range(len(self.dx)):
-            #     print(np.linalg.norm(self.du[i] - self.du_test[i]))
-
-            # print("Norm linalg Dx", np.linalg.norm(np.array(self.dx) - np.array(self.dx_test)))
-            # print("Norm linalg Du", np.linalg.norm(np.array(self.du) - np.array(self.du_test)))
-
-            # print("\n")
+            print("\n")
                 
     def update_rho_sparse(self, iter):
         scale = np.sqrt(self.norm_primal * self.norm_dual_rel/(self.norm_dual * self.norm_primal_rel))
@@ -221,7 +207,6 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         self.x_grad_norm = np.linalg.norm(self.dx)/(self.problem.T+1)
         self.u_grad_norm = np.linalg.norm(self.du)/self.problem.T
 
-        # print("x_norm", self.x_grad_norm,"u_norm", self.u_grad_norm )
                 
     def acceptStep(self, alpha):
         
@@ -232,9 +217,9 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
 
         self.setCandidate(self.xs_try, self.us_try, False)
 
+
     def backwardPass(self): 
         rho_mat_x = self.rho_vec_x[-1]*np.eye(len(self.rho_vec_x[-1]))
-
         self.S[-1][:,:] = self.problem.terminalData.Lxx + self.sigma*np.eye(self.problem.terminalModel.state.nx) 
         self.s[-1][:] = self.problem.terminalData.Lx  + (- self.sigma * self.dx_old[-1])
 
@@ -264,16 +249,13 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
             A = data.Fx
             B = data.Fu 
 
-            # print(self.gap[t].shape, np.shape(self.S[t+1]))
 
             h = r + B.T@(self.s[t+1] + self.S[t+1]@self.gap[t])
             G = P + B.T@self.S[t+1]@A
             self.H = R + B.T@self.S[t+1]@B
             if len(G.shape) == 1:
                 G = np.resize(G,(1,G.shape[0]))
-            ## Making sure H is PD
 
-            # print(H.shape, R.shape, B.shape, G.shape)
             while True:
                 try:
                     Lb_uu = scl.cho_factor(self.H, lower=True)

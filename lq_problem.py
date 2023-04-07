@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 from clqr import CLQR
 from cilqr import CILQR
 from gnms_cpp import GNMSCPP
-from constraintmodel import FullConstraintModel
+from constraintmodel import FullConstraintModel, NoConstraint
+from gnms import GNMS
 
 LINE_WIDTH = 100
 
@@ -144,30 +145,33 @@ if __name__ == "__main__":
     lumax = np.inf*np.ones(nu)
     ConstraintModel = FullConstraintModel(lxmin, lxmax, lumin, lumax)
 
-    ddp = GNMSCPP(problem)
+    ddp1 = GNMS(problem)
+    ddp2 = CLQR(problem, [NoConstraint()]*(horizon+1), "sparceADMM")
 
-    # ddp_osqp = CLQR(problem, [ConstraintModel]*(horizon+1), "OSQP")
+    # ddp1 = CLQR(problem, [NoConstraint()]*(horizon+1), "OSQP")
     # ddp_custom = CLQR(problem, [ConstraintModel]*(horizon+1), "CustomOSQP")
-    # ddp_boyd = CLQR(problem, [ConstraintModel]*(horizon+1), "Boyd")
-    # ddp_clqr = CLQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
+    # ddp = CLQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
 
-    # print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
-    # ddp_py.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
-    xs = [x0] * (horizon + 1)
-    us = [np.random.random(2)*100 for t in range(horizon)] 
-    # converged = ddp_boyd.solve(xs, us, 2)
-    print(100*"*")
+    # ddp_boyd = CLQR(problem, [NoConstraint()]*(horizon+1), "Boyd")
+    # ddp2 = CLQR(problem, [NoConstraint()]*(horizon+1), "ProxQP")
 
-    converged = ddp.solve(xs, us, 2)
+
+    xs = [10*np.ones(4)] * (horizon + 1)
+    us = [np.ones(2)*100 for t in range(horizon)] 
+    
+    converged = ddp1.solve(xs, us, 1)
     print(100*"*")
-    # print("NORM Y_K", np.linalg.norm(ddp_custom.y_k - ddp_boyd.y_k))
-    # print("NORM X_K", np.linalg.norm(np.array(ddp_custom.xs) - np.array(ddp_boyd.xs)))
+    converged = ddp2.solve(xs, us, 1)
+    print(100*"*")
+    
+    
+    print("NORM X_K", np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)))
+    print("NORM U_K", np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)))
     if True:
         print(" DDP solver has CONVERGED ".center(LINE_WIDTH, "-"))
         plt.figure("trajectory plot")
-        plt.plot(np.array(ddp_boyd.xs)[:, 0], np.array(ddp_boyd.xs)[:, 1], label="ddp_py")
-
-        # plt.plot(np.array(ddp_cpp.xs)[:, 0], np.array(ddp_cpp.xs)[:, 1], label="ddp_cpp")
+        plt.plot(np.array(ddp1.xs)[:, 0], np.array(ddp1.xs)[:, 1], label="ddp1")
+        plt.plot(np.array(ddp2.xs)[:, 0], np.array(ddp2.xs)[:, 1], label="ddp2")
         plt.xlabel("x")
         plt.ylabel("y")
         plt.title("DDP")

@@ -33,7 +33,7 @@ model = robot.model
 nq = model.nq; nv = model.nv; nu = nq; nx = nq+nv
 q0 = np.array([0.1, 0.7, 0., 0.7, -0.5, 1.5, 0.])
 v0 = np.zeros(nv)
-x0 = np.concatenate([q0, v0])
+x0 = np.concatenate([q0, v0]).copy()
 robot.framesForwardKinematics(q0)
 robot.computeJointJacobians(q0)
 
@@ -93,7 +93,7 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 # choose scenario: 0 or 1 or 2
-option = 0
+option = 2
 
 if option == 0:    
   clip_state_max = np.array([np.inf]*14)
@@ -122,18 +122,25 @@ xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 # ddp = GNMSCPP(problem) 
 # ddp = CILQR(problem, constraintModels, "OSQP")
-ddp = CILQR(problem, constraintModels, "ProxQP")
+# ddp = CILQR(problem, constraintModels, "ProxQP")
 # ddp = CILQR(problem, constraintModels, "sparceADMM")
 # ddp = CILQR(problem, constraintModels, "CustomOSQP")
 # ddp = CILQR(problem, constraintModels, "Boyd")
 
 
+ddp1 = GNMS(problem)
+ddp2 = CLQR(problem, [NoConstraint()]*(T+1), "sparceADMM")
 
-ddp.solve(xs, us, maxiter=30)
-# ddp_boyd.solve(xs, us, maxiter=5)
+# ddp2 = CLQR(problem, [NoConstraint()]*(T+1), "ProxQP")
 
-# print("NORM X_K", np.linalg.norm(np.array(ddp.xs) - np.array(ddp_boyd.xs)))
 
+ddp1.solve(xs, us, 1)
+ddp2.solve(xs, us, 1)
+
+print(100*"*")
+
+print("NORM X_K", np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)))
+print("NORM U_K", np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)))
 
 # assert False
 # Extract DDP data and plot
