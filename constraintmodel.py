@@ -13,6 +13,7 @@ class FullConstraintModel():
 
       self.ncx = len(lxmin)
       self.ncu = len(lumin)
+      self.ncxu = 0
 
     def calc(self, x, u=None): 
       return x, u
@@ -39,6 +40,7 @@ class EndEffConstraintModel():
 
         self.ncx = len(lxmin)
         self.ncu = self.pin_robot.nq
+        self.ncxu = 0
 
     def calc(self, x, u=None): 
         q = x[:self.pin_robot.nq]
@@ -61,3 +63,36 @@ class EndEffConstraintModel():
         Cx = np.zeros((self.ncx, 2*self.pin_robot.nq))
         Cx[:, :self.pin_robot.nq] = J
         return Cx, self.Cu
+
+
+class Force6DConstraintModel():
+    def __init__(self, Fmin, Fmax):
+        self.lxumin = Fmin
+        self.lxumax = Fmax
+
+        self.ncx = 0
+        self.ncu = 0
+        self.ncxu = 6
+
+    def calc(self, data, x, u=None): 
+        return data.differential.pinocchio.lambda_c, None
+
+    def calcDiff(self, data, x, u=None):
+        return data.differential.df_dx, data.differential.df_du
+
+
+
+class NoConstraint():
+    def __init__(self):
+        self.ncx = 0
+        self.ncu = 0
+        self.ncxu = 0
+
+    def calc(self, data, x, u=None): 
+        pass
+
+    def calcDiff(self, data, x, u=None):
+        pass
+
+
+        

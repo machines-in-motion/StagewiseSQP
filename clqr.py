@@ -150,8 +150,10 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         self.norm_primal_rel, self.norm_dual_rel = [-np.inf,-np.inf], -np.inf
         
         for t, (model, data, cmodel) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas, self.constraintModel[:-1])):
-            cx, cu =  cmodel.calc(self.xs[t], self.us[t])
-            Cx, Cu =  cmodel.calcDiff(self.xs[t], self.us[t])
+            if cmodel.ncx + cmodel.ncu + cmodel.ncxu == 0:
+                continue
+            cx, cu =  cmodel.calc(data, self.xs[t], self.us[t])
+            Cx, Cu =  cmodel.calcDiff(data, self.xs[t], self.us[t])
 
             xz_k = self.xz[t].copy()
             uz_k = self.uz[t].copy()
@@ -175,25 +177,25 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
             self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.xz[t])), max(abs(self.uz[t])))
             self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.xy[t])), max(abs(Cu.T@self.uy[t])))
 
+        if self.constraintModel[-1].ncx + self.constraintModel[-1].ncu + self.constraintModel[-1].ncxu == 0:
+            cmodel = self.constraintModel[-1]
+            cx, _ =  cmodel.calc(self.problem.terminalData, self.xs[-1])
+            Cx, _ =  cmodel.calcDiff(self.problem.terminalData, self.xs[-1])
 
-        cmodel = self.constraintModel[-1]
-        cx, _ =  cmodel.calc(self.xs[-1])
-        Cx, _ =  cmodel.calcDiff(self.xs[-1])
+            xz_k = self.xz[-1].copy()
+            self.dx_relaxed[-1] = self.alpha * Cx @ self.dx[-1] + (1 - self.alpha)*self.xz[-1]
 
-        xz_k = self.xz[-1].copy()
-        self.dx_relaxed[-1] = self.alpha * Cx @ self.dx[-1] + (1 - self.alpha)*self.xz[-1]
+            self.xz[-1] = np.clip(self.dx_relaxed[-1] + np.divide(self.xy[-1], self.rho_vec_x[-1]), cmodel.lxmin - cx, cmodel.lxmax - cx)
+            self.xy[-1] += np.multiply(self.rho_vec_x[-1], (self.dx_relaxed[-1] - self.xz[-1])) 
 
-        self.xz[-1] = np.clip(self.dx_relaxed[-1] + np.divide(self.xy[-1], self.rho_vec_x[-1]), cmodel.lxmin - cx, cmodel.lxmax - cx)
-        self.xy[-1] += np.multiply(self.rho_vec_x[-1], (self.dx_relaxed[-1] - self.xz[-1])) 
+            dual_vec_x = Cx.T@np.multiply(self.rho_vec_x[-1], (self.xz[-1] - xz_k))
 
-        dual_vec_x = Cx.T@np.multiply(self.rho_vec_x[-1], (self.xz[-1] - xz_k))
-
-        self.norm_dual = max(self.norm_dual, max(abs(dual_vec_x)), max(abs(dual_vec_u)))
-        self.norm_primal = max(self.norm_primal, max(abs(Cx@self.dx[-1] - self.xz[-1])))
-        self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cx@self.dx[-1])))
-        self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.xz[-1])))
-        self.norm_primal_rel = max(self.norm_primal_rel)
-        self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.xy[-1])))
+            self.norm_dual = max(self.norm_dual, max(abs(dual_vec_x)), max(abs(dual_vec_u)))
+            self.norm_primal = max(self.norm_primal, max(abs(Cx@self.dx[-1] - self.xz[-1])))
+            self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cx@self.dx[-1])))
+            self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.xz[-1])))
+            self.norm_primal_rel = max(self.norm_primal_rel)
+            self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.xy[-1])))
 
     def computeUpdates(self): 
         """ computes step updates dx and du """
@@ -231,23 +233,33 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         self.setCandidate(self.xs_try, self.us_try, False)
 
     def backwardPass(self): 
-        Cx, _ =  self.constraintModel[-1].calcDiff(self.xs[-1])
         rho_mat_x = self.rho_vec_x[-1]*np.eye(len(self.rho_vec_x[-1]))
 
-        self.S[-1][:,:] = self.problem.terminalData.Lxx + self.sigma*np.eye(self.problem.terminalModel.state.nx) \
-                                                        + (Cx.T @ rho_mat_x @ Cx)
-        self.s[-1][:] = self.problem.terminalData.Lx +  Cx.T@rho_mat_x@( np.divide(self.xy[-1],self.rho_vec_x[-1]) - self.xz[-1])[:] \
-                                                    + (- self.sigma * self.dx_old[-1])
+        self.S[-1][:,:] = self.problem.terminalData.Lxx + self.sigma*np.eye(self.problem.terminalModel.state.nx) 
+        self.s[-1][:] = self.problem.terminalData.Lx  + (- self.sigma * self.dx_old[-1])
+
+        if self.constraintModel[-1].ncx + self.constraintModel[-1].ncu + self.constraintModel[-1].ncxu != 0:
+            self.S[-1][:,:] +=  Cx.T @ rho_mat_x @ Cx
+            self.s[-1][:] +=  Cx.T@rho_mat_x@( np.divide(self.xy[-1],self.rho_vec_x[-1]) - self.xz[-1])[:] 
+
         for t, (model, data) in rev_enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
 
-            Cx, Cu =  self.constraintModel[t].calcDiff(self.xs[t], self.us[t])
             rho_mat_x = self.rho_vec_x[t]*np.eye(len(self.rho_vec_x[t]))
             rho_mat_u = self.rho_vec_u[t]*np.eye(len(self.rho_vec_u[t]))
 
-            r = data.Lu + Cu.T@rho_mat_u@(np.divide(self.uy[t],self.rho_vec_u[t]) - self.uz[t])[:] + (- self.sigma * self.du_old[t])
-            q = data.Lx + Cx.T@rho_mat_x@(np.divide(self.xy[t],self.rho_vec_x[t]) - self.xz[t])[:] + (- self.sigma * self.dx_old[t])
-            R = data.Luu + self.sigma*np.eye(model.nu) + (Cu.T @ rho_mat_u @ Cu)
-            Q = data.Lxx + self.sigma*np.eye(model.state.nx) + (Cx.T @ rho_mat_x @ Cx)
+            r = data.Lu + (- self.sigma * self.du_old[t])
+            q = data.Lx + (- self.sigma * self.dx_old[t])
+            R = data.Luu + self.sigma*np.eye(model.nu)
+            Q = data.Lxx + self.sigma*np.eye(model.state.nx)
+
+
+            if self.constraintModel[t].ncx + self.constraintModel[t].ncu + self.constraintModel[t].ncxu != 0:
+                Cx, Cu =  self.constraintModel[t].calcDiff(data, self.xs[t], self.us[t])
+                r += Cu.T@rho_mat_u@(np.divide(self.uy[t],self.rho_vec_u[t]) - self.uz[t])[:]
+                q += Cx.T@rho_mat_x@(np.divide(self.xy[t],self.rho_vec_x[t]) - self.xz[t])[:] 
+                R += Cu.T @ rho_mat_u @ Cu
+                Q += Cx.T @ rho_mat_x @ Cx
+
             P = data.Lxu.T
             A = data.Fx
             B = data.Fu 

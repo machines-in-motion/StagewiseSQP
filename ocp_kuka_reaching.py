@@ -10,7 +10,7 @@ np.set_printoptions(precision=4, linewidth=180)
 import ocp_utils
 from gnms import GNMS
 from gnms_cpp import GNMSCPP
-from constraintmodel import FullConstraintModel, EndEffConstraintModel
+from constraintmodel import FullConstraintModel, EndEffConstraintModel, NoConstraint
 
 from clqr import CLQR
 from cilqr import CILQR
@@ -92,8 +92,8 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 
-# choose scenario: 0 or 1
-option = 1
+# choose scenario: 0 or 1 or 2
+option = 2
 
 if option == 0:    
   clip_state_max = np.array([np.inf]*14)
@@ -113,14 +113,16 @@ elif option == 1:
   constraintModels = [EndEffConstraintModel(robot, lmin, lmax)] * (T+1)
 
 
+elif option == 2:
+  constraintModels = [NoConstraint()] * (T+1)
 
 
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
-ddp = GNMSCPP(problem) 
+# ddp = GNMSCPP(problem) 
 # ddp = CILQR(problem, constraintModels, "OSQP")
-# ddp = CILQR(problem, constraintModels, "ProxQP")
+ddp = CILQR(problem, constraintModels, "ProxQP")
 # ddp = CILQR(problem, constraintModels, "sparceADMM")
 # ddp = CILQR(problem, constraintModels, "CustomOSQP")
 # ddp = CILQR(problem, constraintModels, "Boyd")

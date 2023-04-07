@@ -9,7 +9,11 @@ import numpy as np
 np.set_printoptions(precision=4, linewidth=180)
 import pin_utils, ocp_utils
 from gnms_cpp import GNMSCPP
+from gnms import GNMS
+from constraintmodel import FullConstraintModel, EndEffConstraintModel, Force6DConstraintModel, NoConstraint
 
+from clqr import CLQR
+from cilqr import CILQR
 # # # # # # # # # # # # #
 ### LOAD ROBOT MODEL  ###
 # # # # # # # # # # # # #
@@ -86,16 +90,29 @@ runningModel = crocoddyl.IntegratedActionModelEuler(running_DAM, dt)
 terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
 
 # Optionally add armature to take into account actuator's inertia
-runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
-terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
+# runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
+# terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
 
 # Create the shooting problem
-T = 250
+T = 10
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
-# Create solver + callbacks
-ddp = crocoddyl.SolverFDDP(problem)
+
+# Constraint model
+
+
+Fmin = np.array([-np.inf, -np.inf, -20, -np.inf, -np.inf, -np.inf])
+Fmax =  np.array([0, np.inf, np.inf, np.inf, np.inf, np.inf])
+constraintModels = [Force6DConstraintModel(Fmin, Fmax)] * T + [NoConstraint()]
+# constraintModels = [NoConstraint()] * (T+1)
+
+
+
+# ddp = CILQR(problem, constraintModels, "sparceADMM")
+ddp = CILQR(problem, constraintModels, "ProxQP")
+# ddp = crocoddyl.SolverFDDP(problem)
 # ddp = GNMSCPP(problem)
+# ddp = GNMS(problem)
 ddp.setCallbacks([crocoddyl.CallbackLogger(),
                 crocoddyl.CallbackVerbose()])
 # Warm start : initial state + gravity compensation
@@ -103,7 +120,7 @@ xs_init = [x0 for i in range(T+1)]
 us_init = ddp.problem.quasiStatic(xs_init[:-1])
 
 # Solve
-ddp.solve(xs_init, us_init, maxiter=100, isFeasible=False)
+ddp.solve(xs_init, us_init, maxiter=20, isFeasible=False)
 
 
 # Extract DDP data and plot

@@ -65,8 +65,9 @@ class QPSolvers(CustomOSQP, BoydADMM):
 
         n_in_x = sum([cmodel.ncx for cmodel in self.constraintModel[1:]])
         n_in_u = sum([cmodel.ncu for cmodel in self.constraintModel[:-1]])
+        n_in_xu = sum([cmodel.ncxu for cmodel in self.constraintModel[:-1]])
 
-        self.n_in = n_in_x + n_in_u
+        self.n_in = n_in_x + n_in_u + n_in_xu
         C = np.zeros((self.n_in, self.problem.T*(self.nx + self.nu)))
         l = np.zeros(self.n_in)
         u = np.zeros(self.n_in)
@@ -74,31 +75,47 @@ class QPSolvers(CustomOSQP, BoydADMM):
         for t, cmodel in enumerate(self.constraintModel[1:]): 
             if cmodel.ncx == 0:
                 continue
-            cx, _ =  cmodel.calc(self.xs[t+1])
-            Cx, _ =  cmodel.calcDiff(self.xs[t+1])
+            data = self.problem.runningDatas[t+1] if t < self.problem.T else self.problem.terminalData
+            cx, _ =  cmodel.calc(data, self.xs[t+1])
+            Cx, _ =  cmodel.calcDiff(data, self.xs[t+1])
             l[nin_count: nin_count + cmodel.ncx] = cmodel.lxmin - cx
             u[nin_count: nin_count + cmodel.ncx] = cmodel.lxmax - cx 
             C[nin_count: nin_count + cmodel.ncx, t*self.nx: (t+1)*self.nx] = Cx
             nin_count += cmodel.ncx
         
         index_x = self.problem.T*self.nx
-        for t, cmodel in enumerate(self.constraintModel[:-1]): 
+        for t, (cmodel, data) in enumerate(zip(self.constraintModel[:-1], self.problem.runningDatas)): 
             if cmodel.ncu == 0:
                 continue
-            _, cu =  cmodel.calc(self.xs[t], self.us[t])
-            _, Cu =  cmodel.calcDiff(self.xs[t], self.us[t])
+            _, cu =  cmodel.calc(data, self.xs[t], self.us[t])
+            _, Cu =  cmodel.calcDiff(data, self.xs[t], self.us[t])
             l[nin_count: nin_count + cmodel.ncu] = self.constraintModel[t].lumin - cu
             u[nin_count: nin_count + cmodel.ncu] = self.constraintModel[t].lumax - cu
             C[nin_count: nin_count + cmodel.ncu, index_x+t*self.nu: index_x+(t+1)*self.nu] = Cu
             nin_count += cmodel.ncu
 
+
+        index_x = self.problem.T*self.nx
+        for t, (cmodel, data) in enumerate(zip(self.constraintModel[:-1], self.problem.runningDatas)): 
+            if cmodel.ncxu == 0:
+                continue
+            cxu, _ =  cmodel.calc(data, self.xs[t], self.us[t])
+            Cx, Cu =  cmodel.calcDiff(data, self.xs[t], self.us[t])
+            l[nin_count: nin_count + cmodel.ncxu] = self.constraintModel[t].lxumin - cxu
+            u[nin_count: nin_count + cmodel.ncxu] = self.constraintModel[t].lxumax - cxu
+            C[nin_count: nin_count + cmodel.ncxu, t*self.nx: (t+1)*self.nx] = Cx
+            C[nin_count: nin_count + cmodel.ncxu, index_x+t*self.nu: index_x+(t+1)*self.nu] = Cu
+            nin_count += cmodel.ncxu
+
+
         # import pdb; pdb.set_trace()
         if self.method == "ProxQP":
-            qp = proxsuite.proxqp.sparse.QP(n, self.n_eq, self.n_in)
+            qp = proxsuite.proxqp.dense.QP(n, self.n_eq, self.n_in)
+            qp.settings.eps_abs = 1e-5
             qp.init(P, q, A, B, C, l, u)      
             t1 = time.time()
             qp.solve()
-            # print("solve time = ", time.time()-t1)
+            print("solve time = ", time.time()-t1)
             res = qp.results.x
             # print("n_iter = ", qp.results.info.iter)
             # print("n_iter_ext = ", qp.results.info.iter_ext)
