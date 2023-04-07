@@ -30,7 +30,7 @@ class GNMSCPP(SolverFDDP):
 
             self.KKT_check()
             print("KKT ", self.KKT)
-            if self.KKT < 1e-10:
+            if self.KKT < 1e-8:
                 print("Terminated -- KKT condition reached")
                 print("Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm)
                 return True
