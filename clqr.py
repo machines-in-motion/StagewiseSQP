@@ -84,14 +84,14 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         else:
             maxit = 25
 
-            QPSolvers.__init__(self, "Boyd")
-            res = self.computeDirectionFullQP(maxit)
+            # QPSolvers.__init__(self, "Boyd")
+            # res = self.computeDirectionFullQP(maxit)
 
-            self.dx_test[0] = np.zeros(self.nx)
-            for t in range(self.problem.T):
-                self.dx_test[t+1] = self.x_k[t * self.nx: (t+1) * self.nx] 
-                index_u = self.problem.T*self.nx + t * self.nu
-                self.du_test[t] = self.x_k[index_u:index_u+self.nu]
+            # self.dx_test[0] = np.zeros(self.nx)
+            # for t in range(self.problem.T):
+            #     self.dx_test[t+1] = self.x_k[t * self.nx: (t+1) * self.nx] 
+            #     index_u = self.problem.T*self.nx + t * self.nu
+            #     self.du_test[t] = self.x_k[index_u:index_u+self.nu]
                 
             self.calc(True)
             for iter in range(1, maxit+1):
@@ -110,11 +110,11 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
                             print("QP converged")
                             break
 
-            for i in range(len(self.dx)):
-                print(np.linalg.norm(self.du[i] - self.du_test[i]))
+            # for i in range(len(self.dx)):
+            #     print(np.linalg.norm(self.du[i] - self.du_test[i]))
 
-            print("Norm linalg Dx", np.linalg.norm(np.array(self.dx) - np.array(self.dx_test)))
-            print("Norm linalg Du", np.linalg.norm(np.array(self.du) - np.array(self.du_test)))
+            # print("Norm linalg Dx", np.linalg.norm(np.array(self.dx) - np.array(self.dx_test)))
+            # print("Norm linalg Du", np.linalg.norm(np.array(self.du) - np.array(self.du_test)))
 
             # print("\n")
                 
@@ -177,7 +177,7 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
             self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.xz[t])), max(abs(self.uz[t])))
             self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.xy[t])), max(abs(Cu.T@self.uy[t])))
 
-        if self.constraintModel[-1].ncx + self.constraintModel[-1].ncu + self.constraintModel[-1].ncxu == 0:
+        if self.constraintModel[-1].ncx + self.constraintModel[-1].ncu + self.constraintModel[-1].ncxu != 0:
             cmodel = self.constraintModel[-1]
             cx, _ =  cmodel.calc(self.problem.terminalData, self.xs[-1])
             Cx, _ =  cmodel.calcDiff(self.problem.terminalData, self.xs[-1])
@@ -194,8 +194,8 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
             self.norm_primal = max(self.norm_primal, max(abs(Cx@self.dx[-1] - self.xz[-1])))
             self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cx@self.dx[-1])))
             self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.xz[-1])))
-            self.norm_primal_rel = max(self.norm_primal_rel)
             self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.xy[-1])))
+        self.norm_primal_rel = max(self.norm_primal_rel)
 
     def computeUpdates(self): 
         """ computes step updates dx and du """
