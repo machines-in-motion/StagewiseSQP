@@ -145,15 +145,15 @@ if __name__ == "__main__":
     lumax = np.inf*np.ones(nu)
     ConstraintModel = FullConstraintModel(lxmin, lxmax, lumin, lumax)
 
-    ddp1 = GNMS(problem)
-    ddp2 = CLQR(problem, [NoConstraint()]*(horizon+1), "sparceADMM")
+    # ddp1 = GNMS(problem)
+    ddp1 = CILQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
 
     # ddp1 = CLQR(problem, [NoConstraint()]*(horizon+1), "OSQP")
     # ddp_custom = CLQR(problem, [ConstraintModel]*(horizon+1), "CustomOSQP")
     # ddp = CLQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
 
-    # ddp_boyd = CLQR(problem, [NoConstraint()]*(horizon+1), "Boyd")
-    # ddp2 = CLQR(problem, [NoConstraint()]*(horizon+1), "ProxQP")
+    # ddp2 = CLQR(problem, [NoConstraint()]*(horizon+1), "Boyd")
+    ddp2 = CILQR(problem, [ConstraintModel]*(horizon+1), "Boyd")
 
 
     xs = [10*np.ones(4)] * (horizon + 1)

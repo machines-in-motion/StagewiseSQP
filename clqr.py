@@ -38,7 +38,7 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
 
         QPSolvers.__init__(self, method)
         CustomOSQP.__init__(self)
-        self.max_iters = 500
+        self.max_iters = 2000
 
         self.reset_params()   # this has to be done twice, otherwise the parameters are overwritten in the init of the QP solvers
 
@@ -55,8 +55,6 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         self.eps_rel = 1e-3
         self.adaptive_rho_tolerance = 5
         self.rho_update_interval = 25
-        self.eps_abs = 1e-3
-        self.eps_rel = 1e-3
         self.regMin = 1e-6
 
 
@@ -85,7 +83,7 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
 
     def computeDirection(self):
         if self.method == "ProxQP" or self.method=="OSQP" or self.method == "CustomOSQP" or self.method == "Boyd":
-            self.computeDirectionFullQP()
+            self.computeDirectionFullQP(maxit=self.max_iters)
 
         else:
             self.calc(True)
@@ -99,11 +97,10 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
                 if (iter) % self.rho_update_interval == 0 and iter > 1:
                     print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
                                     , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
-            
-                if self.norm_primal <= self.eps_abs + self.eps_rel*self.norm_primal_rel and\
-                        self.norm_dual <= self.eps_abs + self.eps_rel*self.norm_dual_rel:
-                            print("QP converged")
-                            break
+                    if self.norm_primal <= self.eps_abs + self.eps_rel*self.norm_primal_rel and\
+                            self.norm_dual <= self.eps_abs + self.eps_rel*self.norm_dual_rel:
+                                print("QP converged")
+                                break
             print("\n")
                 
     def update_rho_sparse(self, iter):

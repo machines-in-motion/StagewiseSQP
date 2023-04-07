@@ -126,10 +126,10 @@ class BoydADMM():
             if (iter) % self.rho_update_interval == 0 and iter > 1:
                 print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
                                 , "optimal rho estimate", pp(self.rho_estimate), "rho", pp(self.rho), "\n") 
-                if self.r_prim < eps_prim and self.r_dual < eps_dual:
+                if self.r_prim <= eps_prim and self.r_dual <= eps_dual:
                     print("terminated ... \n")
-                    print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
-                , "optimal rho estimate", pp(self.rho_estimate), "rho", pp(self.rho), "\n") 
+                #     print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
+                # , "optimal rho estimate", pp(self.rho_estimate), "rho", pp(self.rho), "\n") 
                     converged = True               
                     break
         # if not converged:
