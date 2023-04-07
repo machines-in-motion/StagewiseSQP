@@ -31,6 +31,8 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         
         self.constraintModel = constraintModel
 
+        self.reset_params()
+
         self.allocateData()
         self.allocateQPData()
 
@@ -38,12 +40,12 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         CustomOSQP.__init__(self)
         self.max_iters = 500
 
-        self.reset_params()
+        self.reset_params()   # this has to be done twice, otherwise the parameters are overwritten in the init of the QP solvers
 
 
     def reset_params(self):
         
-        self.sigma = 0 # 1e-6
+        self.sigma = 1e-6
         self.rho_sparse= 1e-1
         self.rho_min = 1e-6
         self.rho_max = 1e6
@@ -224,6 +226,7 @@ class CLQR(SolverAbstract, QPSolvers, CustomOSQP):
         self.s[-1][:] = self.problem.terminalData.Lx  + (- self.sigma * self.dx_old[-1])
 
         if self.constraintModel[-1].ncx + self.constraintModel[-1].ncu + self.constraintModel[-1].ncxu != 0:
+            Cx, _ =  self.constraintModel[-1].calcDiff(self.problem.terminalData, self.xs[-1])
             self.S[-1][:,:] +=  Cx.T @ rho_mat_x @ Cx
             self.s[-1][:] +=  Cx.T@rho_mat_x@( np.divide(self.xy[-1],self.rho_vec_x[-1]) - self.xz[-1])[:] 
 
