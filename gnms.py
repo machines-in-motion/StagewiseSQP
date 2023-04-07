@@ -186,7 +186,7 @@ class GNMS(SolverAbstract):
             h = r + B.T@(self.s[t+1] + self.S[t+1]@self.gap[t])
             G = P + B.T@self.S[t+1]@A
             self.H = R + B.T@self.S[t+1]@B 
-            self.H += 1e-9 * np.eye(len(self.H))
+            # self.H += 1e-9 * np.eye(len(self.H))
             if len(G.shape) == 1:
                 G = np.resize(G,(1,G.shape[0]))
             ## Making sure H is PD
