@@ -8,7 +8,6 @@ import osqp
 import proxsuite
 import time 
 from scipy import sparse
-import scipy.linalg as scl
 from py_osqp import CustomOSQP
 from py_boyd import BoydADMM
 
@@ -18,9 +17,10 @@ class QPSolvers(CustomOSQP, BoydADMM):
         
         assert method == "ProxQP" or method=="sparceADMM"  or method=="OSQP"\
               or method=="CustomOSQP" or method =="Boyd" 
-
-        CustomOSQP.__init__(self)
-        BoydADMM.__init__(self)
+        if method == "CustomOSQP":
+            CustomOSQP.__init__(self)
+        if method == "Boyd":
+            BoydADMM.__init__(self)
         self.method = method
 
     def computeDirectionFullQP(self, maxit = 5000):
@@ -166,22 +166,18 @@ class QPSolvers(CustomOSQP, BoydADMM):
             res = self.optimize_osqp(maxiters=maxit)
 
         elif self.method == "Boyd":
-            self.A_eq = sparse.csr_matrix(A)
-            self.A_in = sparse.csr_matrix(C)
-            self.b = B
-            self.losqp = l
-            self.uosqp = u
+            self.A_eq = sparse.csr_matrix(A.copy())
+            self.A_in = sparse.csr_matrix(C.copy())
+            self.b = B.copy()
+            self.lboyd = l
+            self.uboyd = u
 
-            self.P = P
-            self.q = np.array(q)
+            self.P = P.copy()
+            self.q = np.array(q).copy()
             
             self.xs_vec = np.array(self.xs).flatten()[self.nx:]
             self.us_vec = np.array(self.us).flatten()
-            self.xz_vec = np.array(self.xz).flatten()[self.nx:]
-            self.uz_vec = np.array(self.uz).flatten()
-            self.xy_vec = np.array(self.xy).flatten()[self.nx:]
-            self.uy_vec = np.array(self.uy).flatten()
-            self.x_k = np.hstack((self.xs_vec, self.us_vec))
+            self.x_k = np.zeros_like(np.hstack((self.xs_vec, self.us_vec)))
 
             self.z_k = np.zeros(self.n_in)
             self.y_k = np.zeros(self.n_in)

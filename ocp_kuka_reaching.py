@@ -125,21 +125,22 @@ us = [np.zeros(nu)] * T
 # ddp = CILQR(problem, constraintModels, "ProxQP")
 # ddp = CILQR(problem, constraintModels, "sparceADMM")
 # ddp = CILQR(problem, constraintModels, "CustomOSQP")
-ddp1 = CILQR(problem, constraintModels, "Boyd")
+ddp1 = CLQR(problem, constraintModels, "Boyd")
 
 
 # ddp1 = GNMS(problem)
-ddp2 = CILQR(problem, constraintModels, "sparceADMM")
+ddp2 = CLQR(problem, constraintModels, "sparceADMM")
 
 # ddp2 = CLQR(problem, [NoConstraint()]*(T+1), "ProxQP")
+
+ddp2.solve(xs, us, 1)
+
+print(100*"*")
 
 
 ddp1.solve(xs, us, 1)
 print(100*"*")
 
-ddp2.solve(xs, us, 1)
-
-print(100*"*")
 
 print("NORM X_K", np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)))
 print("NORM U_K", np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)))
