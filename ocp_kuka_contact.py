@@ -10,7 +10,7 @@ np.set_printoptions(precision=4, linewidth=180)
 import pin_utils, ocp_utils
 from gnms_cpp import GNMSCPP
 from gnms import GNMS
-from constraintmodel import FullConstraintModel, EndEffConstraintModel, Force6DConstraintModel, NoConstraint
+from constraintmodel import StateConstraintModel, EndEffConstraintModel, Force6DConstraintModel, NoConstraint
 
 from clqr import CLQR
 from cilqr import CILQR
@@ -103,7 +103,7 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 Fmin = np.array([-np.inf, -np.inf, -20, -np.inf, -np.inf, -np.inf])
 Fmax =  np.array([0, np.inf, np.inf, np.inf, np.inf, np.inf])
-constraintModels = [Force6DConstraintModel(Fmin, Fmax)] * T + [NoConstraint()]
+constraintModels = [Force6DConstraintModel(Fmin, Fmax, 6, 14, 7)] * T + [NoConstraint(14, 7)]
 # constraintModels = [NoConstraint()] * (T+1)
 
 

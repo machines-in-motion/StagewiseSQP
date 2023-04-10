@@ -10,7 +10,7 @@ from scipy.sparse.linalg import spsolve
 np.set_printoptions(precision = 2) 
 # np.format_float_scientific(self.r_prim, exp_digits=2, precision =2)
 
-pp = lambda s : np.format_float_scientific(s, exp_digits=2, precision =2)
+pp = lambda s : np.format_float_scientific(s, exp_digits=2, precision =4)
 
 class BoydADMM():
 

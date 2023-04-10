@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from clqr import CLQR
 from cilqr import CILQR
 from gnms_cpp import GNMSCPP
-from constraintmodel import FullConstraintModel, NoConstraint
+from constraintmodel import StateConstraintModel, NoConstraint
 from gnms import GNMS
 
 LINE_WIDTH = 100
@@ -141,18 +141,16 @@ if __name__ == "__main__":
     
     lxmin = -np.inf*np.ones(nx)
     lxmax = np.array([0.5, 0.1, np.inf, np.inf])
-    lumin = -np.inf*np.ones(nu)
-    lumax = np.inf*np.ones(nu)
-    ConstraintModel = FullConstraintModel(lxmin, lxmax, lumin, lumax)
+    ConstraintModel = StateConstraintModel(lxmin, lxmax, nx, nx, nu)
 
     # ddp1 = GNMS(problem)
     ddp1 = CILQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
 
-    # ddp1 = CLQR(problem, [NoConstraint()]*(horizon+1), "OSQP")
+    # ddp1 = CLQR(problem, [NoConstraint(4, 2)]*(horizon+1), "sparceADMM")
     # ddp_custom = CLQR(problem, [ConstraintModel]*(horizon+1), "CustomOSQP")
     # ddp = CLQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
 
-    # ddp2 = CLQR(problem, [NoConstraint()]*(horizon+1), "Boyd")
+    # ddp2 = CLQR(problem, [NoConstraint(4, 2)]*(horizon+1), "Boyd")
     ddp2 = CILQR(problem, [ConstraintModel]*(horizon+1), "Boyd")
 
 

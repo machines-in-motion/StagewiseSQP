@@ -12,7 +12,7 @@ import eigenpy
 LINE_WIDTH = 100 
 
 VERBOSE = False    
-pp = lambda s : np.format_float_scientific(s, exp_digits=2, precision =2)
+pp = lambda s : np.format_float_scientific(s, exp_digits=2, precision =4)
 
 def rev_enumerate(l):
     return reversed(list(enumerate(l)))
@@ -37,7 +37,7 @@ class CLQR(SolverAbstract, QPSolvers):
         self.allocateQPData()
         self.allocateData()
 
-        self.max_iters = 2
+        self.max_iters = 1
 
     def reset_params(self):
         
@@ -69,11 +69,19 @@ class CLQR(SolverAbstract, QPSolvers):
         self.cost = 0
         # self.merit_old = self.merit        
 
+        for t, (cmodel, cdata, data) in enumerate(zip(self.constraintModel[:-1], self.constraintData[:-1], self.problem.runningDatas)):
+            cmodel.calc(cdata, data, self.xs[t], self.us[t])
+            cmodel.calcDiff(cdata, data, self.xs[t], self.us[t])
+
+        self.constraintModel[-1].calc(self.constraintData[-1], self.problem.terminalData, self.xs[-1])
+        self.constraintModel[-1].calcDiff(self.constraintData[-1], self.problem.terminalData, self.xs[-1])
+
         for t, (model, data) in enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
             # model.calc(data, self.xs[t], self.us[t])  
             self.gap[t] = model.state.diff(self.xs[t+1].copy(), data.xnext.copy()) #gaps
             self.cost += data.cost
-        
+
+
         self.gap_norm = sum(np.linalg.norm(self.gap.copy(), 1, axis = 1))
         self.cost += self.problem.terminalData.cost 
         self.gap = self.gap.copy()
@@ -113,20 +121,13 @@ class CLQR(SolverAbstract, QPSolvers):
                 self.rho_estimate_sparse < self.rho_sparse/ self.adaptive_rho_tolerance :
                 self.rho_sparse= self.rho_estimate_sparse
                 for t, cmodel in enumerate(self.constraintModel):   
-                    for k in range(cmodel.ncx):  
-                        if cmodel.lxmin[k] == -np.inf and cmodel.lxmax[k] == np.inf:
-                            self.rho_vec_x[t][k] = self.rho_min 
-                        elif cmodel.lxmin[k] == cmodel.lxmax[k]:
-                            self.rho_vec_x[t][k] = 1e3 * self.rho_sparse
-                        elif cmodel.lxmin[k] != cmodel.lxmax[k]:
-                            self.rho_vec_x[t][k] = self.rho_sparse
-                    for k in range(cmodel.ncu):  
-                        if cmodel.lumin[k] == -np.inf and cmodel.lumax[k] == np.inf:
-                            self.rho_vec_u[t][k] = self.rho_min 
-                        elif cmodel.lumin[k] == cmodel.lumax[k]:
-                            self.rho_vec_u[t][k] = 1e3 * self.rho_sparse
-                        elif cmodel.lumin[k] != cmodel.lumax[k]:
-                            self.rho_vec_u[t][k] = self.rho_sparse
+                    for k in range(cmodel.nc):  
+                        if cmodel.lmin[k] == -np.inf and cmodel.lmax[k] == np.inf:
+                            self.rho_vec[t][k] = self.rho_min 
+                        elif cmodel.lmin[k] == cmodel.lmax[k]:
+                            self.rho_vec[t][k] = 1e3 * self.rho_sparse
+                        elif cmodel.lmin[k] != cmodel.lmax[k]:
+                            self.rho_vec[t][k] = self.rho_sparse
 
     def update_lagrangian_parameters_infinity(self):
 
@@ -134,62 +135,56 @@ class CLQR(SolverAbstract, QPSolvers):
         self.norm_dual = -np.inf
         self.norm_primal_rel, self.norm_dual_rel = [-np.inf,-np.inf], -np.inf
         
-        for t, (model, data, cmodel) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas, self.constraintModel[:-1])):
-            if cmodel.ncx + cmodel.ncu + cmodel.ncxu == 0:
+        for t, (cmodel, cdata) in enumerate(zip(self.constraintModel[:-1], self.constraintData[:-1])):
+            if cmodel.nc == 0:
                 self.dx[t] = self.dx_tilde[t].copy()
                 self.du[t] = self.du_tilde[t].copy()
                 continue
 
-            cx, cu =  cmodel.calc(data, self.xs[t], self.us[t])
-            Cx, Cu =  cmodel.calcDiff(data, self.xs[t], self.us[t])
+            Cx, Cu = cdata.Cx, cdata.Cu
 
-            xz_k = self.xz[t].copy()
-            uz_k = self.uz[t].copy()
+            z_k = self.z[t].copy()
             
-            self.dx_relaxed[t] = self.alpha * Cx @ self.dx_tilde[t].copy() + (1 - self.alpha)*self.xz[t]
-            self.du_relaxed[t] = self.alpha * Cu @ self.du_tilde[t].copy() + (1 - self.alpha)*self.uz[t]
+            self.dz_relaxed[t] = self.alpha * (Cx @ self.dx_tilde[t].copy() + Cu @ self.du_tilde[t].copy()) + (1 - self.alpha)*self.z[t]
 
-            self.xz[t] = np.clip(self.dx_relaxed[t] + np.divide(self.xy[t], self.rho_vec_x[t]), cmodel.lxmin - cx, cmodel.lxmax - cx)
-            self.uz[t] = np.clip(self.du_relaxed[t] + np.divide(self.uy[t], self.rho_vec_u[t]), cmodel.lumin - cu, cmodel.lumax - cu)
+            self.z[t] = np.clip(self.dz_relaxed[t] + np.divide(self.y[t], self.rho_vec[t]), cmodel.lmin - cdata.c, cmodel.lmax - cdata.c)
             
-            self.xy[t] += np.multiply(self.rho_vec_x[t], (self.dx_relaxed[t] - self.xz[t])) 
-            self.uy[t] += np.multiply(self.rho_vec_u[t], (self.du_relaxed[t] - self.uz[t]))
+            self.y[t] += np.multiply(self.rho_vec[t], (self.dz_relaxed[t] - self.z[t])) 
 
             self.dx[t] = self.dx_tilde[t].copy()
             self.du[t] = self.du_tilde[t].copy()
 
-            dual_vec_x = Cx.T@ np.multiply(self.rho_vec_x[t], (self.xz[t] - xz_k))
-            dual_vec_u = Cu.T@ np.multiply(self.rho_vec_u[t], (self.uz[t] - uz_k))
+            dual_vec = Cx.T@ np.multiply(self.rho_vec[t], (self.z[t] - z_k))
 
-            self.norm_dual = max(self.norm_dual, max(abs(dual_vec_x)), max(abs(dual_vec_u)))
-            self.norm_primal = max(self.norm_primal, max(abs(Cx@self.dx[t] - self.xz[t])), max(abs(Cu@self.du[t] - self.uz[t])))
-            self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cx@self.dx[t])), max(abs(Cu@self.du[t])))
-            self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.xz[t])), max(abs(self.uz[t])))
-            self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.xy[t])), max(abs(Cu.T@self.uy[t])))
+            self.norm_dual = max(self.norm_dual, max(abs(dual_vec)))
+            self.norm_primal = max(self.norm_primal, max(abs(Cx@self.dx[t] + Cu@self.du[t] - self.z[t])))
+            self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cx@self.dx[t]+Cu@self.du[t])))
+            self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.z[t])))
+            self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.y[t])), max(abs(Cu.T@self.y[t])))
 
         self.dx[-1] = self.dx_tilde[-1].copy()
         self.du[-1] = self.du_tilde[-1].copy()
-        if self.constraintModel[-1].ncx + self.constraintModel[-1].ncu + self.constraintModel[-1].ncxu != 0:
+        if self.constraintModel[-1].nc != 0:
             cmodel = self.constraintModel[-1]
-            cx, _ =  cmodel.calc(self.problem.terminalData, self.xs[-1])
-            Cx, _ =  cmodel.calcDiff(self.problem.terminalData, self.xs[-1])
+            cdata = self.constraintData[-1]
+            Cx = cdata.Cx
 
-            xz_k = self.xz[-1].copy()
+            z_k = self.z[-1].copy()
 
-            self.dx_relaxed[-1] = self.alpha * Cx @ self.dx_tilde[-1].copy() + (1 - self.alpha)*self.xz[-1]
+            self.dz_relaxed[-1] = self.alpha * Cx @ self.dx_tilde[-1].copy() + (1 - self.alpha)*self.z[-1]
 
-            self.xz[-1] = np.clip(self.dx_relaxed[-1] + np.divide(self.xy[-1], self.rho_vec_x[-1]), cmodel.lxmin - cx, cmodel.lxmax - cx)
-            self.xy[-1] += np.multiply(self.rho_vec_x[-1], (self.dx_relaxed[-1] - self.xz[-1])) 
+            self.z[-1] = np.clip(self.dz_relaxed[-1] + np.divide(self.y[-1], self.rho_vec[-1]), cmodel.lmin - cdata.c, cmodel.lmax - cdata.c)
+            self.y[-1] += np.multiply(self.rho_vec[-1], (self.dz_relaxed[-1] - self.z[-1])) 
 
             self.dx[-1] = self.dx_tilde[-1].copy()
 
-            dual_vec_x = Cx.T@np.multiply(self.rho_vec_x[-1], (self.xz[-1] - xz_k))
+            dual_vec = Cx.T@np.multiply(self.rho_vec[-1], (self.z[-1] - z_k))
 
-            self.norm_dual = max(self.norm_dual, max(abs(dual_vec_x)), max(abs(dual_vec_u)))
-            self.norm_primal = max(self.norm_primal, max(abs(Cx@self.dx[-1] - self.xz[-1])))
+            self.norm_dual = max(self.norm_dual, max(abs(dual_vec)), max(abs(dual_vec)))
+            self.norm_primal = max(self.norm_primal, max(abs(Cx@self.dx[-1] - self.z[-1])))
             self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cx@self.dx[-1])))
-            self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.xz[-1])))
-            self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.xy[-1])))
+            self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.z[-1])))
+            self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.y[-1])))
         self.norm_primal_rel = max(self.norm_primal_rel)
    
     def acceptStep(self, alpha):
@@ -221,35 +216,35 @@ class CLQR(SolverAbstract, QPSolvers):
         self.u_grad_norm = np.linalg.norm(self.du_tilde)/self.problem.T
 
     def backwardPass(self): 
-        rho_mat_x = self.rho_vec_x[-1]*np.eye(len(self.rho_vec_x[-1]))
+        rho_mat = self.rho_vec[-1]*np.eye(len(self.rho_vec[-1]))
         self.S[-1][:,:] = self.problem.terminalData.Lxx.copy() 
         self.s[-1][:] = self.problem.terminalData.Lx.copy() 
-        if self.constraintModel[-1].ncx + self.constraintModel[-1].ncu + self.constraintModel[-1].ncxu != 0:
-            Cx, _ =  self.constraintModel[-1].calcDiff(self.problem.terminalData, self.xs[-1])
-            self.S[-1][:,:] +=  Cx.T @ rho_mat_x @ Cx + self.sigma_sparse*np.eye(self.problem.terminalModel.state.nx) 
-            self.s[-1][:] +=  Cx.T@rho_mat_x@( np.divide(self.xy[-1],self.rho_vec_x[-1]) - self.xz[-1])[:]  - self.sigma_sparse * self.dx[-1]
+        if self.constraintModel[-1].nc != 0:
+            Cx = self.constraintData[-1].Cx
+            self.S[-1][:,:] +=  Cx.T @ rho_mat @ Cx + self.sigma_sparse*np.eye(self.problem.terminalModel.state.nx) 
+            self.s[-1][:] +=  Cx.T @ ( self.y[-1] - rho_mat @ self.z[-1])[:]  - self.sigma_sparse * self.dx[-1]
 
-        for t, (model, data) in rev_enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
-            rho_mat_x = self.rho_vec_x[t]*np.eye(len(self.rho_vec_x[t]))
-            rho_mat_u = self.rho_vec_u[t]*np.eye(len(self.rho_vec_u[t]))
+        for t, (model, data, cdata) in rev_enumerate(zip(self.problem.runningModels,self.problem.runningDatas, self.constraintData[:-1])):
+            rho_mat = self.rho_vec[t]*np.eye(len(self.rho_vec[t]))
             q = data.Lx.copy()
             Q = data.Lxx.copy()
             r = data.Lu.copy()
             R = data.Luu.copy()
+            P = data.Lxu.T.copy()
 
-            if self.constraintModel[t].ncx + self.constraintModel[t].ncu + self.constraintModel[t].ncxu != 0:
-                Cx, Cu =  self.constraintModel[t].calcDiff(data, self.xs[t], self.us[t])
-                r += Cu.T@rho_mat_u@(np.divide(self.uy[t],self.rho_vec_u[t]) - self.uz[t])[:]
-                R += Cu.T @ rho_mat_u @ Cu
+            if self.constraintModel[t].nc != 0:
+                Cx, Cu = cdata.Cx, cdata.Cu
+                r += Cu.T @ (self.y[t] - rho_mat @self.z[t])[:]
+                R += Cu.T @ rho_mat @ Cu
                 if t > 0:
-                    q += Cx.T@rho_mat_x@(np.divide(self.xy[t],self.rho_vec_x[t]) - self.xz[t])[:] 
-                    Q += Cx.T @ rho_mat_x @ Cx
+                    q += Cx.T@(self.y[t] - rho_mat@self.z[t])[:]
+                    Q += Cx.T @ rho_mat @ Cx
                     q -= self.sigma_sparse * self.dx[t]
                     Q += self.sigma_sparse*np.eye(model.state.nx)
                     r += - self.sigma_sparse * self.du[t]
                     R += + self.sigma_sparse*np.eye(model.nu)
+                    P += Cu.T @ rho_mat @ Cx
 
-            P = data.Lxu.T.copy()
             A = data.Fx.copy()    
             B = data.Fu.copy() 
             h = r + B.T@(self.s[t+1] + self.S[t+1]@self.gap[t].copy())
@@ -295,36 +290,24 @@ class CLQR(SolverAbstract, QPSolvers):
         
     def allocateQPData(self):
 
-        self.xz = [np.zeros(cmodel.ncx) for cmodel in self.constraintModel]
-        self.uz = [np.zeros(cmodel.ncu) for cmodel in self.constraintModel] 
-        self.xy = [np.zeros(cmodel.ncx) for cmodel in self.constraintModel]
-        self.uy = [np.zeros(cmodel.ncu) for cmodel in self.constraintModel] 
+        self.z = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
+        self.y = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
 
-        self.xz_test = [np.zeros(cmodel.ncx) for cmodel in self.constraintModel]
-        self.uz_test = [np.zeros(cmodel.ncu) for cmodel in self.constraintModel] 
-        self.xy_test = [np.zeros(cmodel.ncx) for cmodel in self.constraintModel]
-        self.uy_test = [np.zeros(cmodel.ncu) for cmodel in self.constraintModel] 
+        self.z_test = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
+        self.y_test = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
 
 
-        self.rho_vec_x = [np.zeros(cmodel.ncx) for cmodel in self.constraintModel]
-        self.rho_vec_u = [np.zeros(cmodel.ncu) for cmodel in self.constraintModel]
+        self.rho_vec = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
         self.rho_estimate_sparse = 0.0
         self.rho_sparse = min(max(self.rho_sparse, self.rho_min), self.rho_max) 
         for t, cmodel in enumerate(self.constraintModel):   
-            for k in range(cmodel.ncx):  
-                if cmodel.lxmin[k] == -np.inf and cmodel.lxmax[k] == np.inf:
-                    self.rho_vec_x[t][k] = self.rho_min 
-                elif cmodel.lxmin[k] == cmodel.lxmax[k]:
-                    self.rho_vec_x[t][k] = 1e3 * self.rho_sparse
-                elif cmodel.lxmin[k] != cmodel.lxmax[k]:
-                    self.rho_vec_x[t][k] = self.rho_sparse
-            for k in range(cmodel.ncu):  
-                if cmodel.lumin[k] == -np.inf and cmodel.lumax[k] == np.inf:
-                    self.rho_vec_u[t][k] = self.rho_min 
-                elif cmodel.lumin[k] == cmodel.lumax[k]:
-                    self.rho_vec_u[t][k] = 1e3 * self.rho_sparse
-                elif cmodel.lumin[k] != cmodel.lumax[k]:
-                    self.rho_vec_u[t][k] = self.rho_sparse
+            for k in range(cmodel.nc):  
+                if cmodel.lmin[k] == -np.inf and cmodel.lmax[k] == np.inf:
+                    self.rho_vec[t][k] = self.rho_min 
+                elif cmodel.lmin[k] == cmodel.lmax[k]:
+                    self.rho_vec[t][k] = 1e3 * self.rho_sparse
+                elif cmodel.lmin[k] != cmodel.lmax[k]:
+                    self.rho_vec[t][k] = self.rho_sparse
 
     def allocateData(self):
         self.xs_try = [np.zeros(m.state.nx) for m in self.models()] 
@@ -336,12 +319,13 @@ class CLQR(SolverAbstract, QPSolvers):
         self.dx_tilde = [np.zeros(m.state.ndx) for m  in self.models()]
         self.du_tilde = [np.zeros(m.nu) for m  in self.problem.runningModels] 
 
-        self.dx_relaxed = [np.zeros(m.state.ndx) for m  in self.models()]
-        self.du_relaxed = [np.zeros(m.nu) for m  in self.problem.runningModels] 
+        self.dz_relaxed = [np.zeros(m.nu) for m  in self.problem.runningModels] 
 
         self.dx_test = [np.zeros(m.state.ndx) for m  in self.models()]
         self.du_test = [np.zeros(m.nu) for m  in self.problem.runningModels] 
         
+
+        self.constraintData = [cmodel.createData() for cmodel in self.constraintModel]
         #
         self.S = [np.zeros([m.state.ndx, m.state.ndx]) for m in self.models()]   
         self.s = [np.zeros(m.state.ndx) for m in self.models()]   

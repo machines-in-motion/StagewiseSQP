@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from clqr import CLQR
 from cilqr import CILQR
 from gnms_cpp import GNMSCPP
-from constraintmodel import FullConstraintModel, NoConstraint
+from constraintmodel import StateConstraintModel, NoConstraint
 from gnms import GNMS
 from lq_problem import DifferentialActionModelLQ
 
@@ -26,7 +26,7 @@ lxmin = -np.inf*np.ones(nx)
 lxmax = np.array([0.5, 0.1, np.inf, np.inf])
 lumin = -np.inf*np.ones(nu)
 lumax = np.inf*np.ones(nu)
-ConstraintModel = FullConstraintModel(lxmin, lxmax, lumin, lumax)
+ConstraintModel = StateConstraintModel(lxmin, lxmax, 4, 4, 2)
 
 
 # print("TEST 1: GNMS = SparceADMM with sigma = 0".center(LINE_WIDTH, "-"))
