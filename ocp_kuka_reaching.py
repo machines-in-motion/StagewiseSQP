@@ -93,7 +93,7 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 # choose scenario: 0 or 1 or 2 or 3
-option = 3
+option = 2
 
 if option == 0:    
   clip_state_max = np.array([np.inf]*14)
@@ -121,7 +121,7 @@ elif option == 1:
 elif option == 2:
   lmin = np.array([-np.inf, endeff_translation[1], endeff_translation[2]])
   lmax =  np.array([np.inf, endeff_translation[1], endeff_translation[2]])
-  constraintModels = [EndEffConstraintModel(robot, lmin, lmax, 3, 14, 7)] * (T+1)
+  constraintModels = [NoConstraint(14, 7)] + [EndEffConstraintModel(robot, lmin, lmax, 3, 14, 7)] * T
 
 
 elif option == 3:
