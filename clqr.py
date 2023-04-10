@@ -7,6 +7,7 @@ from crocoddyl import SolverAbstract
 import scipy.linalg as scl
 from qpsolvers import QPSolvers
 from scipy.sparse.linalg import spsolve
+import eigenpy
 
 LINE_WIDTH = 100 
 
@@ -32,11 +33,11 @@ class CLQR(SolverAbstract, QPSolvers):
         self.constraintModel = constraintModel
 
         self.reset_params()
-
-        self.allocateData()
+        
         self.allocateQPData()
+        self.allocateData()
 
-        self.max_iters = 1000
+        self.max_iters = 2
 
     def reset_params(self):
         
@@ -51,6 +52,7 @@ class CLQR(SolverAbstract, QPSolvers):
         self.adaptive_rho_tolerance = 5
         self.rho_update_interval = 25
         self.regMin = 1e-6
+        self.allocateQPData()
 
 
     def models(self):
@@ -96,8 +98,8 @@ class CLQR(SolverAbstract, QPSolvers):
                                 print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
                                     , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
                                 break
-                    print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
-                    , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
+                print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
+                , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
 
             print("\n")
                 
@@ -254,19 +256,24 @@ class CLQR(SolverAbstract, QPSolvers):
             if len(G.shape) == 1:
                 G = np.resize(G,(1,G.shape[0]))
 
-            while True:
-                try:
-                    Lb_uu = scl.cholesky(self.H,  lower=True)
-                    break 
-                except:
-                    print("increasing H")
-                    self.H += 100*self.regMin*np.eye(len(self.H))
+            # while True:
+            #     try:
+            #         Lb_uu = scl.cholesky(self.H,  lower=True)
+            #         break 
+            #     except:
+            #         print("increasing H")
+            #         self.H += 100*self.regMin*np.eye(len(self.H))
 
-            Lb_uu_inv = scl.inv(Lb_uu)
-            H_inv = Lb_uu_inv.T @ Lb_uu_inv
-            self.L[t][:,:] = -1* H_inv @ G
-            self.l[t][:] = -1*H_inv @ h
+            # Lb_uu_inv = scl.inv(Lb_uu)
+            # H_inv = Lb_uu_inv.T @ Lb_uu_inv
+            # self.L[t][:,:] = -1* H_inv @ G
+            # self.l[t][:] = -1*H_inv @ h
             
+            H_llt = eigenpy.LLT(self.H.copy())
+            self.L[t][:,:] = -1* H_llt.solve(G)
+            self.l[t][:] = -1*H_llt.solve(h)
+        
+
             self.S[t] = Q + A.T @ (self.S[t+1])@A - self.L[t].T@self.H@self.L[t] 
             self.s[t] = q + A.T @ (self.S[t+1] @ self.gap[t].copy() + self.s[t+1]) + \
                             G.T@self.l[t][:]+ self.L[t].T@(h + self.H@self.l[t][:])

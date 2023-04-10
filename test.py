@@ -12,7 +12,7 @@ LINE_WIDTH = 100
 
 lq_diff_running = DifferentialActionModelLQ()
 lq_diff_terminal = DifferentialActionModelLQ(isTerminal=True)
-dt = 0.1
+dt = 0.05
 horizon = 100
 x0 = np.zeros(4)
 lq_running = crocoddyl.IntegratedActionModelEuler(lq_diff_running, dt)

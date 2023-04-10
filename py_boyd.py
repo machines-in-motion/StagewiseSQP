@@ -2,6 +2,7 @@
 ## Author : Avadesh Meduri
 ## Date : 31/03/2023
 
+import eigenpy
 import numpy as np
 from scipy import sparse
 import scipy.linalg as scl
@@ -38,6 +39,8 @@ class BoydADMM():
         # import pdb; pdb.set_trace()
         b_block = np.hstack((tmp - self.q + self.sigma_boyd*self.x_k, self.b))
 
+        # A_block_llt = eigenpy.LLT(A_block.todense().copy())
+        # xv_k_1 = A_block_llt.solve(b_block)   
         xv_k_1 = spsolve(A_block, b_block)
         self.xtilde_k_1, self.v_k_1 = xv_k_1[:self.n_vars], xv_k_1[self.n_vars:]
         
@@ -127,8 +130,8 @@ class BoydADMM():
                     converged = True               
                     break
 
-                print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
-                                , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd), "\n") 
+            print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
+                            , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd), "\n") 
 
         if not converged:
             print("Not Converged ... \n")

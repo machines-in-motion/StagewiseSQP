@@ -87,7 +87,7 @@ terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
 # terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
 
 # Create the shooting problem
-T = 2
+T = 30
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
@@ -120,11 +120,11 @@ elif option == 2:
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
-# ddp = GNMSCPP(problem) 
-# ddp = CILQR(problem, constraintModels, "OSQP")
+# ddp2 = GNMSCPP(problem) 
+# ddp2 = CILQR(problem, constraintModels, "OSQP")
 # ddp = CILQR(problem, constraintModels, "ProxQP")
 # ddp = CILQR(problem, constraintModels, "sparceADMM")
-# ddp = CILQR(problem, constraintModels, "CustomOSQP")
+# ddp2 = CLQR(problem, constraintModels, "CustomOSQP")
 ddp1 = CLQR(problem, constraintModels, "sparceADMM")
 
 ddp2 = CLQR(problem, constraintModels, "Boyd")
@@ -142,11 +142,11 @@ print(100*"*")
 ##### UNIT TEST #####################################
 
 set_tol = 1e-6
-dx_relaxed = np.array(ddp1.dx_tilde).flatten()[nx:]
-du_relaxed = np.array(ddp1.du_tilde).flatten()
-d_relaxed = np.hstack((dx_relaxed, du_relaxed))
+# dx_relaxed = np.array(ddp1.dx_tilde).flatten()[nx:]
+# du_relaxed = np.array(ddp1.du_tilde).flatten()
+# d_relaxed = np.hstack((dx_relaxed, du_relaxed))
 
-print(d_relaxed - ddp2.xtilde_k_1)
+# print(d_relaxed - ddp2.xtilde_k_1)
 
 assert np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)) < set_tol, "Test failed"
 
