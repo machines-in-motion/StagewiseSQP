@@ -217,19 +217,19 @@ class CLQR(SolverAbstract, QPSolvers):
 
     def backwardPass(self): 
         rho_mat = self.rho_vec[-1]*np.eye(len(self.rho_vec[-1]))
-        self.S[-1][:,:] = self.problem.terminalData.Lxx.copy() 
-        self.s[-1][:] = self.problem.terminalData.Lx.copy() 
+        self.S[-1][:,:] = self.problem.terminalData.Lxx.copy() + self.sigma_sparse*np.eye(self.problem.terminalModel.state.nx) 
+        self.s[-1][:] = self.problem.terminalData.Lx.copy() - self.sigma_sparse * self.dx[-1]
         if self.constraintModel[-1].nc != 0:
             Cx = self.constraintData[-1].Cx
-            self.S[-1][:,:] +=  Cx.T @ rho_mat @ Cx + self.sigma_sparse*np.eye(self.problem.terminalModel.state.nx) 
-            self.s[-1][:] +=  Cx.T @ ( self.y[-1] - rho_mat @ self.z[-1])[:]  - self.sigma_sparse * self.dx[-1]
+            self.S[-1][:,:] +=  Cx.T @ rho_mat @ Cx 
+            self.s[-1][:] +=  Cx.T @ ( self.y[-1] - rho_mat @ self.z[-1])[:]  
 
         for t, (model, data, cdata) in rev_enumerate(zip(self.problem.runningModels,self.problem.runningDatas, self.constraintData[:-1])):
             rho_mat = self.rho_vec[t]*np.eye(len(self.rho_vec[t]))
-            q = data.Lx.copy()
-            Q = data.Lxx.copy()
-            r = data.Lu.copy()
-            R = data.Luu.copy()
+            q = data.Lx.copy() - self.sigma_sparse * self.dx[t] 
+            Q = data.Lxx.copy() + self.sigma_sparse*np.eye(model.state.nx)
+            r = data.Lu.copy() - self.sigma_sparse * self.du[t]
+            R = data.Luu.copy() + self.sigma_sparse*np.eye(model.nu)
             P = data.Lxu.T.copy()
 
             if self.constraintModel[t].nc != 0:
@@ -239,10 +239,6 @@ class CLQR(SolverAbstract, QPSolvers):
                 if t > 0:
                     q += Cx.T@(self.y[t] - rho_mat@self.z[t])[:]
                     Q += Cx.T @ rho_mat @ Cx
-                    q -= self.sigma_sparse * self.dx[t]
-                    Q += self.sigma_sparse*np.eye(model.state.nx)
-                    r += - self.sigma_sparse * self.du[t]
-                    R += + self.sigma_sparse*np.eye(model.nu)
                     P += Cu.T @ rho_mat @ Cx
 
             A = data.Fx.copy()    

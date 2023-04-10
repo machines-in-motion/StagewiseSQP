@@ -93,7 +93,7 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 # choose scenario: 0 or 1 or 2 or 3
-option = 1
+option = 3
 
 if option == 0:    
   clip_state_max = np.array([np.inf]*14)
@@ -133,22 +133,24 @@ xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 # ddp2 = GNMSCPP(problem) 
 # ddp2 = CILQR(problem, constraintModels, "OSQP")
-ddp = CILQR(problem, constraintModels, "sparceADMM")
+ddp1 = CILQR(problem, constraintModels, "sparceADMM")
 # ddp = CILQR(problem, constraintModels, "sparceADMM")
 # ddp2 = CLQR(problem, constraintModels, "CustomOSQP")
 # ddp1 = CLQR(problem, constraintModels, "sparceADMM")
-
-# ddp2 = CLQR(problem, constraintModels, "Boyd")
-ddp.solve(xs, us, 40)
-
-# print(100*"*")
-
-# ddp2.solve(xs, us, 1)
-# print(100*"*")
+ddp2 = CLQR(problem, constraintModels, "Boyd")
 
 
-# print("NORM X_K", np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)))
-# print("NORM U_K", np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)))
+
+ddp1.solve(xs, us, 1)
+
+print(100*"*")
+
+ddp2.solve(xs, us, 1)
+print(100*"*")
+
+
+print("NORM X_K", np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)))
+print("NORM U_K", np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)))
 
 ##### UNIT TEST #####################################
 
@@ -188,9 +190,9 @@ set_tol = 1e-6
 
 # assert False
 # Extract DDP data and plot
-ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
+# ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
 
-ocp_utils.plot_ocp_results(ddp_data, which_plots="all", labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
+# ocp_utils.plot_ocp_results(ddp_data, which_plots="all", labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
 
 # xs_ddp = [x0] * (T+1)
 # us_ddp = [np.zeros(nu)] * T 
