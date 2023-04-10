@@ -155,38 +155,28 @@ print("NORM U_K", np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)))
 ##### UNIT TEST #####################################
 
 set_tol = 1e-6
-# dx_relaxed = np.array(ddp1.dx_tilde).flatten()[nx:]
-# du_relaxed = np.array(ddp1.du_tilde).flatten()
-# d_relaxed = np.hstack((dx_relaxed, du_relaxed))
+assert np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)) < set_tol, "Test failed"
 
-# print(d_relaxed - ddp2.xtilde_k_1)
+assert np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)) < set_tol, "Test failed"
 
-# assert np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)) < set_tol, "Test failed"
 
-# assert np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)) < set_tol, "Test failed"
+d_relaxed = np.array(ddp1.dz_relaxed[1:]).flatten()
+assert np.linalg.norm(d_relaxed - np.array(ddp2.x_k_1)) < set_tol, "Test failed"
 
-# dx_relaxed = np.array(ddp1.dx_relaxed).flatten()[nx:]
-# du_relaxed = np.array(ddp1.du_relaxed).flatten()
-# d_relaxed = np.hstack((dx_relaxed, du_relaxed))
-# assert np.linalg.norm( d_relaxed- np.array(ddp2.x_k_1)) < set_tol, "Test failed"
+z = np.array(ddp1.z[1:]).flatten()
+assert np.linalg.norm(z - np.array(ddp2.z_k)) < set_tol, "Test failed"
 
-# xz = np.array(ddp1.xz).flatten()[nx:]
-# uz = np.array(ddp1.uz).flatten()[:-nu]
-# z = np.hstack((xz, uz))
-# assert np.linalg.norm(z - np.array(ddp2.z_k)) < set_tol, "Test failed"
+y = np.array(ddp1.y[1:]).flatten()
+assert np.linalg.norm(y - np.array(ddp2.y_k)) < set_tol, "Test failed"
 
-# xy = np.array(ddp1.xy).flatten()[nx:]
-# uy = np.array(ddp1.uy).flatten()[:-nu]
-# y = np.hstack((xy, uy))
-# assert np.linalg.norm(y - np.array(ddp2.y_k)) < set_tol, "Test failed"
+rho = np.array(ddp1.rho_vec[1:]).flatten()
 
-# rho_x = np.array(ddp1.rho_vec_x).flatten()[nx:]
-# rho_u = np.array(ddp1.rho_vec_u).flatten()[:-nu]
-# rho = np.hstack((rho_x, rho_u))
+assert np.linalg.norm(rho - np.array(ddp2.rho_vec_boyd)) < set_tol, "Test failed"
 
-# assert np.linalg.norm(rho - np.array(ddp2.rho_vec_boyd)) < set_tol, "Test failed"
+assert np.linalg.norm(ddp1.rho_estimate_sparse - ddp2.rho_estimate_boyd) < set_tol, "Test failed"
 
-# assert np.linalg.norm(ddp1.rho_estimate_sparse - ddp2.rho_estimate_boyd) < set_tol, "Test failed"
+
+print("\n\n\n\n ALL TESTS PASSED")
 
 # assert False
 # Extract DDP data and plot
