@@ -38,7 +38,7 @@ class CLQR(SolverAbstract, QPSolvers):
         self.allocateQPData()
         self.allocateData()
 
-        self.max_iters = 25
+        self.max_iters = 1000
 
     def reset_params(self):
         

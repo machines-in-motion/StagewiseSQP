@@ -67,21 +67,28 @@ assert np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)) < set_tol, "Test fa
 
 assert np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)) < set_tol, "Test failed"
 
-
-d_relaxed = np.array(ddp1.dz_relaxed[1:]).flatten()
+d_relaxed = np.concatenate(ddp1.dz_relaxed).flatten()
 assert np.linalg.norm(d_relaxed - np.array(ddp2.x_k_1)) < set_tol, "Test failed"
 
-z = np.array(ddp1.z[1:]).flatten()
+z = np.concatenate(ddp1.z).flatten()
 assert np.linalg.norm(z - np.array(ddp2.z_k)) < set_tol, "Test failed"
 
-y = np.array(ddp1.y[1:]).flatten()
+y = np.concatenate(ddp1.y).flatten()
 assert np.linalg.norm(y - np.array(ddp2.y_k)) < set_tol, "Test failed"
 
-rho = np.array(ddp1.rho_vec[1:]).flatten()
+assert np.linalg.norm(ddp1.norm_primal - np.array(ddp2.r_prim)) < set_tol, "Test failed"
+assert np.linalg.norm(ddp1.norm_dual - np.array(ddp2.r_dual)) < set_tol, "Test failed"
+
+assert np.linalg.norm(ddp1.norm_primal_rel - np.array(ddp2.eps_rel_prim)) < set_tol, "Test failed"
+assert np.linalg.norm(ddp1.norm_dual_rel - np.array(ddp2.eps_rel_dual)) < set_tol, "Test failed"
+
+assert np.linalg.norm(ddp1.rho_sparse - np.array(ddp2.rho_boyd)) < set_tol, "Test failed"
+
+assert np.linalg.norm(ddp1.rho_estimate_sparse - np.array(ddp2.rho_estimate_boyd)) < set_tol, "Test failed"
+
+rho = np.concatenate(ddp1.rho_vec).flatten()
 
 assert np.linalg.norm(rho - np.array(ddp2.rho_vec_boyd)) < set_tol, "Test failed"
-
-assert np.linalg.norm(ddp1.rho_estimate_sparse - ddp2.rho_estimate_boyd) < set_tol, "Test failed"
 
 
 print("\n\n\n\n ALL TESTS PASSED")

@@ -93,7 +93,7 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 # choose scenario: 0 or 1 or 2 or 3
-option = 2
+option = 0
 
 if option == 0:    
   clip_state_max = np.array([np.inf]*14)
@@ -160,13 +160,13 @@ assert np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)) < set_tol, "Test fa
 assert np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)) < set_tol, "Test failed"
 
 
-d_relaxed = np.array(ddp1.dz_relaxed[1:]).flatten()
+d_relaxed = np.concatenate(ddp1.dz_relaxed).flatten()
 assert np.linalg.norm(d_relaxed - np.array(ddp2.x_k_1)) < set_tol, "Test failed"
 
-z = np.array(ddp1.z[1:]).flatten()
+z = np.concatenate(ddp1.z).flatten()
 assert np.linalg.norm(z - np.array(ddp2.z_k)) < set_tol, "Test failed"
 
-y = np.array(ddp1.y[1:]).flatten()
+y = np.concatenate(ddp1.y).flatten()
 assert np.linalg.norm(y - np.array(ddp2.y_k)) < set_tol, "Test failed"
 
 assert np.linalg.norm(ddp1.norm_primal - np.array(ddp2.r_prim)) < set_tol, "Test failed"
@@ -175,25 +175,13 @@ assert np.linalg.norm(ddp1.norm_dual - np.array(ddp2.r_dual)) < set_tol, "Test f
 assert np.linalg.norm(ddp1.norm_primal_rel - np.array(ddp2.eps_rel_prim)) < set_tol, "Test failed"
 assert np.linalg.norm(ddp1.norm_dual_rel - np.array(ddp2.eps_rel_dual)) < set_tol, "Test failed"
 
-print(ddp1.norm_primal - np.array(ddp2.r_prim))
-print(ddp1.norm_dual - np.array(ddp2.r_dual))
-print(ddp1.norm_primal_rel - np.array(ddp2.eps_rel_prim))
-print(ddp1.norm_dual_rel - np.array(ddp2.eps_rel_dual))
-
-tmp1 = (ddp1.norm_primal * ddp1.norm_dual_rel )/(ddp1.norm_dual * ddp1.norm_primal_rel)
-tmp2 = (ddp2.r_prim * ddp2.eps_rel_dual )/(ddp2.r_dual * ddp2.eps_rel_prim)
-print(tmp1 - tmp2)
-print(ddp1.scale_sparse - np.array(ddp2.scale_boyd))
-
-assert False
 assert np.linalg.norm(ddp1.rho_sparse - np.array(ddp2.rho_boyd)) < set_tol, "Test failed"
 
 assert np.linalg.norm(ddp1.rho_estimate_sparse - np.array(ddp2.rho_estimate_boyd)) < set_tol, "Test failed"
 
-rho = np.array(ddp1.rho_vec[1:]).flatten()
+rho = np.concatenate(ddp1.rho_vec).flatten()
 
 assert np.linalg.norm(rho - np.array(ddp2.rho_vec_boyd)) < set_tol, "Test failed"
-
 
 
 print("\n\n\n\n ALL TESTS PASSED")
