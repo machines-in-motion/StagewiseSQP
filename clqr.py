@@ -37,7 +37,7 @@ class CLQR(SolverAbstract, QPSolvers):
         self.allocateQPData()
         self.allocateData()
 
-        self.max_iters = 500
+        self.max_iters = 10
 
     def reset_params(self):
         
@@ -154,9 +154,10 @@ class CLQR(SolverAbstract, QPSolvers):
             self.dx[t] = self.dx_tilde[t].copy()
             self.du[t] = self.du_tilde[t].copy()
 
-            dual_vec = Cx.T@ np.multiply(self.rho_vec[t], (self.z[t] - z_k))
+            dual_vecx = Cx.T @  np.multiply(self.rho_vec[t], (self.z[t] - z_k)) 
+            dual_vecu = Cu.T @  np.multiply(self.rho_vec[t], (self.z[t] - z_k)) 
 
-            self.norm_dual = max(self.norm_dual, max(abs(dual_vec)))
+            self.norm_dual = max(self.norm_dual, max(abs(dual_vecx)), max(abs(dual_vecu)))
             self.norm_primal = max(self.norm_primal, max(abs(Cx@self.dx[t] + Cu@self.du[t] - self.z[t])))
             self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cx@self.dx[t]+Cu@self.du[t])))
             self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.z[t])))
@@ -180,7 +181,7 @@ class CLQR(SolverAbstract, QPSolvers):
 
             dual_vec = Cx.T@np.multiply(self.rho_vec[-1], (self.z[-1] - z_k))
 
-            self.norm_dual = max(self.norm_dual, max(abs(dual_vec)), max(abs(dual_vec)))
+            self.norm_dual = max(self.norm_dual, max(abs(dual_vec)))
             self.norm_primal = max(self.norm_primal, max(abs(Cx@self.dx[-1] - self.z[-1])))
             self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cx@self.dx[-1])))
             self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.z[-1])))
