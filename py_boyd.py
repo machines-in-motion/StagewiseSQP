@@ -80,7 +80,7 @@ class BoydADMM():
     def update_rho_boyd(self, iter):
         
         scale = (self.r_prim * self.eps_rel_dual)/(self.r_dual * self.eps_rel_prim)
-        # scale = np.sqrt(scale)
+        scale = np.sqrt(scale)
         self.scale_boyd = scale
         self.rho_estimate_boyd = scale * self.rho_boyd
         self.rho_estimate_boyd = min(max(self.rho_estimate_boyd, self.rho_min), self.rho_max) 

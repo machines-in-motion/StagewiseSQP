@@ -114,8 +114,8 @@ class CLQR(SolverAbstract, QPSolvers):
                 
     def update_rho_sparse(self, iter):
         scale = (self.norm_primal * self.norm_dual_rel)/(self.norm_dual * self.norm_primal_rel)
+        scale = np.sqrt(scale)
         self.scale_sparse = scale
-        # scale = np.sqrt(scale)
         self.rho_estimate_sparse = scale * self.rho_sparse
         self.rho_estimate_sparse = min(max(self.rho_estimate_sparse, self.rho_min), self.rho_max) 
 
@@ -253,19 +253,6 @@ class CLQR(SolverAbstract, QPSolvers):
             self.H = R + B.T@self.S[t+1]@B
             if len(G.shape) == 1:
                 G = np.resize(G,(1,G.shape[0]))
-
-            # while True:
-            #     try:
-            #         Lb_uu = scl.cholesky(self.H,  lower=True)
-            #         break 
-            #     except:
-            #         print("increasing H")
-            #         self.H += 100*self.regMin*np.eye(len(self.H))
-
-            # Lb_uu_inv = scl.inv(Lb_uu)
-            # H_inv = Lb_uu_inv.T @ Lb_uu_inv
-            # self.L[t][:,:] = -1* H_inv @ G
-            # self.l[t][:] = -1*H_inv @ h
             
             H_llt = eigenpy.LLT(self.H.copy())
             self.L[t][:,:] = -1* H_llt.solve(G)
