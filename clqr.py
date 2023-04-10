@@ -167,6 +167,8 @@ class CLQR(SolverAbstract, QPSolvers):
             self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.xz[t])), max(abs(self.uz[t])))
             self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.xy[t])), max(abs(Cu.T@self.uy[t])))
 
+        self.dx[-1] = self.dx_tilde[-1].copy()
+        self.du[-1] = self.du_tilde[-1].copy()
         if self.constraintModel[-1].ncx + self.constraintModel[-1].ncu + self.constraintModel[-1].ncxu != 0:
             cmodel = self.constraintModel[-1]
             cx, _ =  cmodel.calc(self.problem.terminalData, self.xs[-1])
@@ -220,24 +222,20 @@ class CLQR(SolverAbstract, QPSolvers):
 
     def backwardPass(self): 
         rho_mat_x = self.rho_vec_x[-1]*np.eye(len(self.rho_vec_x[-1]))
-        self.S[-1][:,:] = self.problem.terminalData.Lxx.copy() + self.sigma_sparse*np.eye(self.problem.terminalModel.state.nx) 
-        self.s[-1][:] = self.problem.terminalData.Lx.copy()  - self.sigma_sparse * self.dx[-1]
+        self.S[-1][:,:] = self.problem.terminalData.Lxx.copy() 
+        self.s[-1][:] = self.problem.terminalData.Lx.copy() 
         if self.constraintModel[-1].ncx + self.constraintModel[-1].ncu + self.constraintModel[-1].ncxu != 0:
             Cx, _ =  self.constraintModel[-1].calcDiff(self.problem.terminalData, self.xs[-1])
-            self.S[-1][:,:] +=  Cx.T @ rho_mat_x @ Cx
-            self.s[-1][:] +=  Cx.T@rho_mat_x@( np.divide(self.xy[-1],self.rho_vec_x[-1]) - self.xz[-1])[:] 
+            self.S[-1][:,:] +=  Cx.T @ rho_mat_x @ Cx + self.sigma_sparse*np.eye(self.problem.terminalModel.state.nx) 
+            self.s[-1][:] +=  Cx.T@rho_mat_x@( np.divide(self.xy[-1],self.rho_vec_x[-1]) - self.xz[-1])[:]  - self.sigma_sparse * self.dx[-1]
 
         for t, (model, data) in rev_enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
             rho_mat_x = self.rho_vec_x[t]*np.eye(len(self.rho_vec_x[t]))
             rho_mat_u = self.rho_vec_u[t]*np.eye(len(self.rho_vec_u[t]))
-            r = data.Lu.copy()  - self.sigma_sparse * self.du[t]
-            R = data.Luu.copy() + self.sigma_sparse*np.eye(model.nu)
             q = data.Lx.copy()
             Q = data.Lxx.copy()
-            if t > 0:
-                q -= self.sigma_sparse * self.dx[t]
-                Q += self.sigma_sparse*np.eye(model.state.nx)
-            # print(Q, self.sigma_sparse*np.eye(model.state.nx))
+            r = data.Lu.copy()
+            R = data.Luu.copy()
 
             if self.constraintModel[t].ncx + self.constraintModel[t].ncu + self.constraintModel[t].ncxu != 0:
                 Cx, Cu =  self.constraintModel[t].calcDiff(data, self.xs[t], self.us[t])
@@ -246,6 +244,10 @@ class CLQR(SolverAbstract, QPSolvers):
                 if t > 0:
                     q += Cx.T@rho_mat_x@(np.divide(self.xy[t],self.rho_vec_x[t]) - self.xz[t])[:] 
                     Q += Cx.T @ rho_mat_x @ Cx
+                    q -= self.sigma_sparse * self.dx[t]
+                    Q += self.sigma_sparse*np.eye(model.state.nx)
+                    r += - self.sigma_sparse * self.du[t]
+                    R += + self.sigma_sparse*np.eye(model.nu)
 
             P = data.Lxu.T.copy()
             A = data.Fx.copy()    
