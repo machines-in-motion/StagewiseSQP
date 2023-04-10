@@ -175,6 +175,19 @@ assert np.linalg.norm(ddp1.norm_dual - np.array(ddp2.r_dual)) < set_tol, "Test f
 assert np.linalg.norm(ddp1.norm_primal_rel - np.array(ddp2.eps_rel_prim)) < set_tol, "Test failed"
 assert np.linalg.norm(ddp1.norm_dual_rel - np.array(ddp2.eps_rel_dual)) < set_tol, "Test failed"
 
+print(ddp1.norm_primal - np.array(ddp2.r_prim))
+print(ddp1.norm_dual - np.array(ddp2.r_dual))
+print(ddp1.norm_primal_rel - np.array(ddp2.eps_rel_prim))
+print(ddp1.norm_dual_rel - np.array(ddp2.eps_rel_dual))
+
+tmp1 = (ddp1.norm_primal * ddp1.norm_dual_rel )/(ddp1.norm_dual * ddp1.norm_primal_rel)
+tmp2 = (ddp2.r_prim * ddp2.eps_rel_dual )/(ddp2.r_dual * ddp2.eps_rel_prim)
+print(tmp1 - tmp2)
+print(ddp1.scale_sparse - np.array(ddp2.scale_boyd))
+
+assert False
+assert np.linalg.norm(ddp1.rho_sparse - np.array(ddp2.rho_boyd)) < set_tol, "Test failed"
+
 assert np.linalg.norm(ddp1.rho_estimate_sparse - np.array(ddp2.rho_estimate_boyd)) < set_tol, "Test failed"
 
 rho = np.array(ddp1.rho_vec[1:]).flatten()

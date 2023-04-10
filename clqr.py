@@ -8,6 +8,7 @@ import scipy.linalg as scl
 from qpsolvers import QPSolvers
 from scipy.sparse.linalg import spsolve
 import eigenpy
+from decimal import *
 
 LINE_WIDTH = 100 
 
@@ -37,7 +38,7 @@ class CLQR(SolverAbstract, QPSolvers):
         self.allocateQPData()
         self.allocateData()
 
-        self.max_iters = 100
+        self.max_iters = 25
 
     def reset_params(self):
         
@@ -112,9 +113,12 @@ class CLQR(SolverAbstract, QPSolvers):
             print("\n")
                 
     def update_rho_sparse(self, iter):
-        scale = np.sqrt(self.norm_primal * self.norm_dual_rel/(self.norm_dual * self.norm_primal_rel))
+        scale = (self.norm_primal * self.norm_dual_rel)/(self.norm_dual * self.norm_primal_rel)
+        self.scale_sparse = scale
+        # scale = np.sqrt(scale)
         self.rho_estimate_sparse = scale * self.rho_sparse
         self.rho_estimate_sparse = min(max(self.rho_estimate_sparse, self.rho_min), self.rho_max) 
+
 
         if (iter) % self.rho_update_interval == 0 and iter > 1:
             if self.rho_estimate_sparse > self.rho_sparse* self.adaptive_rho_tolerance or\
