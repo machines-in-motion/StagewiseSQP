@@ -108,24 +108,36 @@ constraintModels = [Force6DConstraintModel(Fmin, Fmax, 6, 14, 7)] * T + [NoConst
 
 
 
-# ddp = CILQR(problem, constraintModels, "sparceADMM")
-ddp = CILQR(problem, constraintModels, "ProxQP")
-# ddp = crocoddyl.SolverFDDP(problem)
-# ddp = GNMSCPP(problem)
-# ddp = GNMS(problem)
-ddp.setCallbacks([crocoddyl.CallbackLogger(),
-                crocoddyl.CallbackVerbose()])
-# Warm start : initial state + gravity compensation
+
+
+ddp1 = CILQR(problem, constraintModels, "sparceADMM")
+ddp2 = CILQR(problem, constraintModels, "Boyd")
+
+
 xs_init = [x0 for i in range(T+1)]
-us_init = ddp.problem.quasiStatic(xs_init[:-1])
+us_init = ddp1.problem.quasiStatic(xs_init[:-1])
 
 # Solve
-ddp.solve(xs_init, us_init, maxiter=20, isFeasible=False)
+
+ddp1.solve(xs_init, us_init, 20)
+
+print(100*"*")
+
+ddp2.solve(xs_init, us_init, 20)
+print(100*"*")
+
+
+print("NORM X_K", np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)))
+print("NORM U_K", np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)))
+
+
+
+
 
 
 # Extract DDP data and plot
 ddp_data = {}
-ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact', ct_frame_name='contact')
+ddp_data = ocp_utils.extract_ocp_data(ddp1, ee_frame_name='contact', ct_frame_name='contact')
 
 ocp_utils.plot_ocp_results(ddp_data, which_plots='all', labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
 
