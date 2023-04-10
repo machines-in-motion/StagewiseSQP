@@ -15,9 +15,9 @@ class BoydADMM():
 
     def __init__(self):
 
-        self.sigma_boyd = 1e1
-        self.rho_boyd = 1e-12
-        self.rho_min = 1e-12
+        self.sigma_boyd = 1e-6
+        self.rho_boyd = 1e-1
+        self.rho_min = 1e-6
         self.rho_max = 1e6
         self.alpha_boyd = 1.6
 
@@ -27,18 +27,17 @@ class BoydADMM():
         self.rho_update_interval = 25
 
     def solve_linear_system_boyd(self):
-
+        
         rho_mat = self.rho_vec_boyd*np.eye(len(self.rho_vec_boyd))
-        print("BOYD", self.sigma_boyd)
         A_block_leftcol = sparse.vstack([self.P + self.A_in.T @ rho_mat @ self.A_in + self.sigma_boyd * np.eye(self.n_vars), self.A_eq])
         A_block_rightcol = sparse.vstack([self.A_eq.T, np.zeros((self.n_eq, self.n_eq))])
         A_block = sparse.hstack([A_block_leftcol, A_block_rightcol])
         A_block = sparse.csr_matrix(A_block)
-        
+
         tmp = self.A_in.T@(np.multiply(self.rho_vec_boyd, self.z_k - np.divide(self.y_k, self.rho_vec_boyd)))
         # import pdb; pdb.set_trace()
-        b_block = np.hstack((0*tmp - self.q + self.sigma_boyd*self.x_k, self.b))
-        
+        b_block = np.hstack((tmp - self.q + self.sigma_boyd*self.x_k, self.b))
+
         xv_k_1 = spsolve(A_block, b_block)
         self.xtilde_k_1, self.v_k_1 = xv_k_1[:self.n_vars], xv_k_1[self.n_vars:]
         
@@ -119,19 +118,22 @@ class BoydADMM():
 
             eps_prim = self.eps_abs + self.eps_rel * self.eps_rel_prim
             eps_dual = self.eps_abs + self.eps_rel * self.eps_rel_dual
-            print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
-                            , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd), "\n") 
 
             if (iter) % self.rho_update_interval == 0 and iter > 1:
                 if self.r_prim <= eps_prim and self.r_dual <= eps_dual:
-                    print("terminated ... \n")
-                #     print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
-                # , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd), "\n") 
+                    print("terminated ... ")
+                    print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
+                , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd), "\n") 
                     converged = True               
                     break
-        # if not converged:
-        #     print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
-        #         , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd))
+
+                print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
+                                , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd), "\n") 
+
+        if not converged:
+            print("Not Converged ... \n")
+            print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
+                , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd))
         return self.x_k.copy()
 
 

@@ -6,8 +6,6 @@ import numpy as np
 from numpy import linalg
 import proxsuite
 
-import crocoddyl
-from crocoddyl import SolverAbstract
 import scipy.linalg as scl
 import osqp
 from clqr import CLQR

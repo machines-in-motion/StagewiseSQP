@@ -24,7 +24,6 @@ class QPSolvers(CustomOSQP, BoydADMM):
         self.method = method
 
     def computeDirectionFullQP(self, maxit = 5000):
-        self.calc(True)
         self.n_vars  = self.problem.T*(self.nx + self.nu)
 
         P = np.zeros((self.problem.T*(self.nx + self.nu), self.problem.T*(self.nx + self.nu)))
@@ -43,17 +42,15 @@ class QPSolvers(CustomOSQP, BoydADMM):
             index_u = self.problem.T*self.nx + t * self.nu
             P[index_u:index_u+self.nu, index_u:index_u+self.nu] = data.Luu.copy()
             q[index_u:index_u+self.nu] = data.Lu.copy()
-
-
             
             index_u = self.problem.T*self.nx + t * self.nu
-            A[t * self.nx: (t+1) * self.nx, index_u:index_u+self.nu] = - data.Fu 
+            A[t * self.nx: (t+1) * self.nx, index_u:index_u+self.nu] = - data.Fu.copy() 
             A[t * self.nx: (t+1) * self.nx, t * self.nx: (t+1) * self.nx] = np.eye(self.nx)
 
             if t >=1:
-                A[t * self.nx: (t+1) * self.nx, (t-1) * self.nx: t * self.nx] = - data.Fx
+                A[t * self.nx: (t+1) * self.nx, (t-1) * self.nx: t * self.nx] = - data.Fx.copy()
 
-            B[t * self.nx: (t+1) * self.nx] = self.gap[t]
+            B[t * self.nx: (t+1) * self.nx] = self.gap[t].copy()
 
 
         P[(self.problem.T-1)*self.nx:self.problem.T*self.nx, self.problem.T*self.nx-self.nx:self.problem.T*self.nx] = self.problem.terminalData.Lxx.copy()
@@ -169,12 +166,11 @@ class QPSolvers(CustomOSQP, BoydADMM):
             self.A_eq = sparse.csr_matrix(A.copy())
             self.A_in = sparse.csr_matrix(C.copy())
             self.b = B.copy()
-            self.lboyd = l
-            self.uboyd = u
+            self.lboyd = l.copy()
+            self.uboyd = u.copy()
 
             self.P = P.copy()
             self.q = np.array(q).copy()
-            
             self.xs_vec = np.array(self.xs).flatten()[self.nx:]
             self.us_vec = np.array(self.us).flatten()
             self.x_k = np.zeros_like(np.hstack((self.xs_vec, self.us_vec)))

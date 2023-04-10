@@ -36,13 +36,13 @@ class CLQR(SolverAbstract, QPSolvers):
         self.allocateData()
         self.allocateQPData()
 
-        self.max_iters = 2
+        self.max_iters = 1000
 
     def reset_params(self):
         
-        self.sigma_sparse = 1e1
-        self.rho_sparse= 1e-12
-        self.rho_min = 1e-12
+        self.sigma_sparse = 1e-6
+        self.rho_sparse= 1e-1
+        self.rho_min = 1e-6
         self.rho_max = 1e6
         self.alpha = 1.6
 
@@ -69,19 +69,19 @@ class CLQR(SolverAbstract, QPSolvers):
 
         for t, (model, data) in enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
             # model.calc(data, self.xs[t], self.us[t])  
-            self.gap[t] = model.state.diff(self.xs[t+1], data.xnext) #gaps
+            self.gap[t] = model.state.diff(self.xs[t+1].copy(), data.xnext.copy()) #gaps
             self.cost += data.cost
         
-        self.gap_norm = sum(np.linalg.norm(self.gap, 1, axis = 1))
+        self.gap_norm = sum(np.linalg.norm(self.gap.copy(), 1, axis = 1))
         self.cost += self.problem.terminalData.cost 
-
+        self.gap = self.gap.copy()
 
     def computeDirection(self):
+        self.calc(True)
         if self.method == "ProxQP" or self.method=="OSQP" or self.method == "CustomOSQP" or self.method == "Boyd":
             self.computeDirectionFullQP(maxit=self.max_iters)
 
         else:
-            self.calc(True)
             for iter in range(1, self.max_iters+1):
                 
                 self.backwardPass()  
@@ -89,14 +89,16 @@ class CLQR(SolverAbstract, QPSolvers):
                 self.update_lagrangian_parameters_infinity()
                 self.update_rho_sparse(iter)
 
-                print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
-                                , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
-
                 if (iter) % self.rho_update_interval == 0 and iter > 1:
                     if self.norm_primal <= self.eps_abs + self.eps_rel*self.norm_primal_rel and\
                             self.norm_dual <= self.eps_abs + self.eps_rel*self.norm_dual_rel:
-                                print("QP converged")
+                                print("CLQR converged")
+                                print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
+                                    , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
                                 break
+                    print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
+                    , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
+
             print("\n")
                 
     def update_rho_sparse(self, iter):
@@ -200,11 +202,10 @@ class CLQR(SolverAbstract, QPSolvers):
         self.expected_decrease = 0
         assert np.linalg.norm(self.dx[0]) < 1e-6
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
-                
                 self.du_tilde[t][:] = self.L[t].dot(self.dx_tilde[t]) + self.l[t] 
-                A = data.Fx
-                B = data.Fu      
-                if len(data.Fu.shape) == 1:
+                A = data.Fx.copy()
+                B = data.Fu.copy()      
+                if len(B.shape) == 1:
                     bl = B.dot(self.l[t][0])
                     BL = B.reshape(B.shape[0], 1)@self.L[t]
                 else: 
@@ -217,39 +218,37 @@ class CLQR(SolverAbstract, QPSolvers):
 
     def backwardPass(self): 
         rho_mat_x = self.rho_vec_x[-1]*np.eye(len(self.rho_vec_x[-1]))
-        self.S[-1][:,:] = self.problem.terminalData.Lxx + self.sigma_sparse*np.eye(self.problem.terminalModel.state.nx) 
-        self.s[-1][:] = self.problem.terminalData.Lx  + (-self.sigma_sparse * self.dx[-1])
-        print(self.sigma_sparse)
+        self.S[-1][:,:] = self.problem.terminalData.Lxx.copy() + self.sigma_sparse*np.eye(self.problem.terminalModel.state.nx) 
+        self.s[-1][:] = self.problem.terminalData.Lx.copy()  - self.sigma_sparse * self.dx[-1]
         if self.constraintModel[-1].ncx + self.constraintModel[-1].ncu + self.constraintModel[-1].ncxu != 0:
             Cx, _ =  self.constraintModel[-1].calcDiff(self.problem.terminalData, self.xs[-1])
-            # self.S[-1][:,:] +=  Cx.T @ rho_mat_x @ Cx
-            # self.s[-1][:] +=  Cx.T@rho_mat_x@( np.divide(self.xy[-1],self.rho_vec_x[-1]) - self.xz[-1])[:] 
+            self.S[-1][:,:] +=  Cx.T @ rho_mat_x @ Cx
+            self.s[-1][:] +=  Cx.T@rho_mat_x@( np.divide(self.xy[-1],self.rho_vec_x[-1]) - self.xz[-1])[:] 
 
         for t, (model, data) in rev_enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
             rho_mat_x = self.rho_vec_x[t]*np.eye(len(self.rho_vec_x[t]))
             rho_mat_u = self.rho_vec_u[t]*np.eye(len(self.rho_vec_u[t]))
-            print(self.sigma_sparse)
-            r = data.Lu + (-self.sigma_sparse * self.du[t])
-            R = data.Luu + self.sigma_sparse*np.eye(model.nu)
-            q = data.Lx
-            Q = data.Lxx
+            r = data.Lu.copy()  - self.sigma_sparse * self.du[t]
+            R = data.Luu.copy() + self.sigma_sparse*np.eye(model.nu)
+            q = data.Lx.copy()
+            Q = data.Lxx.copy()
             if t > 0:
-                q += (-self.sigma_sparse * self.dx[t])
+                q -= self.sigma_sparse * self.dx[t]
                 Q += self.sigma_sparse*np.eye(model.state.nx)
+            # print(Q, self.sigma_sparse*np.eye(model.state.nx))
 
-            # if self.constraintModel[t].ncx + self.constraintModel[t].ncu + self.constraintModel[t].ncxu != 0:
-            #     Cx, Cu =  self.constraintModel[t].calcDiff(data, self.xs[t], self.us[t])
-            #     r += Cu.T@rho_mat_u@(np.divide(self.uy[t],self.rho_vec_u[t]) - self.uz[t])[:]
-            #     R += Cu.T @ rho_mat_u @ Cu
-            #     if t > 0:
-            #         q += Cx.T@rho_mat_x@(np.divide(self.xy[t],self.rho_vec_x[t]) - self.xz[t])[:] 
-            #         Q += Cx.T @ rho_mat_x @ Cx
+            if self.constraintModel[t].ncx + self.constraintModel[t].ncu + self.constraintModel[t].ncxu != 0:
+                Cx, Cu =  self.constraintModel[t].calcDiff(data, self.xs[t], self.us[t])
+                r += Cu.T@rho_mat_u@(np.divide(self.uy[t],self.rho_vec_u[t]) - self.uz[t])[:]
+                R += Cu.T @ rho_mat_u @ Cu
+                if t > 0:
+                    q += Cx.T@rho_mat_x@(np.divide(self.xy[t],self.rho_vec_x[t]) - self.xz[t])[:] 
+                    Q += Cx.T @ rho_mat_x @ Cx
 
-            P = data.Lxu.T
-            A = data.Fx    
-            B = data.Fu 
-
-            h = r + B.T@(self.s[t+1] + self.S[t+1]@self.gap[t])
+            P = data.Lxu.T.copy()
+            A = data.Fx.copy()    
+            B = data.Fu.copy() 
+            h = r + B.T@(self.s[t+1] + self.S[t+1]@self.gap[t].copy())
             G = P + B.T@self.S[t+1]@A
             self.H = R + B.T@self.S[t+1]@B
             if len(G.shape) == 1:
@@ -260,15 +259,16 @@ class CLQR(SolverAbstract, QPSolvers):
                     Lb_uu = scl.cholesky(self.H,  lower=True)
                     break 
                 except:
-                    # print("increasing H")
+                    print("increasing H")
                     self.H += 100*self.regMin*np.eye(len(self.H))
+
             Lb_uu_inv = scl.inv(Lb_uu)
             H_inv = Lb_uu_inv.T @ Lb_uu_inv
             self.L[t][:,:] = -1* H_inv @ G
             self.l[t][:] = -1*H_inv @ h
             
             self.S[t] = Q + A.T @ (self.S[t+1])@A - self.L[t].T@self.H@self.L[t] 
-            self.s[t] = q + A.T @ (self.S[t+1] @ self.gap[t] + self.s[t+1]) + \
+            self.s[t] = q + A.T @ (self.S[t+1] @ self.gap[t].copy() + self.s[t+1]) + \
                             G.T@self.l[t][:]+ self.L[t].T@(h + self.H@self.l[t][:])
 
     def solve(self, init_xs=None, init_us=None, maxiter=100, isFeasible=False, regInit=None):

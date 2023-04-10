@@ -87,13 +87,13 @@ terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
 # terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
 
 # Create the shooting problem
-T = 30
+T = 2
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 
 # choose scenario: 0 or 1 or 2
-option = 1
+option = 0
 
 if option == 0:    
   clip_state_max = np.array([np.inf]*14)
@@ -125,25 +125,55 @@ us = [np.zeros(nu)] * T
 # ddp = CILQR(problem, constraintModels, "ProxQP")
 # ddp = CILQR(problem, constraintModels, "sparceADMM")
 # ddp = CILQR(problem, constraintModels, "CustomOSQP")
-ddp1 = CLQR(problem, constraintModels, "Boyd")
+ddp1 = CLQR(problem, constraintModels, "sparceADMM")
 
+ddp2 = CLQR(problem, constraintModels, "Boyd")
+ddp1.solve(xs, us, 1)
 
-# ddp1 = GNMS(problem)
-ddp2 = CLQR(problem, constraintModels, "sparceADMM")
-
-# ddp2 = CLQR(problem, [NoConstraint()]*(T+1), "ProxQP")
+print(100*"*")
 
 ddp2.solve(xs, us, 1)
-
 print(100*"*")
 
 
-ddp1.solve(xs, us, 1)
-print(100*"*")
+# print("NORM X_K", np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)))
+# print("NORM U_K", np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)))
 
+##### UNIT TEST #####################################
 
-print("NORM X_K", np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)))
-print("NORM U_K", np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)))
+set_tol = 1e-6
+dx_relaxed = np.array(ddp1.dx_tilde).flatten()[nx:]
+du_relaxed = np.array(ddp1.du_tilde).flatten()
+d_relaxed = np.hstack((dx_relaxed, du_relaxed))
+
+print(d_relaxed - ddp2.xtilde_k_1)
+
+assert np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)) < set_tol, "Test failed"
+
+assert np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)) < set_tol, "Test failed"
+
+dx_relaxed = np.array(ddp1.dx_relaxed).flatten()[nx:]
+du_relaxed = np.array(ddp1.du_relaxed).flatten()
+d_relaxed = np.hstack((dx_relaxed, du_relaxed))
+assert np.linalg.norm( d_relaxed- np.array(ddp2.x_k_1)) < set_tol, "Test failed"
+
+xz = np.array(ddp1.xz).flatten()[nx:]
+uz = np.array(ddp1.uz).flatten()[:-nu]
+z = np.hstack((xz, uz))
+assert np.linalg.norm(z - np.array(ddp2.z_k)) < set_tol, "Test failed"
+
+xy = np.array(ddp1.xy).flatten()[nx:]
+uy = np.array(ddp1.uy).flatten()[:-nu]
+y = np.hstack((xy, uy))
+assert np.linalg.norm(y - np.array(ddp2.y_k)) < set_tol, "Test failed"
+
+rho_x = np.array(ddp1.rho_vec_x).flatten()[nx:]
+rho_u = np.array(ddp1.rho_vec_u).flatten()[:-nu]
+rho = np.hstack((rho_x, rho_u))
+
+assert np.linalg.norm(rho - np.array(ddp2.rho_vec_boyd)) < set_tol, "Test failed"
+
+assert np.linalg.norm(ddp1.rho_estimate_sparse - ddp2.rho_estimate_boyd) < set_tol, "Test failed"
 
 # assert False
 # Extract DDP data and plot
