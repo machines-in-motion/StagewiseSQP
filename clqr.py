@@ -37,7 +37,7 @@ class CLQR(SolverAbstract, QPSolvers):
         self.allocateQPData()
         self.allocateData()
 
-        self.max_iters = 25
+        self.max_iters = 100
 
     def reset_params(self):
         
@@ -106,8 +106,8 @@ class CLQR(SolverAbstract, QPSolvers):
                                 print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
                                     , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
                                 break
-                print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
-                , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
+                    print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
+                    , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
 
             print("\n")
                 

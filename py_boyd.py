@@ -130,8 +130,8 @@ class BoydADMM():
                     converged = True               
                     break
 
-            print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
-                            , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd), "\n") 
+                print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
+                                , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd), "\n") 
 
         if not converged:
             print("Not Converged ... \n")
