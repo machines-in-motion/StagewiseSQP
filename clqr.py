@@ -315,13 +315,13 @@ class CLQR(SolverAbstract, QPSolvers):
         self.dx_tilde = [np.zeros(m.state.ndx) for m  in self.models()]
         self.du_tilde = [np.zeros(m.nu) for m  in self.problem.runningModels] 
 
-        self.dz_relaxed = [np.zeros(m.nu) for m  in self.problem.runningModels] 
 
         self.dx_test = [np.zeros(m.state.ndx) for m  in self.models()]
         self.du_test = [np.zeros(m.nu) for m  in self.problem.runningModels] 
         
 
         self.constraintData = [cmodel.createData() for cmodel in self.constraintModel]
+        self.dz_relaxed = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
         #
         self.S = [np.zeros([m.state.ndx, m.state.ndx]) for m in self.models()]   
         self.s = [np.zeros(m.state.ndx) for m in self.models()]   

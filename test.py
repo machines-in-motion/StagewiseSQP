@@ -24,9 +24,7 @@ nu = 2
 
 lxmin = -np.inf*np.ones(nx)
 lxmax = np.array([0.5, 0.1, np.inf, np.inf])
-lumin = -np.inf*np.ones(nu)
-lumax = np.inf*np.ones(nu)
-ConstraintModel = StateConstraintModel(lxmin, lxmax, 4, 4, 2)
+ConstraintModel = [NoConstraint(4, 2)] + [StateConstraintModel(lxmin, lxmax, 4, 4, 2)] * horizon
 
 
 # print("TEST 1: GNMS = SparceADMM with sigma = 0".center(LINE_WIDTH, "-"))
@@ -49,8 +47,8 @@ ConstraintModel = StateConstraintModel(lxmin, lxmax, 4, 4, 2)
 print("\n\n")
 print("TEST 2: BOYD = SparceADMM".center(LINE_WIDTH, "-"))
 
-ddp1 = CLQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
-ddp2 = CLQR(problem, [ConstraintModel]*(horizon+1), "Boyd")
+ddp1 = CLQR(problem, ConstraintModel, "sparceADMM")
+ddp2 = CLQR(problem, ConstraintModel, "Boyd")
 xs = [10*np.ones(4)] * (horizon + 1)
 us = [np.ones(2)*100 for t in range(horizon)] 
 
@@ -58,9 +56,6 @@ converged = ddp1.solve(xs, us, 1)
 converged = ddp2.solve(xs, us, 1)
 
 
-dx_relaxed = np.array(ddp1.dx_tilde).flatten()[4:]
-du_relaxed = np.array(ddp1.du_tilde).flatten()
-d_relaxed = np.hstack((dx_relaxed, du_relaxed))
 
 ##### UNIT TEST #####################################
 
@@ -72,24 +67,17 @@ assert np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)) < set_tol, "Test fa
 
 assert np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)) < set_tol, "Test failed"
 
-dx_relaxed = np.array(ddp1.dx_relaxed).flatten()[4:]
-du_relaxed = np.array(ddp1.du_relaxed).flatten()
-d_relaxed = np.hstack((dx_relaxed, du_relaxed))
-assert np.linalg.norm( d_relaxed- np.array(ddp2.x_k_1)) < set_tol, "Test failed"
 
-xz = np.array(ddp1.xz).flatten()[4:]
-uz = np.array(ddp1.uz).flatten()[:-2]
-z = np.hstack((xz, uz))
+d_relaxed = np.array(ddp1.dz_relaxed[1:]).flatten()
+assert np.linalg.norm(d_relaxed - np.array(ddp2.x_k_1)) < set_tol, "Test failed"
+
+z = np.array(ddp1.z[1:]).flatten()
 assert np.linalg.norm(z - np.array(ddp2.z_k)) < set_tol, "Test failed"
 
-xy = np.array(ddp1.xy).flatten()[4:]
-uy = np.array(ddp1.uy).flatten()[:-2]
-y = np.hstack((xy, uy))
+y = np.array(ddp1.y[1:]).flatten()
 assert np.linalg.norm(y - np.array(ddp2.y_k)) < set_tol, "Test failed"
 
-rho_x = np.array(ddp1.rho_vec_x).flatten()[4:]
-rho_u = np.array(ddp1.rho_vec_u).flatten()[:-2]
-rho = np.hstack((rho_x, rho_u))
+rho = np.array(ddp1.rho_vec[1:]).flatten()
 
 assert np.linalg.norm(rho - np.array(ddp2.rho_vec_boyd)) < set_tol, "Test failed"
 
