@@ -34,16 +34,17 @@ class QPSolvers(CustomOSQP, BoydADMM):
         B = np.zeros(self.problem.T*self.nx)
 
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
+            index_u = self.problem.T*self.nx + t * self.nu
             if t>=1:
                 index_x = (t-1) * self.nx
                 P[index_x:index_x+self.nx, index_x:index_x+self.nx] = data.Lxx.copy()
+                P[index_x:index_x+self.nx, index_u:index_u+self.nu] = data.Lxu.copy()
+                P[index_u:index_u+self.nu, index_x:index_x+self.nx] = data.Lxu.T.copy()
                 q[index_x:index_x+self.nx] = data.Lx.copy()
 
-            index_u = self.problem.T*self.nx + t * self.nu
             P[index_u:index_u+self.nu, index_u:index_u+self.nu] = data.Luu.copy()
             q[index_u:index_u+self.nu] = data.Lu.copy()
             
-            index_u = self.problem.T*self.nx + t * self.nu
             A[t * self.nx: (t+1) * self.nx, index_u:index_u+self.nu] = - data.Fu.copy() 
             A[t * self.nx: (t+1) * self.nx, t * self.nx: (t+1) * self.nx] = np.eye(self.nx)
 
