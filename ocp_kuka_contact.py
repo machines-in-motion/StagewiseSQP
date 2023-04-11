@@ -10,7 +10,7 @@ np.set_printoptions(precision=4, linewidth=180)
 import pin_utils, ocp_utils
 from gnms_cpp import GNMSCPP
 from gnms import GNMS
-from constraintmodel import StateConstraintModel, EndEffConstraintModel, Force6DConstraintModel, NoConstraint
+from constraintmodel import StateConstraintModel, EndEffConstraintModel, Force6DConstraintModel, NoConstraint, LocalCone
 
 from clqr import CLQR
 from cilqr import CILQR
@@ -70,7 +70,7 @@ uRegCost = crocoddyl.CostModelResidual(state, uResidual)
 xResidual = crocoddyl.ResidualModelState(state, x0)
 xRegCost = crocoddyl.CostModelResidual(state, xResidual)
   # End-effector frame force cost
-desired_wrench = np.array([0., 0., -20., 0., 0., 0.])
+desired_wrench = np.array([10., 0., -100., 0., 0., 0.])
 frameForceResidual = crocoddyl.ResidualModelContactForce(state, contact_frame_id, pinocchio.Force(desired_wrench), 6, actuation.nu)
 contactForceCost = crocoddyl.CostModelResidual(state, frameForceResidual)
 
@@ -104,7 +104,9 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 Fmin = np.array([-np.inf, -np.inf, -20, -np.inf, -np.inf, -np.inf])
 Fmax =  np.array([0, np.inf, np.inf, np.inf, np.inf, np.inf])
 constraintModels = [Force6DConstraintModel(Fmin, Fmax, 6, 14, 7)] * T + [NoConstraint(14, 7)]
-# constraintModels = [NoConstraint()] * (T+1)
+mu = 100
+constraintModels = [LocalCone(mu, 1, 14, 7)] * T + [NoConstraint(14, 7)]
+# constraintModels = [NoConstraint(14, 7)] * (T+1)
 
 
 

@@ -12,7 +12,7 @@ class ConstraintModelAbstact():
     def createData(self):
         data = ConstraintData(self)
         return data
-
+        
 
 class ConstraintData():
     def __init__(self, cmodel):
@@ -108,12 +108,43 @@ class Force6DConstraintModel(ConstraintModelAbstact):
         cdata.Cu = data.differential.df_du
 
 
+
+class LocalCone(ConstraintModelAbstact):
+    def __init__(self, mu, nc, nx, nu):
+        ConstraintModelAbstact.__init__(self, nc, nx, nu)
+        self.lmin = np.array([0.])
+        self.lmax = np.array([np.inf])
+        self.mu = mu
+        self.dcone_df = np.zeros((1, 3))
+
+        self.nc = nc 
+        assert nc == 1 
+
+    def calc(self, cdata, data, x, u=None): 
+        F = data.differential.pinocchio.lambda_c[:3]
+        cdata.c = - F[2] - self.mu * np.sqrt(F[0]**2 + F[1]**2)
+
+    def calcDiff(self, cdata, data, x, u=None):
+        F = data.differential.pinocchio.lambda_c[:3]
+        Fx = data.differential.df_dx[:3]
+        Fu = data.differential.df_du[:3]
+
+        self.dcone_df[0, 0] = - self.mu * F[0] / np.sqrt(F[0]**2 + F[1]**2)
+        self.dcone_df[0, 1] = - self.mu * F[1] / np.sqrt(F[0]**2 + F[1]**2)
+        self.dcone_df[0, 2] = - 1
+
+        cdata.Cx = self.dcone_df @ data.differential.df_dx[:3]
+        cdata.Cu = self.dcone_df @ data.differential.df_du[:3]
+
+
 class NoConstraint(ConstraintModelAbstact):
     def __init__(self, nx, nu):
         ConstraintModelAbstact.__init__(self, 0, nx, nu)
         self.nc = 0
         self.Cx = np.zeros((self.nc, nx))
         self.Cu = np.zeros((self.nc, nu))
+        self.lmin = np.array([])
+        self.lmax = np.array([])
 
     def calc(self, cdata, data, x, u=None): 
         cdata.c = np.array([])
@@ -143,3 +174,20 @@ class ConstraintModel(ConstraintModelAbstact):
         cdata.Cx = np.concatenate([cdata.Cx for cdata in self.cdatas])    
         cdata.Cu = np.concatenate([cdata.Cu for cdata in self.cdatas])    
     
+    
+    def compute_CxCu(self, dx, du):
+        """returns Cx @ dx , Cu @ du"""
+        z = np.zeros(self.nc)
+        count = 0
+        for (ci, di) in zip(self.cmodels, self.cdatas):
+            z[count: count + ci.nc] = di.Cx @ dx + di.Cu @ du
+            count += ci.nc
+        return z
+
+    def compute_transpose(self, vec):
+        """returns Cx.T @ vec , Cu.T @ vec"""
+        pass
+
+    def compute_ADMM_hessian(self, rho_vec):
+        """returns Cx.T @ rho_mat@ Cx, Cx.T @ rho_mat@ Cu, Cu.T @ rho_mat@ Cu ,"""
+        pass
