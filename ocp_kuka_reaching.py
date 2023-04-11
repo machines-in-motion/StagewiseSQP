@@ -108,7 +108,7 @@ if option == 0:
 
   clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7)
   TerminalConstraintModel = StateConstraintModel(-clip_state_end, clip_state_end, 7, 14, 7)
-  constraintModels = [controlmodel] + [ConstraintModel] * (T-1) + [TerminalConstraintModel]
+  constraintModels = [controlmodel] + [controlmodel] * (T-1) + [TerminalConstraintModel]
 
 elif option == 1:    
   clip_state_max = np.array([np.inf]*14)
@@ -133,11 +133,11 @@ xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 # ddp2 = GNMSCPP(problem) 
 # ddp2 = CILQR(problem, constraintModels, "OSQP")
-ddp1 = CILQR(problem, constraintModels, "sparceADMM")
+ddp1 = CLQR(problem, constraintModels, "sparceADMM")
 # ddp = CILQR(problem, constraintModels, "sparceADMM")
 # ddp2 = CLQR(problem, constraintModels, "CustomOSQP")
 # ddp1 = CLQR(problem, constraintModels, "sparceADMM")
-ddp2 = CILQR(problem, constraintModels, "Boyd")
+ddp2 = CLQR(problem, constraintModels, "Boyd")
 
 
 

@@ -9,6 +9,7 @@ from qpsolvers import QPSolvers
 from scipy.sparse.linalg import spsolve
 import eigenpy
 from decimal import *
+import time
 
 LINE_WIDTH = 100 
 
@@ -94,8 +95,12 @@ class CLQR(SolverAbstract, QPSolvers):
 
         else:
             for iter in range(1, self.max_iters+1):
+                if (iter) % self.rho_update_interval == 1 or iter == 1:
+                    self.backwardPass()  
+                else:
+                    # self.backwardPass()  
+                    self.backwardPass_without_rho_update()
                 
-                self.backwardPass()  
                 self.computeUpdates()
                 self.update_lagrangian_parameters_infinity()
                 self.update_rho_sparse(iter)
@@ -111,7 +116,6 @@ class CLQR(SolverAbstract, QPSolvers):
                     , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
 
             print("\n")
-                
     def update_rho_sparse(self, iter):
         scale = (self.norm_primal * self.norm_dual_rel)/(self.norm_dual * self.norm_primal_rel)
         scale = np.sqrt(scale)
@@ -149,7 +153,9 @@ class CLQR(SolverAbstract, QPSolvers):
 
             z_k = self.z[t].copy()
             
-            self.dz_relaxed[t] = self.alpha * (Cx @ self.dx_tilde[t].copy() + Cu @ self.du_tilde[t].copy()) + (1 - self.alpha)*self.z[t]
+            Cdx_Cdu = Cx @ self.dx_tilde[t].copy() + Cu @ self.du_tilde[t].copy()
+
+            self.dz_relaxed[t] = self.alpha * (Cdx_Cdu) + (1 - self.alpha)*self.z[t]
 
             self.z[t] = np.clip(self.dz_relaxed[t] + np.divide(self.y[t], self.rho_vec[t]), cmodel.lmin - cdata.c, cmodel.lmax - cdata.c)
             
@@ -162,8 +168,8 @@ class CLQR(SolverAbstract, QPSolvers):
             dual_vecu = Cu.T @  np.multiply(self.rho_vec[t], (self.z[t] - z_k)) 
 
             self.norm_dual = max(self.norm_dual, max(abs(dual_vecx)), max(abs(dual_vecu)))
-            self.norm_primal = max(self.norm_primal, max(abs(Cx@self.dx[t] + Cu@self.du[t] - self.z[t])))
-            self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cx@self.dx[t]+Cu@self.du[t])))
+            self.norm_primal = max(self.norm_primal, max(abs(Cdx_Cdu - self.z[t])))
+            self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cdx_Cdu)))
             self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.z[t])))
             self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.y[t])), max(abs(Cu.T@self.y[t])))
 
@@ -176,7 +182,9 @@ class CLQR(SolverAbstract, QPSolvers):
 
             z_k = self.z[-1].copy()
 
-            self.dz_relaxed[-1] = self.alpha * Cx @ self.dx_tilde[-1].copy() + (1 - self.alpha)*self.z[-1]
+            Cdx = Cx @ self.dx_tilde[-1].copy()
+
+            self.dz_relaxed[-1] = self.alpha * Cdx + (1 - self.alpha)*self.z[-1]
 
             self.z[-1] = np.clip(self.dz_relaxed[-1] + np.divide(self.y[-1], self.rho_vec[-1]), cmodel.lmin - cdata.c, cmodel.lmax - cdata.c)
             self.y[-1] += np.multiply(self.rho_vec[-1], (self.dz_relaxed[-1] - self.z[-1])) 
@@ -186,7 +194,7 @@ class CLQR(SolverAbstract, QPSolvers):
             dual_vec = Cx.T@np.multiply(self.rho_vec[-1], (self.z[-1] - z_k))
 
             self.norm_dual = max(self.norm_dual, max(abs(dual_vec)))
-            self.norm_primal = max(self.norm_primal, max(abs(Cx@self.dx[-1] - self.z[-1])))
+            self.norm_primal = max(self.norm_primal, max(abs(Cdx - self.z[-1])))
             self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cx@self.dx[-1])))
             self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.z[-1])))
             self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.y[-1])))
@@ -241,6 +249,7 @@ class CLQR(SolverAbstract, QPSolvers):
                 Cx, Cu = cdata.Cx, cdata.Cu
                 r += Cu.T @ (self.y[t] - rho_mat @self.z[t])[:]
                 R += Cu.T @ rho_mat @ Cu
+
                 if t > 0:
                     q += Cx.T@(self.y[t] - rho_mat@self.z[t])[:]
                     Q += Cx.T @ rho_mat @ Cx
@@ -249,19 +258,49 @@ class CLQR(SolverAbstract, QPSolvers):
             A = data.Fx.copy()    
             B = data.Fu.copy() 
             h = r + B.T@(self.s[t+1] + self.S[t+1]@self.gap[t].copy())
-            G = P + B.T@self.S[t+1]@A
-            self.H = R + B.T@self.S[t+1]@B
-            if len(G.shape) == 1:
-                G = np.resize(G,(1,G.shape[0]))
+            self.G[t] = P + B.T@self.S[t+1]@A
+            if len(self.G[t].shape) == 1:
+                self.G[t] = np.resize(self.G[t],(1,self.G[t].shape[0]))
             
-            H_llt = eigenpy.LLT(self.H.copy())
-            self.L[t][:,:] = -1* H_llt.solve(G)
-            self.l[t][:] = -1*H_llt.solve(h)
+            self.H[t] = R + B.T@self.S[t+1]@B
+
+            self.H_llt[t] = eigenpy.LLT(self.H[t])
+            self.L[t][:,:] = -1* self.H_llt[t].solve(self.G[t])
+            self.l[t][:] = -1*self.H_llt[t].solve(h)
         
 
-            self.S[t] = Q + A.T @ (self.S[t+1])@A - self.L[t].T@self.H@self.L[t] 
+            self.S[t] = Q + A.T @ (self.S[t+1])@A - self.L[t].T@self.H[t]@self.L[t] 
             self.s[t] = q + A.T @ (self.S[t+1] @ self.gap[t].copy() + self.s[t+1]) + \
-                            G.T@self.l[t][:]+ self.L[t].T@(h + self.H@self.l[t][:])
+                            self.G[t].T@self.l[t][:]+ self.L[t].T@(h + self.H[t]@self.l[t][:])
+
+    def backwardPass_without_rho_update(self): 
+        self.s[-1][:] = self.problem.terminalData.Lx.copy() - self.sigma_sparse * self.dx[-1]
+        if self.constraintModel[-1].nc != 0:
+            rho_mat = self.rho_vec[-1]*np.eye(len(self.rho_vec[-1]))
+            Cx = self.constraintData[-1].Cx
+            self.s[-1][:] +=  Cx.T @ ( self.y[-1] - rho_mat @ self.z[-1])[:]  
+
+        for t, (model, data, cdata) in rev_enumerate(zip(self.problem.runningModels,self.problem.runningDatas, self.constraintData[:-1])):
+            rho_mat = self.rho_vec[t]*np.eye(len(self.rho_vec[t]))
+            q = data.Lx.copy() - self.sigma_sparse * self.dx[t] 
+            r = data.Lu.copy() - self.sigma_sparse * self.du[t]
+
+            if self.constraintModel[t].nc != 0:
+                Cx, Cu = cdata.Cx, cdata.Cu
+                r += Cu.T @ (self.y[t] - rho_mat @self.z[t])[:]
+
+                if t > 0:
+                    q += Cx.T@(self.y[t] - rho_mat@self.z[t])[:]
+
+            A = data.Fx.copy()    
+            B = data.Fu.copy() 
+            h = r + B.T@(self.s[t+1] + self.S[t+1]@self.gap[t].copy())
+            
+            self.l[t][:] = -1*self.H_llt[t].solve(h)
+        
+            self.s[t] = q + A.T @ (self.S[t+1] @ self.gap[t].copy() + self.s[t+1]) + \
+                            self.G[t].T@self.l[t][:]+ self.L[t].T@(h + self.H[t]@self.l[t][:])
+            
 
     def solve(self, init_xs=None, init_us=None, maxiter=100, isFeasible=False, regInit=None):
         #___________________ Initialize ___________________#
@@ -272,7 +311,11 @@ class CLQR(SolverAbstract, QPSolvers):
 
         init_xs[0][:] = self.problem.x0.copy() # Initial condition guess must be x0
         self.setCandidate(init_xs, init_us, False)
+        t1 = time.time()
         self.computeDirection()
+        t2 = time.time()
+        print("TIME", t2 - t1)
+
         self.acceptStep(alpha = 1.0)
         # self.reset_params()
         
@@ -319,6 +362,10 @@ class CLQR(SolverAbstract, QPSolvers):
         self.s = [np.zeros(m.state.ndx) for m in self.models()]   
         self.L = [np.zeros([m.nu, m.state.ndx]) for m in self.problem.runningModels]
         self.l = [np.zeros([m.nu]) for m in self.problem.runningModels]
+        
+        self.H = [np.zeros([m.nu, m.nu]) for m in self.problem.runningModels]   
+        self.G = [np.zeros([m.state.nx, m.state.nx]) for m in self.problem.runningModels]   
+        self.H_llt = [np.array([0]) for m in self.problem.runningModels]
         #
         self.x_grad = [np.zeros(m.state.ndx) for m in self.models()]
         self.u_grad = [np.zeros(m.nu) for m in self.problem.runningModels]
