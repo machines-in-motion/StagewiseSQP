@@ -70,26 +70,25 @@ class EndEffConstraintModel(ConstraintModelAbstact):
         self.frame_id = pin_robot.model.getFrameId("contact")
         self.nc = nc
         self.Cu = np.zeros((self.nc, nu))
+        self.Cx = np.zeros((self.nc, nx))
 
 
     def calc(self, cdata, data, x, u=None): 
-        q = x[:self.pin_robot.nq]
+        # q = x[:self.pin_robot.nq]
+        # pin.updateFramePlacements(self.pin_robot.model, self.pin_robot.data)
+        # cdata.c = get_p(q, self.pin_robot, self.frame_id)
 
-        pin.updateFramePlacements(self.pin_robot.model, self.pin_robot.data)
-
-        cdata.c = get_p(q, self.pin_robot, self.frame_id)
-
+        cdata.c = data.differential.pinocchio.oMf[self.frame_id].translation
 
     def calcDiff(self, cdata, data, x, u=None): 
-        q = x[:self.pin_robot.nq]
-        pin.updateFramePlacements(self.pin_robot.model, self.pin_robot.data)
-
-        J = pin.computeFrameJacobian(self.pin_robot.model, self.pin_robot.data, q, self.frame_id, pin.LOCAL_WORLD_ALIGNED)[:3]
-
-        Cx = np.zeros((self.nc, 2*self.pin_robot.nq))
-        Cx[:, :self.pin_robot.nq] = J
-
-        cdata.Cx = Cx
+        J = pin.getFrameJacobian(self.pin_robot.model, data.differential.pinocchio, self.frame_id, pin.LOCAL_WORLD_ALIGNED)[:3]
+        
+        # q = x[:self.pin_robot.nq]
+        # pin.updateFramePlacements(self.pin_robot.model, self.pin_robot.data)
+        # J = pin.computeFrameJacobian(self.pin_robot.model, self.pin_robot.data, q, self.frame_id, pin.LOCAL_WORLD_ALIGNED)[:3]
+        
+        self.Cx[:, :self.pin_robot.nq] = J.copy()
+        cdata.Cx = self.Cx
         cdata.Cu = self.Cu
 
 
