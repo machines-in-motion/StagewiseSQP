@@ -79,18 +79,19 @@ class GNMS(SolverAbstract):
 
         # print("\n")
 
-    def KKT_check(self):
+   def KKT_check(self):
         self.KKT = 0
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
-            # self.KKT += max(abs(data.Lxx @ self.dx[t] + data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t]))
-            # self.KKT += max(abs(data.Luu @ self.du[t] + data.Lu + data.Fu.T @ self.lag_mul[t+1]))
-            self.KKT += max(abs(data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t]))
-            self.KKT += max(abs(data.Lu + data.Fu.T @ self.lag_mul[t+1]))
+            self.KKT = max(self.KKT, max(abs(data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t])))
+            self.KKT = max(self.KKT, max(abs(data.Lu + data.Fu.T @ self.lag_mul[t+1])))
 
-        self.KKT += max(abs(self.problem.terminalData.Lx - self.lag_mul[-1]))
+        self.KKT = max(self.KKT, max(abs(self.problem.terminalData.Lx - self.lag_mul[-1])))
+        self.KKT = max(self.KKT, max(abs(np.array(self.fs).flatten())))
 
         print("\nInfinity norm of KKT condition ", self.KKT)
         print("\n")
+
+
 
     def computeUpdates(self): 
         """ computes step updates dx and du """
