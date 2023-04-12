@@ -12,7 +12,7 @@ np.set_printoptions(precision = 2)
 
 pp = lambda s : np.format_float_scientific(s, exp_digits=2, precision =4)
 
-class BoydADMM():
+class FAdmmKKT():
 
     def __init__(self):
 
@@ -36,11 +36,8 @@ class BoydADMM():
         A_block = sparse.csr_matrix(A_block)
 
         tmp = self.A_in.T@(np.multiply(self.rho_vec_boyd, self.z_k - np.divide(self.y_k, self.rho_vec_boyd)))
-        # import pdb; pdb.set_trace()
         b_block = np.hstack((tmp - self.q + self.sigma_boyd*self.x_k, self.b))
-
-        # A_block_llt = eigenpy.LLT(A_block.todense().copy())
-        # xv_k_1 = A_block_llt.solve(b_block)   
+  
         xv_k_1 = spsolve(A_block, b_block)
         self.xtilde_k_1, self.v_k_1 = xv_k_1[:self.n_vars], xv_k_1[self.n_vars:]
         
@@ -127,16 +124,17 @@ class BoydADMM():
 
             if (iter) % self.rho_update_interval == 0 and iter > 1:
                 if self.r_prim <= eps_prim and self.r_dual <= eps_dual:
-                    print("terminated ... ")
-                    print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
-                , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd), "\n") 
+                    if self.verbose:
+                        print("terminated ... ")
+                        print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
+                    , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd), "\n") 
                     converged = True               
                     break
+                if self.verbose:
+                    print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
+                                    , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd), "\n") 
 
-                print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
-                                , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd), "\n") 
-
-        if not converged:
+        if not converged and self.verbose:
             print("Not Converged ... \n")
             print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
                 , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd))

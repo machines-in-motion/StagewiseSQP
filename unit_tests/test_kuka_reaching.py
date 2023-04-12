@@ -1,29 +1,23 @@
-'''
-Example script : Crocoddyl OCP with KUKA arm 
-static target reaching task
-'''
+### UNIT TEST for SQP using FADMM and FAdmmKKT
+
+import pathlib
+import os
+python_path = pathlib.Path('.').absolute().parent/'python'
+os.sys.path.insert(1, str(python_path))
 
 import crocoddyl
 import numpy as np
 import pinocchio as pin
 np.set_printoptions(precision=4, linewidth=180)
-import ocp_utils
-from gnms import GNMS
-from gnms_cpp import GNMSCPP
-from constraintmodel import StateConstraintModel, ControlConstraintModel, EndEffConstraintModel, NoConstraint, ConstraintModel
+# import ocp_utils
+from sqp_ocp.constraint_model import StateConstraintModel, ControlConstraintModel, EndEffConstraintModel, NoConstraint, ConstraintModelStack
+from sqp_ocp.solvers import SQPOCP
 
-from clqr import CLQR
-from cilqr import CILQR
+LINE_WIDTH = 100
 
 # # # # # # # # # # # # #
 ### LOAD ROBOT MODEL  ###
 # # # # # # # # # # # # #
-
-# # Load robot model directly from URDF & mesh files
-# from pinocchio.robot_wrapper import RobotWrapper
-# urdf_path = '/home/skleff/robot_properties_kuka/urdf/iiwa.urdf'
-# mesh_path = '/home/skleff/robot_properties_kuka'
-# robot = RobotWrapper.BuildFromURDF(urdf_path, mesh_path) 
 
 # Or use robot_properties_kuka 
 from robot_properties_kuka.config import IiwaConfig
@@ -104,7 +98,7 @@ if option == 0:
   statemodel = StateConstraintModel(clip_state_min, clip_state_max, 7, 14, 7)
   controlmodel = ControlConstraintModel(-clip_ctrl, clip_ctrl, 7, 14, 7)
 
-  ConstraintModel = ConstraintModel([statemodel, controlmodel], 14, 7)
+  ConstraintModel = ConstraintModelStack([statemodel, controlmodel], 14, 7)
 
   clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7)
   TerminalConstraintModel = StateConstraintModel(-clip_state_end, clip_state_end, 7, 14, 7)
@@ -127,30 +121,17 @@ elif option == 2:
 elif option == 3:
   constraintModels = [NoConstraint(14, 7)] * (T+1)
 
-
+print("TEST KUKA PROBLEM SQP OCP".center(LINE_WIDTH, "-"))
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
-# ddp2 = GNMSCPP(problem) 
-# ddp2 = CILQR(problem, constraintModels, "OSQP")
-ddp1 = CLQR(problem, constraintModels, "sparceADMM")
-# ddp = CILQR(problem, constraintModels, "sparceADMM")
-# ddp2 = CLQR(problem, constraintModels, "CustomOSQP")
-# ddp1 = CLQR(problem, constraintModels, "sparceADMM")
-ddp2 = CLQR(problem, constraintModels, "Boyd")
+ddp1 = SQPOCP(problem, constraintModels, "FADMM", verbose = False)
+ddp1.solve(xs, us, 4)
 
 
+ddp2 = SQPOCP(problem, constraintModels, "FAdmmKKT", verbose = False)
 
-ddp1.solve(xs, us, 1)
-
-print(100*"*")
-
-ddp2.solve(xs, us, 1)
-print(100*"*")
-
-
-print("NORM X_K", np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)))
-print("NORM U_K", np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)))
+ddp2.solve(xs, us, 4)
 
 ##### UNIT TEST #####################################
 
@@ -183,20 +164,8 @@ rho = np.concatenate(ddp1.rho_vec).flatten()
 
 assert np.linalg.norm(rho - np.array(ddp2.rho_vec_boyd)) < set_tol, "Test failed"
 
+print("TEST PASSED".center(LINE_WIDTH, "-"))
+print("\n")
 
-print("\n\n\n\n ALL TESTS PASSED")
-
-# assert False
-# Extract DDP data and plot
-# ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
-
-# ocp_utils.plot_ocp_results(ddp_data, which_plots="all", labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
-
-# xs_ddp = [x0] * (T+1)
-# us_ddp = [np.zeros(nu)] * T 
-# ddp.solve(xs_ddp, us_ddp, maxiter=200)
-
-# print(np.linalg.norm(np.array(ddp.us) - np.array(GNMS.us)))
-# print(np.linalg.norm(np.array(ddp.xs) - np.array(GNMS.xs)))
 
 

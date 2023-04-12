@@ -3,12 +3,9 @@
 ## Date : 9/3/2022
 
 import numpy as np
-from numpy import linalg
-import proxsuite
-
 import scipy.linalg as scl
-import osqp
-from clqr import CLQR
+from . fadmm import FADMM
+from .qpsolvers import QPSolvers
 
 def rev_enumerate(l):
     return reversed(list(enumerate(l)))
@@ -20,10 +17,17 @@ def raiseIfNan(A, error=None):
     if np.any(np.isnan(A)) or np.any(np.isinf(A)) or np.any(abs(np.asarray(A)) > 1e30):
         raise error
 
-class CILQR(CLQR):
+class SQPOCP(FADMM, QPSolvers):
 
-    def __init__(self, shootingProblem, constraintModel, method="ProxQP"):
-        CLQR.__init__(self, shootingProblem, constraintModel, method=method)
+    def __init__(self, shootingProblem, constraintModel, method, verbose = False):
+        self.verbose = verbose
+        if method == "FADMM":
+            FADMM.__init__(self, shootingProblem, constraintModel, verbose = self.verbose)
+            self.using_qp = 0        
+        else:
+            QPSolvers.__init__(self, shootingProblem, constraintModel, method, verbose = self.verbose)
+            self.using_qp = 1        
+
         self.mu = 1e1
     
     def models(self):
@@ -71,10 +75,14 @@ class CILQR(CLQR):
 
         alpha = None
         for i in range(maxiter):
-            self.computeDirection()
+            if self.using_qp:
+                self.computeDirectionFullQP()
+            else:
+                self.computeDirection()
 
             self.merit =  self.cost + self.mu*self.gap_norm
-            print("iter", i, "merit", self.merit, "cost", self.cost, "gap norms", self.gap_norm, "dx norm", self.x_grad_norm, "du norm", self.u_grad_norm, "alpha", alpha)
+            if self.verbose:
+                print("iter", i, "merit", self.merit, "cost", self.cost, "gap norms", self.gap_norm, "dx norm", self.x_grad_norm, "du norm", self.u_grad_norm, "alpha", alpha)
 
             alpha = 1.
             self.tryStep(alpha)
@@ -93,8 +101,9 @@ class CILQR(CLQR):
                     break
         
             if self.x_grad_norm < 1e-5 and self.u_grad_norm < 1e-5:
-                print("Converged")
+                if self.verbose:
+                    print("Converged")
                 break
-
-        print("Final :", " merit", self.merit, "cost", self.cost, "gap norms", self.gap_norm, "dx norm", self.x_grad_norm, "du norm", self.u_grad_norm, "alpha", alpha)
+        if self.verbose:
+            print("Final :", " merit", self.merit, "cost", self.cost, "gap norms", self.gap_norm, "dx norm", self.x_grad_norm, "du norm", self.u_grad_norm, "alpha", alpha)
     

@@ -1,7 +1,14 @@
+
+import pathlib
+import os
+import sys
+python_path = pathlib.Path('.').absolute().parent.parent/'python'
+os.sys.path.insert(1, str(python_path))
+
 import numpy as np
 import crocoddyl
 import matplotlib.pyplot as plt
-from gnms import GNMS
+from sqp_ocp.solvers import GNMSCPP,GNMS
 
 LINE_WIDTH = 100
 
@@ -195,7 +202,7 @@ if __name__ == "__main__":
     us = [10*np.ones(2)] * T
     converged = ddp.solve(xs, us, maxiter=20)
     print(converged)
-    assert False
+
     if converged:
         print(" DDP solver has CONVERGED ".center(LINE_WIDTH, "-"))
     else:

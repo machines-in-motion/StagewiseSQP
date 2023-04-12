@@ -1,28 +1,21 @@
-'''
-Example script : Crocoddyl OCP with KUKA arm 
-contact force task 
-'''
+### Kuka reaching with force constraints
+
+import pathlib
+import os
+python_path = pathlib.Path('.').absolute().parent/'python'
+os.sys.path.insert(1, str(python_path))
 
 import crocoddyl
 import pinocchio
 import numpy as np
 np.set_printoptions(precision=4, linewidth=180)
 import pin_utils, ocp_utils
-from gnms_cpp import GNMSCPP
-from gnms import GNMS
-from constraintmodel import StateConstraintModel, EndEffConstraintModel, Force6DConstraintModel, NoConstraint, LocalCone
+from sqp_ocp.constraint_model import NoConstraint, LocalCone
+from sqp_ocp.solvers import SQPOCP
 
-from clqr import CLQR
-from cilqr import CILQR
 # # # # # # # # # # # # #
 ### LOAD ROBOT MODEL  ###
 # # # # # # # # # # # # #
-
-# # Load robot model directly from URDF & mesh files
-# from pinocchio.robot_wrapper import RobotWrapper
-# urdf_path = '/home/skleff/robot_properties_kuka/urdf/iiwa.urdf'
-# mesh_path = '/home/skleff/robot_properties_kuka'
-# robot = RobotWrapper.BuildFromURDF(urdf_path, mesh_path) 
 
 # Or use robot_properties_kuka 
 from robot_properties_kuka.config import IiwaConfig
@@ -112,34 +105,21 @@ constraintModels = [LocalCone(mu, 1, 14, 7)] * T + [NoConstraint(14, 7)]
 
 
 
-ddp1 = CILQR(problem, constraintModels, "sparceADMM")
-ddp2 = CILQR(problem, constraintModels, "Boyd")
+ddp = SQPOCP(problem, constraintModels, "FADMM")
 
 
 xs_init = [x0 for i in range(T+1)]
-us_init = ddp1.problem.quasiStatic(xs_init[:-1])
+us_init = ddp.problem.quasiStatic(xs_init[:-1])
 
 # Solve
 
-ddp1.solve(xs_init, us_init, 100)
+ddp.solve(xs_init, us_init, 100)
 
 print(100*"*")
 
-# ddp2.solve(xs_init, us_init, 100)
-# print(100*"*")
-
-
-# print("NORM X_K", np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)))
-# print("NORM U_K", np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)))
-
-
-
-
-
-
 # Extract DDP data and plot
 ddp_data = {}
-ddp_data = ocp_utils.extract_ocp_data(ddp1, ee_frame_name='contact', ct_frame_name='contact')
+ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact', ct_frame_name='contact')
 
 ocp_utils.plot_ocp_results(ddp_data, which_plots='all', labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
 

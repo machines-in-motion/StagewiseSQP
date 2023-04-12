@@ -1,5 +1,8 @@
+import pathlib
 import os
 import sys
+python_path = pathlib.Path('.').absolute().parent.parent/'python'
+os.sys.path.insert(1, str(python_path))
 
 import numpy as np
 
@@ -7,8 +10,7 @@ import crocoddyl
 import example_robot_data
 import pinocchio
 from crocoddyl.utils.biped import SimpleBipedGaitProblem, plotSolution
-from gnms import GNMS
-from gnms_cpp import GNMSCPP
+from sqp_ocp.solvers import GNMS,GNMS
 
 
 WITHDISPLAY = 'display' in sys.argv or 'CROCODDYL_DISPLAY' in os.environ

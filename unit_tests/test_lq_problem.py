@@ -1,11 +1,14 @@
+import pathlib
+import os
+python_path = pathlib.Path('.').absolute().parent/'python'
+os.sys.path.insert(1, str(python_path))
+
 import numpy as np
 import crocoddyl
 import matplotlib.pyplot as plt
-from clqr import CLQR
-from cilqr import CILQR
-from gnms_cpp import GNMSCPP
-from constraintmodel import StateConstraintModel, NoConstraint
-from gnms import GNMS
+
+from sqp_ocp.solvers import SQPOCP, GNMS
+from sqp_ocp.constraint_model import StateConstraintModel, NoConstraint
 
 LINE_WIDTH = 100
 
@@ -120,19 +123,15 @@ class DifferentialActionModelLQ(crocoddyl.DifferentialActionModelAbstract):
 
 
 if __name__ == "__main__":
-    print(" Testing with DDP ".center(LINE_WIDTH, "#"))
     lq_diff_running = DifferentialActionModelLQ()
     lq_diff_terminal = DifferentialActionModelLQ(isTerminal=True)
-    print(" Constructing differential models completed ".center(LINE_WIDTH, "-"))
     dt = 0.1
     horizon = 100
     x0 = np.zeros(4)
     lq_running = crocoddyl.IntegratedActionModelEuler(lq_diff_running, dt)
     lq_terminal = crocoddyl.IntegratedActionModelEuler(lq_diff_terminal, dt)
-    print(" Constructing integrated models completed ".center(LINE_WIDTH, "-"))
 
     problem = crocoddyl.ShootingProblem(x0, [lq_running] * horizon, lq_terminal)
-    print(" Constructing shooting problem completed ".center(LINE_WIDTH, "-"))
 
 
     nx = 4
@@ -142,36 +141,33 @@ if __name__ == "__main__":
     lxmin = -np.inf*np.ones(nx)
     lxmax = np.array([0.5, 0.1, np.inf, np.inf])
     ConstraintModel = StateConstraintModel(lxmin, lxmax, nx, nx, nu)
-
-    # ddp1 = GNMS(problem)
-    ddp1 = CILQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
-
-    # ddp1 = CLQR(problem, [NoConstraint(4, 2)]*(horizon+1), "sparceADMM")
-    # ddp_custom = CLQR(problem, [ConstraintModel]*(horizon+1), "CustomOSQP")
-    # ddp = CLQR(problem, [ConstraintModel]*(horizon+1), "sparceADMM")
-
-    # ddp2 = CLQR(problem, [NoConstraint(4, 2)]*(horizon+1), "Boyd")
-    ddp2 = CILQR(problem, [ConstraintModel]*(horizon+1), "Boyd")
-
-
     xs = [10*np.ones(4)] * (horizon + 1)
     us = [np.ones(2)*100 for t in range(horizon)] 
-    
+
+    print("TEST 1: GNMS = FADMM with sigma = 0".center(LINE_WIDTH, "-"))
+
+    ddp1 = GNMS(problem)
     converged = ddp1.solve(xs, us, 1)
-    print(100*"*")
+
+    ddp2 = SQPOCP(problem, [NoConstraint(nx, nu)]*(horizon+1), "FADMM", verbose = False)
+    ddp2.sigma_sparse = 0.0
     converged = ddp2.solve(xs, us, 1)
-    print(100*"*")
+
+    assert np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)) < 1e-8, "Test failed"
+    assert np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)) < 1e-8, "Test failed"
+
+
+    print("TEST SQP 1 iter : FADMM = FAdmmKKT".center(LINE_WIDTH, "-"))
+
+    ddp1 = SQPOCP(problem, [ConstraintModel]*(horizon+1), "FADMM", verbose = False)
+    converged = ddp1.solve(xs, us, 1)
+
+    ddp2 = SQPOCP(problem, [ConstraintModel]*(horizon+1), "FAdmmKKT", verbose = False)
+    converged = ddp2.solve(xs, us, 1)
     
-    
-    print("NORM X_K", np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)))
-    print("NORM U_K", np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)))
-    if True:
-        print(" DDP solver has CONVERGED ".center(LINE_WIDTH, "-"))
-        plt.figure("trajectory plot")
-        plt.plot(np.array(ddp1.xs)[:, 0], np.array(ddp1.xs)[:, 1], label="ddp1")
-        plt.plot(np.array(ddp2.xs)[:, 0], np.array(ddp2.xs)[:, 1], label="ddp2")
-        plt.xlabel("x")
-        plt.ylabel("y")
-        plt.title("DDP")
-        plt.legend()
-        plt.show()
+
+    assert np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)) < 1e-8, "Test failed"
+    assert np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)) < 1e-8, "Test failed"
+
+    print("ALL TEST PASSED".center(LINE_WIDTH, "-"))
+    print("\n")

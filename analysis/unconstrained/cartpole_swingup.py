@@ -1,12 +1,17 @@
 
 # Display the solution
+import pathlib
+import os
+import sys
+python_path = pathlib.Path('.').absolute().parent.parent/'python'
+os.sys.path.insert(1, str(python_path))
+
+
 import numpy as np
 from cartpole_utils import animateCartpole
 import crocoddyl
 import matplotlib.pyplot as plt
-from gnms import GNMS
-from gnms_cpp import GNMSCPP
-from cilqr import CILQR
+from sqp_ocp.solvers import GNMSCPP,GNMS
 
 class DifferentialActionModelCartpole(crocoddyl.DifferentialActionModelAbstract):
 
@@ -77,8 +82,7 @@ terminalCartpole.costWeights[5] = 0.0001
 problem = crocoddyl.ShootingProblem(x0, [cartpoleIAM] * T, terminalCartpoleIAM)
 # Solving it using DDP
 # ddp = crocoddyl.SolverDDP(problem)
-# ddp = GNMS(problem)
-ddp = CILQR(problem)
+ddp = GNMSCPP(problem)
 
 ddp.setCallbacks([crocoddyl.CallbackVerbose()])
 xs = [x0] * (ddp.problem.T + 1)

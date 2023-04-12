@@ -1,15 +1,18 @@
 from __future__ import print_function
 
+import pathlib
 import os
 import sys
+python_path = pathlib.Path('.').absolute().parent.parent/'python'
+os.sys.path.insert(1, str(python_path))
 
 import crocoddyl
 from crocoddyl.utils.biped import plotSolution
 import numpy as np
 import example_robot_data
 import pinocchio
-from gnms import GNMS
-from gnms_cpp import GNMSCPP
+from sqp_ocp.solvers import GNMSCPP,GNMS
+
 
 WITHDISPLAY = 'display' in sys.argv or 'CROCODDYL_DISPLAY' in os.environ
 WITHPLOT = 'plot' in sys.argv or 'CROCODDYL_PLOT' in os.environ
@@ -161,11 +164,11 @@ x0 = np.concatenate([q0, pinocchio.utils.zero(state.nv)])
 problem = crocoddyl.ShootingProblem(x0, [runningModel1] * T + [runningModel2] * T + [runningModel3] * T, terminalModel)
 
 # Creating the DDP solver for this OC problem, defining a logger
+# solver = GNMSCPP(problem)
 solver = crocoddyl.SolverGNMS(problem)
 solver.set_mu = 1e5
 solver.set_termination_tolerance = 1e-7
 solver.with_callbacks = True
-# solver = GNMSCPP(problem)
 
 # if WITHDISPLAY and WITHPLOT:
 #     solver.setCallbacks([
