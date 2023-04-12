@@ -1,12 +1,15 @@
+import pathlib
 import os
 import sys
+python_path = pathlib.Path('.').absolute().parent.parent/'python'
+os.sys.path.insert(1, str(python_path))
 
 import crocoddyl
 import pinocchio
 import numpy as np
 import example_robot_data
-from gnms import GNMS
-from gnms_cpp import GNMSCPP
+from sqp_ocp.solvers import GNMSCPP,GNMS
+
 
 WITHDISPLAY = 'display' in sys.argv or 'CROCODDYL_DISPLAY' in os.environ
 WITHPLOT = 'plot' in sys.argv or 'CROCODDYL_PLOT' in os.environ

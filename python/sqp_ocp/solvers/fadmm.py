@@ -5,10 +5,7 @@
 import numpy as np
 from crocoddyl import SolverAbstract
 import scipy.linalg as scl
-from qpsolvers import QPSolvers
-from scipy.sparse.linalg import spsolve
 import eigenpy
-from decimal import *
 import time
 
 LINE_WIDTH = 100 
@@ -27,11 +24,9 @@ def raiseIfNan(A, error=None):
         raise error
 
 
-class CLQR(SolverAbstract, QPSolvers):
-    def __init__(self, shootingProblem, constraintModel, method):
-        SolverAbstract.__init__(self, shootingProblem)
-        QPSolvers.__init__(self, method)
-        
+class FADMM(SolverAbstract):
+    def __init__(self, shootingProblem, constraintModel, verbose = False):
+        SolverAbstract.__init__(self, shootingProblem)        
         self.constraintModel = constraintModel
 
         self.reset_params()
@@ -40,6 +35,9 @@ class CLQR(SolverAbstract, QPSolvers):
         self.allocateData()
 
         self.max_iters = 1000
+        self.verbose = verbose
+        if self.verbose:
+            print("USING FADMM")
 
     def reset_params(self):
         
@@ -90,32 +88,32 @@ class CLQR(SolverAbstract, QPSolvers):
 
     def computeDirection(self):
         self.calc(True)
-        if self.method == "ProxQP" or self.method=="OSQP" or self.method == "CustomOSQP" or self.method == "Boyd":
-            self.computeDirectionFullQP(maxit=self.max_iters)
+    
+        for iter in range(1, self.max_iters+1):
+            if (iter) % self.rho_update_interval == 1 or iter == 1:
+                self.backwardPass()  
+            else:
+                # self.backwardPass()  
+                self.backwardPass_without_rho_update()
+            
+            self.computeUpdates()
+            self.update_lagrangian_parameters_infinity()
+            self.update_rho_sparse(iter)
 
-        else:
-            for iter in range(1, self.max_iters+1):
-                if (iter) % self.rho_update_interval == 1 or iter == 1:
-                    self.backwardPass()  
-                else:
-                    # self.backwardPass()  
-                    self.backwardPass_without_rho_update()
-                
-                self.computeUpdates()
-                self.update_lagrangian_parameters_infinity()
-                self.update_rho_sparse(iter)
-
-                if (iter) % self.rho_update_interval == 0 and iter > 1:
-                    if self.norm_primal <= self.eps_abs + self.eps_rel*self.norm_primal_rel and\
-                            self.norm_dual <= self.eps_abs + self.eps_rel*self.norm_dual_rel:
-                                print("CLQR converged")
+            if (iter) % self.rho_update_interval == 0 and iter > 1:
+                if self.norm_primal <= self.eps_abs + self.eps_rel*self.norm_primal_rel and\
+                        self.norm_dual <= self.eps_abs + self.eps_rel*self.norm_dual_rel:
+                            if self.verbose:
+                                print("FADMM converged")
                                 print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
                                     , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
-                                break
+                            break
+                if self.verbose:
                     print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
                     , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
-
+        if self.verbose:
             print("\n")
+            
     def update_rho_sparse(self, iter):
         scale = (self.norm_primal * self.norm_dual_rel)/(self.norm_dual * self.norm_primal_rel)
         scale = np.sqrt(scale)
@@ -302,8 +300,9 @@ class CLQR(SolverAbstract, QPSolvers):
                             self.G[t].T@self.l[t][:]+ self.L[t].T@(h + self.H[t]@self.l[t][:])
             
 
-    def solve(self, init_xs=None, init_us=None, maxiter=100, isFeasible=False, regInit=None):
+    def solve(self, init_xs=None, init_us=None, maxiter=1000, isFeasible=False, regInit=None):
         #___________________ Initialize ___________________#
+        self.max_iters = maxiter
         if init_xs is None or len(init_xs) < 1:
             init_xs = [self.problem.x0.copy() for m in self.models()] 
         if init_us is None or len(init_us) < 1:
@@ -311,10 +310,7 @@ class CLQR(SolverAbstract, QPSolvers):
 
         init_xs[0][:] = self.problem.x0.copy() # Initial condition guess must be x0
         self.setCandidate(init_xs, init_us, False)
-        t1 = time.time()
         self.computeDirection()
-        t2 = time.time()
-        print("TIME", t2 - t1)
 
         self.acceptStep(alpha = 1.0)
         # self.reset_params()
