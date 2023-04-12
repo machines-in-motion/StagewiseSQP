@@ -82,12 +82,11 @@ class GNMS(SolverAbstract):
     def KKT_check(self):
         self.KKT = 0
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
-            # self.KKT += max(abs(data.Lxx @ self.dx[t] + data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t]))
-            # self.KKT += max(abs(data.Luu @ self.du[t] + data.Lu + data.Fu.T @ self.lag_mul[t+1]))
-            self.KKT += max(abs(data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t]))
-            self.KKT += max(abs(data.Lu + data.Fu.T @ self.lag_mul[t+1]))
+            self.KKT = max(self.KKT, max(abs(data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t])))
+            self.KKT = max(self.KKT, max(abs(data.Lu + data.Fu.T @ self.lag_mul[t+1])))
 
-        self.KKT += max(abs(self.problem.terminalData.Lx - self.lag_mul[-1]))
+        self.KKT = max(self.KKT, max(abs(self.problem.terminalData.Lx - self.lag_mul[-1])))
+        self.KKT = max(self.KKT, max(abs(np.array(self.fs).flatten())))
 
         print("\nInfinity norm of KKT condition ", self.KKT)
         print("\n")
@@ -246,7 +245,7 @@ class GNMS(SolverAbstract):
             # print("grad norm", self.x_grad_norm + self.u_grad_norm)
             # if abs(self.merit - self.merit_old) < 1e-4:
             # if self.x_grad_norm + self.u_grad_norm < 1e-4:
-            if self.KKT < 1e-10:
+            if self.KKT < 1e-8:
                 print("KKT condition reached")
                 print("Terminated", "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
                 break
