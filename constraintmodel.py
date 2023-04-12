@@ -122,17 +122,16 @@ class LocalCone(ConstraintModelAbstact):
 
     def calc(self, cdata, data, x, u=None): 
         F = data.differential.pinocchio.lambda_c[:3]
-        cdata.c = - F[2] - self.mu * np.sqrt(F[0]**2 + F[1]**2)
+        cdata.c = - self.mu * F[2] - np.sqrt(F[0]**2 + F[1]**2)
 
     def calcDiff(self, cdata, data, x, u=None):
         F = data.differential.pinocchio.lambda_c[:3]
         Fx = data.differential.df_dx[:3]
         Fu = data.differential.df_du[:3]
 
-        self.dcone_df[0, 0] = - self.mu * F[0] / np.sqrt(F[0]**2 + F[1]**2)
-        self.dcone_df[0, 1] = - self.mu * F[1] / np.sqrt(F[0]**2 + F[1]**2)
-        self.dcone_df[0, 2] = - 1
-
+        self.dcone_df[0, 0] = - F[0] / np.sqrt(F[0]**2 + F[1]**2)
+        self.dcone_df[0, 1] = - F[1] / np.sqrt(F[0]**2 + F[1]**2)
+        self.dcone_df[0, 2] = - self.mu
         cdata.Cx = self.dcone_df @ data.differential.df_dx[:3]
         cdata.Cu = self.dcone_df @ data.differential.df_du[:3]
 
