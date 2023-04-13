@@ -86,8 +86,10 @@ class FADMM(SolverAbstract):
         self.cost += self.problem.terminalData.cost 
         self.gap = self.gap.copy()
 
-    def computeDirection(self):
+    def computeDirection(self, KKT=True):
         self.calc(True)
+        if KKT:
+            self.KKT_check()
     
         for iter in range(1, self.max_iters+1):
             if (iter) % self.rho_update_interval == 1 or iter == 1:
@@ -315,7 +317,7 @@ class FADMM(SolverAbstract):
 
         init_xs[0][:] = self.problem.x0.copy() # Initial condition guess must be x0
         self.setCandidate(init_xs, init_us, False)
-        self.computeDirection()
+        self.computeDirection(KKT=False)
 
         self.acceptStep(alpha = 1.0)
         # self.reset_params()

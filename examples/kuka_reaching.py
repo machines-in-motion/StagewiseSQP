@@ -80,7 +80,7 @@ terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
 # terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
 
 # Create the shooting problem
-T = 100
+T = 10
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
@@ -91,7 +91,7 @@ option = 1
 if option == 0:    
   clip_state_max = np.array([np.inf]*14)
   clip_state_min = -np.array([np.inf]*7 + [0.5]*7)
-  clip_ctrl = np.array([np.inf, 40 , np.inf, np.inf, np.inf, np.inf , np.inf] )
+  clip_ctrl = np.array([np.inf, 80 , np.inf, np.inf, np.inf, np.inf , np.inf] )
 
 
   statemodel = StateConstraintModel(clip_state_min, clip_state_max, 7, 14, 7)

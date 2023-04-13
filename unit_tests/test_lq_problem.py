@@ -160,7 +160,9 @@ if __name__ == "__main__":
     print("TEST SQP 1 iter : FADMM = FAdmmKKT".center(LINE_WIDTH, "-"))
 
     ddp1 = SQPOCP(problem, [ConstraintModel]*(horizon+1), "FADMM", verbose = False)
-    converged = ddp1.solve(xs, us, 1)
+
+    ddp1.verbose = True
+    converged = ddp1.solve(xs, us, 10)
 
     ddp2 = SQPOCP(problem, [ConstraintModel]*(horizon+1), "FAdmmKKT", verbose = False)
     converged = ddp2.solve(xs, us, 1)

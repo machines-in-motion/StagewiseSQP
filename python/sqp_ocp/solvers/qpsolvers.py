@@ -26,10 +26,11 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
         if method == "FAdmmKKT":
             FAdmmKKT.__init__(self)
 
-        self.allocateData()
+        self.allocateDataQP()
         self.max_iters = 1000
         self.initialize = True
         self.verboseQP = verboseQP
+
         if self.verboseQP:
             print("USING " + str(method))
 
@@ -63,9 +64,10 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
         self.cost += self.problem.terminalData.cost 
         self.gap = self.gap.copy()
 
-    def computeDirectionFullQP(self):
+    def computeDirectionFullQP(self, KKT=True):
         self.calc(True)
-
+        if KKT:
+            self.KKT_check()
         self.n_vars  = self.problem.T*(self.nx + self.nu)
 
         P = np.zeros((self.problem.T*(self.nx + self.nu), self.problem.T*(self.nx + self.nu)))
@@ -128,12 +130,21 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
             qp = proxsuite.proxqp.dense.QP(n, self.n_eq, self.n_in)
             qp.settings.eps_abs = 1e-5
             qp.init(P, q, A, B, C, l, u)      
-            t1 = time.time()
             qp.solve()
-            print("solve time = ", time.time()-t1)
             res = qp.results.x
-            # print("n_iter = ", qp.results.info.iter)
-            # print("n_iter_ext = ", qp.results.info.iter_ext)
+            self.y_k = qp.results.y
+            self.y_k = qp.results.y
+            self.QP_iter = qp.results.info.iter
+
+            for t in range(self.problem.T):
+                self.lag_mul[t+1] = - qp.results.y[t * self.nx: (t+1) * self.nx] 
+            nin_count = 0
+            for t in range(self.problem.T+1):
+                cmodel = self.constraintModel[t]
+                if cmodel.nc == 0:
+                    continue
+                self.y[t] = qp.results.z[nin_count:nin_count + cmodel.nc]
+                nin_count += cmodel.nc
 
         elif self.method == "OSQP":
             Aeq = sparse.csr_matrix(A)
@@ -148,14 +159,11 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
             prob.setup(P, q, Aosqp, losqp, uosqp, warm_start=False, scaling=False,  max_iter = self.max_iters, \
                             adaptive_rho=True, verbose = self.verboseQP)     
 
-            # t1 = time.time()
             tmp = prob.solve()
             res = tmp.x
             self.y_k = tmp.y
             self.QP_iter = tmp.info.iter
-            # self.r_prim = tmp.primal_residual
-            # print("solve time = ", time.time()-t1)
-
+            
         elif self.method == "CustomOSQP" :
             Aeq = sparse.csr_matrix(A)
             Aineq = sparse.csr_matrix(C)
@@ -171,6 +179,7 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
             self.z_k = np.zeros(self.n_in + self.n_eq)
             self.y_k = np.zeros(self.n_in + self.n_eq)
             res = self.optimize_osqp(maxiters=self.max_iters)
+
 
         elif self.method == "FAdmmKKT":
             self.A_eq = sparse.csr_matrix(A.copy())
@@ -192,6 +201,28 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
                 self.initialize = False
 
             res = self.optimize_boyd(maxiters=self.max_iters)
+            for t in range(self.problem.T):
+                self.lag_mul[t+1] = - self.v_k_1[t * self.nx: (t+1) * self.nx] 
+            
+            nin_count= 0
+            for t in range(self.problem.T+1):
+                cmodel = self.constraintModel[t]
+                if cmodel.nc == 0:
+                    continue
+                self.y[t] = self.y_k[nin_count:nin_count + cmodel.nc]
+                nin_count += cmodel.nc
+
+        if self.method == "CustomOSQP" or self.method == "OSQP":
+            nin_count = self.n_eq
+            self.lag_mul[0] = np.zeros(self.problem.runningModels[0].state.ndx)
+            for t in range(self.problem.T+1):
+                if t < self.problem.T:
+                    self.lag_mul[t+1] = - self.y_k[t * self.nx: (t+1) * self.nx]
+                cmodel = self.constraintModel[t]
+                if cmodel.nc == 0:
+                    continue
+                self.y[t] = self.y_k[nin_count:nin_count + cmodel.nc]
+                nin_count += cmodel.nc
 
         self.dx[0] = np.zeros(self.nx)
         for t in range(self.problem.T):
@@ -221,11 +252,11 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
 
         init_xs[0][:] = self.problem.x0.copy() # Initial condition guess must be x0
         self.setCandidate(init_xs, init_us, False)
-        self.computeDirectionFullQP()
+        self.computeDirectionFullQP(KKT=False)
         self.acceptStep(alpha = 1.0)
         # self.reset_params()
         
-    def allocateData(self):    
+    def allocateDataQP(self):    
         #
         self.xs_try = [np.zeros(m.state.nx) for m in self.models()] 
         self.xs_try[0][:] = self.problem.x0.copy()
@@ -233,7 +264,10 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
         #
         self.dx = [np.zeros(m.state.ndx) for m  in self.models()]
         self.du = [np.zeros(m.nu) for m  in self.problem.runningModels] 
-
+        #
+        self.y = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
+        self.lag_mul = [np.zeros(m.state.ndx) for m  in self.models()] 
+        #
         self.constraintData = [cmodel.createData() for cmodel in self.constraintModel]
         self.dz_relaxed = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
         #
