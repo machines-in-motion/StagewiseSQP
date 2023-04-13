@@ -63,6 +63,20 @@ class SQPOCP(FADMM, QPSolvers):
 
         self.merit_try = self.cost_try + self.mu*self.gap_norm_try
 
+    def LQ_problem_KKT_check(self):
+        KKT = 0
+        for t, (cdata, data) in enumerate(zip(self.constraintData[:-1], self.problem.runningDatas)):
+            Cx, Cu = cdata.Cx, cdata.Cu
+            lx = data.Lxx @ self.dx[t] + data.Lxu @ self.du[t] + data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t] + Cx.T@self.y[t]
+            lu = data.Luu @ self.du[t] + data.Lxu.T @ self.dx[t] + data.Lu + data.Fu.T @ self.lag_mul[t+1] + Cu.T@self.y[t]
+            KKT = max(KKT, max(abs(lx)), max(abs(lu)))
+
+        Cx = self.constraintData[1].Cx
+        lx = self.problem.terminalData.Lxx @ self.dx[-1] + self.problem.terminalData.Lx - self.lag_mul[-1] +  Cx.T@self.y[-1]
+        KKT = max(KKT, max(abs(lx)))
+        # Note that for this test to pass, the tolerance of the QP should be low.
+        # assert KKT < 1e-6
+        print("\n THIS SHOULD BE ZERO ", KKT)
 
 
     def solve(self, init_xs=None, init_us=None, maxiter=100, isFeasible=False, regInit=None):
@@ -84,7 +98,7 @@ class SQPOCP(FADMM, QPSolvers):
                 self.computeDirectionFullQP()
             else:
                 self.computeDirection()
-
+            self.LQ_problem_KKT_check()
             self.merit =  self.cost + self.mu*self.gap_norm
             if self.verbose:
                 print("{: >15} {: >15} {: >15} {: >15} {: >15} {: >15} {: >15} {: >15}".format(*[i, pp(self.merit), pp(self.cost), pp(self.gap_norm), self.QP_iter, pp(self.x_grad_norm), pp(self.u_grad_norm), str(alpha)]))
@@ -96,9 +110,9 @@ class SQPOCP(FADMM, QPSolvers):
                 if k == max_search - 1:
                     print("No improvement")
                     return False
-                # print("iter_try", k, "Total merit", self.merit_try, "Total cost", self.cost_try, "gap norms", self.gap_norm_try, "step length", alpha)
 
-                if self.cost < self.cost_try and self.gap_norm < self.gap_norm_try:     # backward pass with regularization 
+                # if self.merit < self.merit_try:
+                if self.cost < self.cost_try and self.gap_norm < self.gap_norm_try:
                     alpha *= 0.5
                     self.tryStep(alpha)
                 else:

@@ -80,13 +80,13 @@ terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
 # terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
 
 # Create the shooting problem
-T = 10
+T = 100
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 
 # choose scenario: 0 or 1 or 2 or 3
-option = 0
+option = 1
 
 if option == 0:    
   clip_state_max = np.array([np.inf]*14)
@@ -126,7 +126,7 @@ us = [np.zeros(nu)] * T
 ddp = SQPOCP(problem, constraintModels, "FADMM")
 ddp.verbose = True
 ddp.verboseQP = False
-ddp.solve(xs, us, 4)
+ddp.solve(xs, us, 10)
 
 # Extract DDP data and plot
 ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
