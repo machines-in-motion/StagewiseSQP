@@ -125,6 +125,7 @@ xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 ddp = SQPOCP(problem, constraintModels, "FADMM")
 ddp.verbose = True
+ddp.verboseQP = False
 ddp.solve(xs, us, 4)
 
 # Extract DDP data and plot

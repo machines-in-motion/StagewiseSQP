@@ -7,6 +7,8 @@ import scipy.linalg as scl
 from . fadmm import FADMM
 from .qpsolvers import QPSolvers
 
+pp = lambda s : np.format_float_scientific(s, exp_digits=2, precision =4)
+
 def rev_enumerate(l):
     return reversed(list(enumerate(l)))
 
@@ -19,13 +21,13 @@ def raiseIfNan(A, error=None):
 
 class SQPOCP(FADMM, QPSolvers):
 
-    def __init__(self, shootingProblem, constraintModel, method, verbose = False):
+    def __init__(self, shootingProblem, constraintModel, method, verboseQP = False, verbose = False):
         self.verbose = verbose
         if method == "FADMM":
-            FADMM.__init__(self, shootingProblem, constraintModel, verbose = self.verbose)
+            FADMM.__init__(self, shootingProblem, constraintModel, verboseQP = verboseQP)
             self.using_qp = 0        
         else:
-            QPSolvers.__init__(self, shootingProblem, constraintModel, method, verbose = self.verbose)
+            QPSolvers.__init__(self, shootingProblem, constraintModel, method, verboseQP = verboseQP)
             self.using_qp = 1        
 
         self.mu = 1e1
@@ -73,6 +75,9 @@ class SQPOCP(FADMM, QPSolvers):
         init_xs[0][:] = self.problem.x0.copy() # Initial condition guess must be x0
         self.setCandidate(init_xs, init_us, False)
 
+        if self.verbose:
+            print("{: >15} {: >15} {: >15} {: >15} {: >15} {: >15} {: >15} {: >15}".format(*["iter", "merit", "cost", "gap norms", "QP iter ", "dx norm", "du norm", "alpha"]))
+
         alpha = None
         for i in range(maxiter):
             if self.using_qp:
@@ -82,7 +87,7 @@ class SQPOCP(FADMM, QPSolvers):
 
             self.merit =  self.cost + self.mu*self.gap_norm
             if self.verbose:
-                print("iter", i, "merit", self.merit, "cost", self.cost, "gap norms", self.gap_norm, "dx norm", self.x_grad_norm, "du norm", self.u_grad_norm, "alpha", alpha)
+                print("{: >15} {: >15} {: >15} {: >15} {: >15} {: >15} {: >15} {: >15}".format(*[i, pp(self.merit), pp(self.cost), pp(self.gap_norm), self.QP_iter, pp(self.x_grad_norm), pp(self.u_grad_norm), str(alpha)]))
 
             alpha = 1.
             self.tryStep(alpha)
@@ -105,5 +110,6 @@ class SQPOCP(FADMM, QPSolvers):
                     print("Converged")
                 break
         if self.verbose:
-            print("Final :", " merit", self.merit, "cost", self.cost, "gap norms", self.gap_norm, "dx norm", self.x_grad_norm, "du norm", self.u_grad_norm, "alpha", alpha)
+            self.calc()
+            print("{: >15} {: >15} {: >15} {: >15} {: >15} {: >15} {: >15} {: >15}".format(*["Final", pp(self.merit), pp(self.cost), pp(self.gap_norm), str(None), str(None), str(None), str(None)]))
     

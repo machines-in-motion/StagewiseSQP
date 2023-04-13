@@ -13,7 +13,7 @@ from crocoddyl import SolverAbstract
 
 class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
 
-    def __init__(self, shootingProblem, constraintModel, method, verbose = True):
+    def __init__(self, shootingProblem, constraintModel, method, verboseQP = True):
         
         self.constraintModel = constraintModel
         SolverAbstract.__init__(self, shootingProblem)        
@@ -29,8 +29,8 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
         self.allocateData()
         self.max_iters = 1000
         self.initialize = True
-        self.verbose = verbose
-        if self.verbose:
+        self.verboseQP = verboseQP
+        if self.verboseQP:
             print("USING " + str(method))
 
     def models(self):
@@ -146,14 +146,15 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
             P = sparse.csr_matrix(P)
             prob = osqp.OSQP()
             prob.setup(P, q, Aosqp, losqp, uosqp, warm_start=False, scaling=False,  max_iter = self.max_iters, \
-                            adaptive_rho=True, verbose = self.verbose)     
+                            adaptive_rho=True, verbose = self.verboseQP)     
 
-            t1 = time.time()
+            # t1 = time.time()
             tmp = prob.solve()
             res = tmp.x
             self.y_k = tmp.y
+            self.QP_iter = tmp.info.iter
             # self.r_prim = tmp.primal_residual
-            print("solve time = ", time.time()-t1)
+            # print("solve time = ", time.time()-t1)
 
         elif self.method == "CustomOSQP" :
             Aeq = sparse.csr_matrix(A)
@@ -166,17 +167,9 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
             self.P = P
             self.q = np.array(q)
             
-            self.xs_vec = np.array(self.xs).flatten()[self.nx:]
-            self.us_vec = np.array(self.us).flatten()
-            self.xz_vec = np.array(self.xz).flatten()[self.nx:]
-            self.uz_vec = np.array(self.uz).flatten()
-            self.xy_vec = np.array(self.xy).flatten()[self.nx:]
-            self.uy_vec = np.array(self.uy).flatten()
-            self.x_k = np.hstack((self.xs_vec, self.us_vec))
-
+            self.x_k = np.zeros(self.n_vars)
             self.z_k = np.zeros(self.n_in + self.n_eq)
             self.y_k = np.zeros(self.n_in + self.n_eq)
-
             res = self.optimize_osqp(maxiters=self.max_iters)
 
         elif self.method == "FAdmmKKT":

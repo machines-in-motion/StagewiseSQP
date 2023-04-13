@@ -10,7 +10,7 @@ import time
 
 LINE_WIDTH = 100 
 
-VERBOSE = False    
+
 pp = lambda s : np.format_float_scientific(s, exp_digits=2, precision =4)
 
 def rev_enumerate(l):
@@ -25,7 +25,7 @@ def raiseIfNan(A, error=None):
 
 
 class FADMM(SolverAbstract):
-    def __init__(self, shootingProblem, constraintModel, verbose = False):
+    def __init__(self, shootingProblem, constraintModel, verboseQP = False):
         SolverAbstract.__init__(self, shootingProblem)        
         self.constraintModel = constraintModel
 
@@ -35,8 +35,8 @@ class FADMM(SolverAbstract):
         self.allocateData()
 
         self.max_iters = 1000
-        self.verbose = verbose
-        if self.verbose:
+        self.verboseQP = verboseQP
+        if self.verboseQP:
             print("USING FADMM")
 
     def reset_params(self):
@@ -103,17 +103,19 @@ class FADMM(SolverAbstract):
             if (iter) % self.rho_update_interval == 0 and iter > 1:
                 if self.norm_primal <= self.eps_abs + self.eps_rel*self.norm_primal_rel and\
                         self.norm_dual <= self.eps_abs + self.eps_rel*self.norm_dual_rel:
-                            if self.verbose:
-                                print("FADMM converged")
+                            if self.verboseQP:
                                 print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
-                                    , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
+                                    , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse)) 
+                                print("FADMM converged", "\n")
                             break
-                if self.verbose:
+                if self.verboseQP:
                     print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
-                    , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse), "\n") 
-        if self.verbose:
+                    , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse)) 
+        if self.verboseQP:
             print("\n")
-            
+        
+        self.QP_iter = iter
+
     def update_rho_sparse(self, iter):
         scale = (self.norm_primal * self.norm_dual_rel)/(self.norm_dual * self.norm_primal_rel)
         scale = np.sqrt(scale)
@@ -378,3 +380,6 @@ class FADMM(SolverAbstract):
     
         self.nx = self.problem.terminalModel.state.nx 
         self.nu = self.problem.runningModels[0].nu
+
+
+        self.QP_iter = 0
