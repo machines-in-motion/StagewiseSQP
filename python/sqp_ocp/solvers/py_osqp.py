@@ -16,7 +16,7 @@ class CustomOSQP():
     def __init__(self):
 
         self.sigma_osqp = 1e-6
-        self.rho_osqp= 1e-1
+        self.rho_osqp_init= 1e-1
         self.rho_min = 1e-6
         self.rho_max = 1e6
         self.alpha_osqp = 1.6
@@ -27,7 +27,6 @@ class CustomOSQP():
         self.rho_update_interval = 25
 
     def solve_linear_system_osqp(self):
-        
         ## More efficient
         rho_mat = self.rho_vec_osqp*np.eye(len(self.rho_vec_osqp))
         A_block = self.P + self.sigma_osqp * np.eye(self.n_vars) + (self.Aosqp.T@rho_mat@self.Aosqp)
@@ -81,7 +80,7 @@ class CustomOSQP():
     def set_rho_osqp(self):
 
         self.rho_vec_osqp = np.zeros(self.n_eq + self.n_in)
-        self.rho_osqp= min(max(self.rho_osqp, self.rho_min), self.rho_max) 
+        self.rho_osqp= min(max(self.rho_osqp_init, self.rho_min), self.rho_max) 
         for i in range(len(self.losqp)):
             if self.losqp[i] == -np.inf and self.uosqp[i] == np.inf:
                 self.rho_vec_osqp[i] = self.rho_min
@@ -104,15 +103,19 @@ class CustomOSQP():
             eps_dual = self.eps_abs + self.eps_rel * self.eps_rel_dual
 
             if (iter) % self.rho_update_interval == 0 and iter > 1:
-                print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
-                                , "optimal rho estimate", pp(self.rho_estimate_osqp), "rho", pp(self.rho_osqp)) 
-                if self.r_prim < eps_prim and self.r_dual < eps_dual:
-                    print("terminated ... \n")
+                if self.verboseQP:
                     print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
-                , "optimal rho estimate", pp(self.rho_estimate_osqp), "rho", pp(self.rho_osqp)) 
+                                    , "optimal rho estimate", pp(self.rho_estimate_osqp), "rho", pp(self.rho_osqp)) 
+                if self.r_prim < eps_prim and self.r_dual < eps_dual:
+
+                    if self.verboseQP:
+                        print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
+                    , "optimal rho estimate", pp(self.rho_estimate_osqp), "rho", pp(self.rho_osqp)) 
+                        print("terminated ... \n")
                     converged = True               
                     break
-        if not converged:
+        self.QP_iter = iter
+        if not converged and self.verboseQP:
             print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
                 , "optimal rho estimate", pp(self.rho_estimate_osqp), "rho", pp(self.rho_osqp))
         return self.x_k

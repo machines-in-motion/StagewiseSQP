@@ -124,17 +124,17 @@ class FAdmmKKT():
 
             if (iter) % self.rho_update_interval == 0 and iter > 1:
                 if self.r_prim <= eps_prim and self.r_dual <= eps_dual:
-                    if self.verbose:
-                        print("terminated ... ")
+                    if self.verboseQP:
                         print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
-                    , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd), "\n") 
+                    , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd)) 
+                        print("terminated ... \n")
                     converged = True               
                     break
-                if self.verbose:
+                if self.verboseQP:
                     print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
-                                    , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd), "\n") 
-
-        if not converged and self.verbose:
+                                    , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd)) 
+        self.QP_iter = iter
+        if not converged and self.verboseQP:
             print("Not Converged ... \n")
             print("Iters", iter, "res-primal", pp(self.r_prim), "res-dual", pp(self.r_dual)\
                 , "optimal rho estimate", pp(self.rho_estimate_boyd), "rho", pp(self.rho_boyd))

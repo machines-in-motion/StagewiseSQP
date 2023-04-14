@@ -86,12 +86,12 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 # choose scenario: 0 or 1 or 2 or 3
-option = 0
+option = 1
 
 if option == 0:    
   clip_state_max = np.array([np.inf]*14)
   clip_state_min = -np.array([np.inf]*7 + [0.5]*7)
-  clip_ctrl = np.array([np.inf, 40 , np.inf, np.inf, np.inf, np.inf , np.inf] )
+  clip_ctrl = np.array([np.inf, 80 , np.inf, np.inf, np.inf, np.inf , np.inf] )
 
 
   statemodel = StateConstraintModel(clip_state_min, clip_state_max, 7, 14, 7)
@@ -125,7 +125,8 @@ xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 ddp = SQPOCP(problem, constraintModels, "FADMM")
 ddp.verbose = True
-ddp.solve(xs, us, 4)
+ddp.verboseQP = False
+ddp.solve(xs, us, 10)
 
 # Extract DDP data and plot
 ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')

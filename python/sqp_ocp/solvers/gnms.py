@@ -71,7 +71,7 @@ class GNMS(SolverAbstract):
 
         # self.safety_check()
 
-    def safety_check(self):
+    def LQ_problem_KKT_check(self):
         KKT = 0
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
             KKT += max(abs(data.Lxx @ self.dx[t] + data.Lxu @ self.du[t] + data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t]))
