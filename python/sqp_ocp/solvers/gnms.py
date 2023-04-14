@@ -24,7 +24,7 @@ def raiseIfNan(A, error=None):
         raise error
 
 class GNMS(SolverAbstract):
-    def __init__(self, shootingProblem):
+    def __init__(self, shootingProblem, VERBOSE=False):
         SolverAbstract.__init__(self, shootingProblem)
         self.x_reg = 0
         self.u_reg = 0
@@ -32,7 +32,10 @@ class GNMS(SolverAbstract):
         self.regMax = 1e9
         self.regMin = 1e-9
         self.mu = 1e0
+        self.termination_tol = 1e-8
 
+        self.VERBOSE = VERBOSE
+        
         self.allocateData()
 
     def models(self):
@@ -87,9 +90,9 @@ class GNMS(SolverAbstract):
 
         self.KKT = max(self.KKT, max(abs(self.problem.terminalData.Lx - self.lag_mul[-1])))
         self.KKT = max(self.KKT, max(abs(np.array(self.fs).flatten())))
-
-        print("\nInfinity norm of KKT condition ", self.KKT)
-        print("\n")
+        if(self.VERBOSE):
+            print("\nInfinity norm of KKT condition ", self.KKT)
+            print("\n")
 
 
 
@@ -134,9 +137,10 @@ class GNMS(SolverAbstract):
         hess_decrease = self.dx[-1].T@data.Lxx@self.dx[-1]
         # if hess_decrease > 0:
         #     self.expected_decrease += 0.5*hess_decrease
-        print(self.expected_decrease, (1 - self.rho)*self.gap_norm)
         tmp_mu = self.expected_decrease/((1 - self.rho)*self.gap_norm)
-        print(tmp_mu)
+        if(self.VERBOSE):
+            print(self.expected_decrease, (1 - self.rho)*self.gap_norm)
+            print(tmp_mu)
         # self.mu = tmp_mu
 
     def tryStep(self, alpha):
@@ -224,7 +228,8 @@ class GNMS(SolverAbstract):
         for i in range(maxiter):
             recalc = True   # this will recalculated derivatives in Compute Direction 
             self.computeDirection(recalc=recalc)
-            print("iter", i, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
+            if(self.VERBOSE):
+                print("iter", i, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
 
             alpha = 1.
             self.tryStep(alpha)
@@ -247,9 +252,10 @@ class GNMS(SolverAbstract):
             # print("grad norm", self.x_grad_norm + self.u_grad_norm)
             # if abs(self.merit - self.merit_old) < 1e-4:
             # if self.x_grad_norm + self.u_grad_norm < 1e-4:
-            if self.KKT < 1e-8:
-                print("KKT condition reached")
-                print("Terminated", "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
+            if self.KKT < self.termination_tol:
+                if(self.VERBOSE):
+                    print("KKT condition reached")
+                    print("Terminated", "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
                 break
 
         return True 
