@@ -39,30 +39,38 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
         mod += [self.problem.terminalModel]
         return mod  
         
-
     def calc(self, recalc = True):
         # compute cost and derivatives at deterministic nonlinear trajectory 
         if recalc:
             self.problem.calc(self.xs, self.us)
             self.problem.calcDiff(self.xs, self.us)
         self.cost = 0
-        # self.merit_old = self.merit        
+        self.constraint_norm = 0
 
         for t, (cmodel, cdata, data) in enumerate(zip(self.constraintModel[:-1], self.constraintData[:-1], self.problem.runningDatas)):
             cmodel.calc(cdata, data, self.xs[t], self.us[t])
             cmodel.calcDiff(cdata, data, self.xs[t], self.us[t])
 
-        self.constraintModel[-1].calc(self.constraintData[-1], self.problem.terminalData, self.xs[-1])
-        self.constraintModel[-1].calcDiff(self.constraintData[-1], self.problem.terminalData, self.xs[-1])
+            self.constraint_norm += np.linalg.norm(np.clip(cmodel.lmin - cdata.c, 0, np.inf), 1) 
+            self.constraint_norm += np.linalg.norm(np.clip(cdata.c - cmodel.lmax, 0, np.inf), 1)
+
+        cmodel, cdata = self.constraintModel[-1], self.constraintData[-1]
+        cmodel.calc(cdata, self.problem.terminalData, self.xs[-1])
+        cmodel.calcDiff(cdata, self.problem.terminalData, self.xs[-1])
+
+        self.constraint_norm += np.linalg.norm(np.clip(cmodel.lmin - cdata.c, 0, np.inf), 1) 
+        self.constraint_norm += np.linalg.norm(np.clip(cdata.c - cmodel.lmax, 0, np.inf), 1)
 
         for t, (model, data) in enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
             # model.calc(data, self.xs[t], self.us[t])  
             self.gap[t] = model.state.diff(self.xs[t+1].copy(), data.xnext.copy()) #gaps
             self.cost += data.cost
 
+
         self.gap_norm = sum(np.linalg.norm(self.gap.copy(), 1, axis = 1))
         self.cost += self.problem.terminalData.cost 
         self.gap = self.gap.copy()
+
 
     def computeDirectionFullQP(self, KKT=True):
         self.calc(True)
@@ -282,6 +290,8 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
         self.gap_norm = 0
         self.cost = 0
         self.cost_try = 0
+        self.constraint_norm = 0
+        self.constraint_norm_try = 0
         # 
         self.nx = self.problem.terminalModel.state.nx 
         self.nu = self.problem.runningModels[0].nu

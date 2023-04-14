@@ -21,7 +21,7 @@ def raiseIfNan(A, error=None):
 
 class SQPOCP(FADMM, QPSolvers):
 
-    def __init__(self, shootingProblem, constraintModel, method, verboseQP = False, verbose = False):
+    def __init__(self, shootingProblem, constraintModel, method, use_heuristic_ls=False, verboseQP = False, verbose = False):
         self.verbose = verbose
         if method == "FADMM":
             FADMM.__init__(self, shootingProblem, constraintModel, verboseQP = verboseQP)
@@ -30,8 +30,11 @@ class SQPOCP(FADMM, QPSolvers):
             QPSolvers.__init__(self, shootingProblem, constraintModel, method, verboseQP = verboseQP)
             self.using_qp = 1        
 
-        self.mu = 1e1
-    
+        self.mu1 = 1e1
+        self.mu2 = 1e1
+        self.termination_tol = 1e-8
+        self.use_heuristic_ls = use_heuristic_ls
+
     def models(self):
         mod = [m for m in self.problem.runningModels]
         mod += [self.problem.terminalModel]
@@ -44,11 +47,25 @@ class SQPOCP(FADMM, QPSolvers):
         """
 
         self.merit_try = 0
+        self.constraint_norm_try = 0
         self.cost_try = 0
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
             self.xs_try[t] = model.state.integrate(self.xs[t], alpha*self.dx[t])
             self.us_try[t] = self.us[t] + alpha*self.du[t]    
         self.xs_try[-1] = model.state.integrate(self.xs[-1], alpha*self.dx[-1]) ## terminal state update
+
+
+        for t, (cmodel, cdata, data) in enumerate(zip(self.constraintModel[:-1], self.constraintData[:-1], self.problem.runningDatas)):
+            cmodel.calc(cdata, data, self.xs[t], self.us[t])
+
+            self.constraint_norm_try += np.linalg.norm(np.clip(cmodel.lmin - cdata.c, 0, np.inf), 1) 
+            self.constraint_norm_try += np.linalg.norm(np.clip(cdata.c - cmodel.lmax, 0, np.inf), 1)
+
+        cmodel, cdata = self.constraintModel[-1], self.constraintData[-1]
+        cmodel.calc(cdata, self.problem.terminalData, self.xs[-1])
+
+        self.constraint_norm_try += np.linalg.norm(np.clip(cmodel.lmin - cdata.c, 0, np.inf), 1) 
+        self.constraint_norm_try += np.linalg.norm(np.clip(cdata.c - cmodel.lmax, 0, np.inf), 1)
 
 
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
@@ -61,7 +78,7 @@ class SQPOCP(FADMM, QPSolvers):
 
         self.gap_norm_try = sum(np.linalg.norm(self.gap_try, 1, axis = 1))
 
-        self.merit_try = self.cost_try + self.mu*self.gap_norm_try
+        self.merit_try =  self.cost_try + self.mu1 * self.gap_norm_try + self.mu2 * self.constraint_norm_try
 
     def LQ_problem_KKT_check(self):
         KKT = 0
@@ -97,6 +114,7 @@ class SQPOCP(FADMM, QPSolvers):
         lx = self.problem.terminalData.Lx - self.lag_mul[-1] +  Cx.T @ self.y[-1]
         self.KKT = max(self.KKT, max(abs(lx)))
         self.KKT = max(self.KKT, max(abs(np.array(self.fs).flatten())))
+        self.KKT = max(self.KKT, self.constraint_norm)
 
 
     def solve(self, init_xs=None, init_us=None, maxiter=100, isFeasible=False, regInit=None):
@@ -110,7 +128,7 @@ class SQPOCP(FADMM, QPSolvers):
         self.setCandidate(init_xs, init_us, False)
 
         if self.verbose:
-            header = "{: >5} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >10}".format(*["iter", "KKT norm", "merit", "cost", "gap norms", "QP iter ", "dx norm", "du norm", "alpha"])
+            header = "{: >5} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >10}".format(*["iter", "KKT norm", "merit", "cost", "gap norm", "constraint norm", "QP iter ", "dx norm", "du norm", "alpha"])
 
         alpha = None
         for i in range(maxiter):
@@ -121,10 +139,10 @@ class SQPOCP(FADMM, QPSolvers):
                 self.computeDirectionFullQP()
             else:
                 self.computeDirection()
-            # self.LQ_problem_KKT_check()
-            self.merit =  self.cost + self.mu*self.gap_norm
+
+            self.merit =  self.cost + self.mu1 * self.gap_norm + self.mu2 * self.constraint_norm
             if self.verbose:
-                print("{: >5} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >10}".format(*[i, pp(self.KKT), pp(self.merit), pp(self.cost), pp(self.gap_norm), self.QP_iter, pp(self.x_grad_norm), pp(self.u_grad_norm), str(alpha)]))
+                print("{: >5} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >10}".format(*[i, pp(self.KKT), pp(self.merit), pp(self.cost), pp(self.gap_norm), pp(self.constraint_norm), self.QP_iter, pp(self.x_grad_norm), pp(self.u_grad_norm), str(alpha)]))
 
             alpha = 1.
             self.tryStep(alpha)
@@ -135,20 +153,27 @@ class SQPOCP(FADMM, QPSolvers):
                     return False
 
                 # if self.merit < self.merit_try:
-                if self.cost < self.cost_try and self.gap_norm < self.gap_norm_try:
-                    alpha *= 0.5
-                    self.tryStep(alpha)
+                if self.use_heuristic_ls:
+                    if self.cost < self.cost_try and self.gap_norm < self.gap_norm_try and self.constraint_norm < self.constraint_norm_try:
+                        alpha *= 0.5
+                        self.tryStep(alpha)
+                    else:
+                        self.setCandidate(self.xs_try, self.us_try, False)
+                        break
                 else:
-                    self.setCandidate(self.xs_try, self.us_try, False)
-                    break
-        
-            # if self.x_grad_norm < 1e-5 and self.u_grad_norm < 1e-5:
-            if self.KKT < 1e-10:
+                    if self.merit < self.merit_try:
+                        alpha *= 0.5
+                        self.tryStep(alpha)
+                    else:
+                        self.setCandidate(self.xs_try, self.us_try, False)
+                        break
+
+            if self.KKT < self.termination_tol:
                 if self.verbose:
                     print("Converged")
                 break
         if self.verbose:
             self.calc()
             self.KKT_check()
-            print("{: >5} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >10}".format(*["Final", pp(self.KKT), pp(self.merit), pp(self.cost), pp(self.gap_norm), str(None), str(None), str(None), str(None)]))
+            print("{: >5} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >10}".format(*["Final", pp(self.KKT), pp(self.merit), pp(self.cost), pp(self.gap_norm),  pp(self.constraint_norm), " ", " ", " ", " "]))
     

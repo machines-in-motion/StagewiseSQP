@@ -67,14 +67,21 @@ class FADMM(SolverAbstract):
             self.problem.calc(self.xs, self.us)
             self.problem.calcDiff(self.xs, self.us)
         self.cost = 0
-        # self.merit_old = self.merit        
+        self.constraint_norm = 0
 
         for t, (cmodel, cdata, data) in enumerate(zip(self.constraintModel[:-1], self.constraintData[:-1], self.problem.runningDatas)):
             cmodel.calc(cdata, data, self.xs[t], self.us[t])
             cmodel.calcDiff(cdata, data, self.xs[t], self.us[t])
 
-        self.constraintModel[-1].calc(self.constraintData[-1], self.problem.terminalData, self.xs[-1])
-        self.constraintModel[-1].calcDiff(self.constraintData[-1], self.problem.terminalData, self.xs[-1])
+            self.constraint_norm += np.linalg.norm(np.clip(cmodel.lmin - cdata.c, 0, np.inf), 1) 
+            self.constraint_norm += np.linalg.norm(np.clip(cdata.c - cmodel.lmax, 0, np.inf), 1)
+
+        cmodel, cdata = self.constraintModel[-1], self.constraintData[-1]
+        cmodel.calc(cdata, self.problem.terminalData, self.xs[-1])
+        cmodel.calcDiff(cdata, self.problem.terminalData, self.xs[-1])
+
+        self.constraint_norm += np.linalg.norm(np.clip(cmodel.lmin - cdata.c, 0, np.inf), 1) 
+        self.constraint_norm += np.linalg.norm(np.clip(cdata.c - cmodel.lmax, 0, np.inf), 1)
 
         for t, (model, data) in enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
             # model.calc(data, self.xs[t], self.us[t])  
@@ -381,6 +388,9 @@ class FADMM(SolverAbstract):
         self.gap_norm = 0
         self.cost = 0
         self.cost_try = 0
+
+        self.constraint_norm = 0
+        self.constraint_norm_try = 0
         # 
     
         self.nx = self.problem.terminalModel.state.nx 
