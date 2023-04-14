@@ -10,19 +10,20 @@ from crocoddyl import SolverFDDP
 
 class GNMSCPP(SolverFDDP):
 
-    def __init__(self, shootingProblem, VERBOSE=False):
+    def __init__(self, shootingProblem, use_heuristic_ls=False, VERBOSE=False):
         
         SolverFDDP.__init__(self, shootingProblem)
         self.mu = 1e0
         self.termination_tol = 1e-8
         self.VERBOSE = VERBOSE
+        self.use_heuristic_ls = use_heuristic_ls
 
         self.allocateData()
 
     def calc(self):
         
         self.calcDiff()
-        self.gap_norm = sum(np.linalg.norm(self.fs, 1, axis = 1))
+        self.gap_norm = sum(np.linalg.norm(self.fs, 1, axis = 1)) / self.problem.T
         self.merit = self.cost + self.mu*self.gap_norm
         # print(self.gap_norm)
 
@@ -98,7 +99,7 @@ class GNMSCPP(SolverFDDP):
         self.problem.terminalModel.calc(self.problem.terminalData, self.xs_try[-1])
         self.cost_try += self.problem.terminalData.cost
         
-        self.gap_norm_try = sum(np.linalg.norm(self.gap_try, 1, axis = 1))
+        self.gap_norm_try = sum(np.linalg.norm(self.gap_try, 1, axis = 1)) / self.problem.T
 
         self.merit_try = self.cost_try + self.mu*self.gap_norm_try
         # print("cost_try", self.cost_try, "gaps_try", self.gap_norm_try, "merit try", self.merit_try)
@@ -136,13 +137,20 @@ class GNMSCPP(SolverFDDP):
                         print("Terminated", "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
                     return False
 
-                if self.gap_norm < self.gap_norm_try and self.cost < self.cost_try:
-                    alpha *= 0.5
-                    # print(alpha)
-                    self.tryStep(alpha)
+                if self.use_heuristic_ls:
+                    if self.gap_norm < self.gap_norm_try and self.cost < self.cost_try:
+                        alpha *= 0.5
+                        self.tryStep(alpha)
+                    else:
+                        self.acceptStep()
+                        break
                 else:
-                    self.acceptStep()
-                    break
+                    if self.merit < self.merit_try:
+                        alpha *= 0.5
+                        self.tryStep(alpha)
+                    else:
+                        self.acceptStep()
+                        break
 
             converged = self.computeDirection()
 

@@ -24,7 +24,7 @@ def raiseIfNan(A, error=None):
         raise error
 
 class GNMS(SolverAbstract):
-    def __init__(self, shootingProblem, VERBOSE=False):
+    def __init__(self, shootingProblem, use_heuristic_ls=False, VERBOSE=False):
         SolverAbstract.__init__(self, shootingProblem)
         self.x_reg = 0
         self.u_reg = 0
@@ -33,6 +33,7 @@ class GNMS(SolverAbstract):
         self.regMin = 1e-9
         self.mu = 1e0
         self.termination_tol = 1e-8
+        self.use_heuristic_ls = use_heuristic_ls
 
         self.VERBOSE = VERBOSE
         
@@ -56,7 +57,7 @@ class GNMS(SolverAbstract):
             self.cost += data.cost
         
         # self.gap_norm = np.linalg.norm(self.gap, 1)
-        self.gap_norm = sum(np.linalg.norm(self.gap, 1, axis = 1))
+        self.gap_norm = sum(np.linalg.norm(self.gap, 1, axis = 1)) / self.problem.T
 
         self.cost += self.problem.terminalData.cost 
         self.merit =  self.cost + self.mu*self.gap_norm
@@ -164,12 +165,12 @@ class GNMS(SolverAbstract):
         self.problem.terminalModel.calc(self.problem.terminalData, self.xs_try[-1])
         self.cost_try += self.problem.terminalData.cost
 
-        self.gap_norm_try = np.linalg.norm(self.gap_try, 1)
+        self.gap_norm_try = np.linalg.norm(self.gap_try, 1) / self.problem.T
 
         self.merit_try = self.cost_try + self.mu*self.gap_norm_try
 
 
-    def acceptStep(self, alpha):
+    def acceptStep(self):
 
         self.setCandidate(self.xs_try, self.us_try, False)
 
@@ -238,13 +239,20 @@ class GNMS(SolverAbstract):
                 if k == max_search - 1:
                     print("No improvement")
                     return False
-                # print("iter_try", k, "Total merit", self.merit_try, "Total cost", self.cost_try, "gap norms", self.gap_norm_try, "step length", alpha)
-                if self.merit < self.merit_try:     # backward pass with regularization 
-                    alpha *= 0.5
-                    self.tryStep(alpha)
+                if self.use_heuristic_ls:
+                    if self.gap_norm < self.gap_norm_try and self.cost < self.cost_try:
+                        alpha *= 0.5
+                        self.tryStep(alpha)
+                    else:
+                        self.acceptStep()
+                        break
                 else:
-                    self.acceptStep(alpha)
-                    break
+                    if self.merit < self.merit_try:
+                        alpha *= 0.5
+                        self.tryStep(alpha)
+                    else:
+                        self.acceptStep()
+                        break
 
             # self.check_optimality()
             self.calc()
