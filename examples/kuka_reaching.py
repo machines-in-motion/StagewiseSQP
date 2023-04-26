@@ -86,7 +86,7 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 # choose scenario: 0 or 1 or 2 or 3
-option = 0
+option = 2
 
 if option == 0:    
   clip_state_max = np.array([np.inf]*14)
@@ -99,7 +99,7 @@ if option == 0:
 
   ConstraintModel = ConstraintModelStack([statemodel, controlmodel], 14, 7)
 
-  clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7)
+  clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.0000]*7)
   TerminalConstraintModel = StateConstraintModel(-clip_state_end, clip_state_end, 7, 14, 7)
   constraintModels = [controlmodel] + [controlmodel] * (T-1) + [TerminalConstraintModel]
 
@@ -107,7 +107,7 @@ elif option == 1:
   clip_state_max = np.array([np.inf]*14)
   clip_state_min = -np.array([np.inf]*7 + [0.5]*7)
   statemodel = StateConstraintModel(clip_state_min, clip_state_max, 7, 14, 7)
-  clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7)
+  clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.00]*7)
   TerminalConstraintModel = StateConstraintModel(-clip_state_end, clip_state_end, 7, 14, 7)
   constraintModels =  [NoConstraint(14, 7)] + [statemodel] * (T-1) + [TerminalConstraintModel]
 
@@ -124,14 +124,17 @@ elif option == 3:
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 ddp = SQPOCP(problem, constraintModels, "FADMM")
+# ddp = SQPOCP(problem, constraintModels, "ProxQP")
+# ddp = SQPOCP(problem, constraintModels, "OSQP")
+
 ddp.use_heuristic_ls = True
 ddp.verbose = True
 ddp.verboseQP = False
-ddp.termination_tol = 1e-5
-ddp.solve(xs, us, 100)
+ddp.termination_tol = 1e-3
+ddp.solve(xs, us, 5)
 
 # Extract DDP data and plot
-ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
+# ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
 
-ocp_utils.plot_ocp_results(ddp_data, which_plots="all", labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
+# ocp_utils.plot_ocp_results(ddp_data, which_plots="all", labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
 

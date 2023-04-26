@@ -113,7 +113,7 @@ class SQPOCP(FADMM, QPSolvers):
         Cx = self.constraintData[-1].Cx
         lx = self.problem.terminalData.Lx - self.lag_mul[-1] +  Cx.T @ self.y[-1]
         self.KKT = max(self.KKT, max(abs(lx)))
-        self.KKT = max(self.KKT, max(abs(np.array(self.fs).flatten())))
+        self.KKT = max(self.KKT, max(abs(np.array(self.gap).flatten())))
         self.KKT = max(self.KKT, self.constraint_norm)
 
 
@@ -126,7 +126,6 @@ class SQPOCP(FADMM, QPSolvers):
 
         init_xs[0][:] = self.problem.x0.copy() # Initial condition guess must be x0
         self.setCandidate(init_xs, init_us, False)
-
         if self.verbose:
             header = "{: >5} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >10}".format(*["iter", "KKT norm", "merit", "cost", "gap norm", "constraint norm", "QP iter ", "dx norm", "du norm", "alpha"])
 

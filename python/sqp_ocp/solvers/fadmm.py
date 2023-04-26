@@ -34,7 +34,7 @@ class FADMM(SolverAbstract):
         self.allocateQPData()
         self.allocateData()
 
-        self.max_iters = 1000
+        self.max_iters = 3000
         self.verboseQP = verboseQP
         if self.verboseQP:
             print("USING FADMM")
@@ -47,8 +47,8 @@ class FADMM(SolverAbstract):
         self.rho_max = 1e6
         self.alpha = 1.6
 
-        self.eps_abs = 1e-3
-        self.eps_rel = 1e-3
+        self.eps_abs = 1e-4
+        self.eps_rel = 1e-4
         self.adaptive_rho_tolerance = 5
         self.rho_update_interval = 25
         self.regMin = 1e-6
@@ -97,7 +97,15 @@ class FADMM(SolverAbstract):
         self.calc(True)
         if KKT:
             self.KKT_check()
-    
+
+        # self.reset_params()
+        # self.allocateQPData()
+
+        self.backwardPass_without_constraints()
+        self.computeUpdates()
+        self.update_lagrangian_parameters_infinity()
+        self.y = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
+        
         for iter in range(1, self.max_iters+1):
             if (iter) % self.rho_update_interval == 1 or iter == 1:
                 self.backwardPass()  
@@ -109,14 +117,15 @@ class FADMM(SolverAbstract):
             self.update_lagrangian_parameters_infinity()
             self.update_rho_sparse(iter)
 
+            if self.norm_primal <= self.eps_abs + self.eps_rel*self.norm_primal_rel and\
+                    self.norm_dual <= self.eps_abs + self.eps_rel*self.norm_dual_rel:
+                        if self.verboseQP:
+                            print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
+                                , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse)) 
+                            print("FADMM converged", "\n")
+                        break
+
             if (iter) % self.rho_update_interval == 0 and iter > 1:
-                if self.norm_primal <= self.eps_abs + self.eps_rel*self.norm_primal_rel and\
-                        self.norm_dual <= self.eps_abs + self.eps_rel*self.norm_dual_rel:
-                            if self.verboseQP:
-                                print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
-                                    , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse)) 
-                                print("FADMM converged", "\n")
-                            break
                 if self.verboseQP:
                     print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
                     , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse)) 
@@ -141,7 +150,7 @@ class FADMM(SolverAbstract):
                     for k in range(cmodel.nc):  
                         if cmodel.lmin[k] == -np.inf and cmodel.lmax[k] == np.inf:
                             self.rho_vec[t][k] = self.rho_min 
-                        elif cmodel.lmin[k] == cmodel.lmax[k]:
+                        elif abs(cmodel.lmin[k] - cmodel.lmax[k]) < 1e-3:
                             self.rho_vec[t][k] = 1e3 * self.rho_sparse
                         elif cmodel.lmin[k] != cmodel.lmax[k]:
                             self.rho_vec[t][k] = self.rho_sparse
@@ -285,6 +294,37 @@ class FADMM(SolverAbstract):
             self.s[t] = q + A.T @ (self.S[t+1] @ self.gap[t].copy() + self.s[t+1]) + \
                             self.G[t].T@self.l[t][:]+ self.L[t].T@(h + self.H[t]@self.l[t][:])
 
+    def backwardPass_without_constraints(self): 
+        self.S[-1][:,:] = self.problem.terminalData.Lxx.copy()
+        self.s[-1][:] = self.problem.terminalData.Lx.copy()
+        
+        for t, (model, data, cdata) in rev_enumerate(zip(self.problem.runningModels,self.problem.runningDatas, self.constraintData[:-1])):
+            rho_mat = self.rho_vec[t]*np.eye(len(self.rho_vec[t]))
+            q = data.Lx.copy() 
+            Q = data.Lxx.copy()
+            r = data.Lu.copy()
+            R = data.Luu.copy()
+            P = data.Lxu.T.copy()
+
+            A = data.Fx.copy()    
+            B = data.Fu.copy() 
+            h = r + B.T@(self.s[t+1] + self.S[t+1]@self.gap[t].copy())
+            self.G[t] = P + B.T@self.S[t+1]@A
+            if len(self.G[t].shape) == 1:
+                self.G[t] = np.resize(self.G[t],(1,self.G[t].shape[0]))
+            
+            self.H[t] = R + B.T@self.S[t+1]@B
+
+            self.H_llt[t] = eigenpy.LLT(self.H[t])
+            self.L[t][:,:] = -1* self.H_llt[t].solve(self.G[t])
+            self.l[t][:] = -1*self.H_llt[t].solve(h)
+        
+
+            self.S[t] = Q + A.T @ (self.S[t+1])@A - self.L[t].T@self.H[t]@self.L[t] 
+            self.s[t] = q + A.T @ (self.S[t+1] @ self.gap[t].copy() + self.s[t+1]) + \
+                            self.G[t].T@self.l[t][:]+ self.L[t].T@(h + self.H[t]@self.l[t][:])
+
+
     def backwardPass_without_rho_update(self): 
         self.s[-1][:] = self.problem.terminalData.Lx.copy() - self.sigma_sparse * self.dx[-1]
         if self.constraintModel[-1].nc != 0:
@@ -337,24 +377,6 @@ class FADMM(SolverAbstract):
         self.z_test = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
         self.y_test = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
 
-
-        self.rho_vec = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
-        self.rho_estimate_sparse = 0.0
-        self.rho_sparse = min(max(self.rho_sparse, self.rho_min), self.rho_max) 
-        for t, cmodel in enumerate(self.constraintModel):   
-            for k in range(cmodel.nc):  
-                if cmodel.lmin[k] == -np.inf and cmodel.lmax[k] == np.inf:
-                    self.rho_vec[t][k] = self.rho_min 
-                elif cmodel.lmin[k] == cmodel.lmax[k]:
-                    self.rho_vec[t][k] = 1e3 * self.rho_sparse
-                elif cmodel.lmin[k] != cmodel.lmax[k]:
-                    self.rho_vec[t][k] = self.rho_sparse
-
-    def allocateData(self):
-        self.xs_try = [np.zeros(m.state.nx) for m in self.models()] 
-        self.xs_try[0][:] = self.problem.x0.copy()
-        self.us_try = [np.zeros(m.nu) for m in self.problem.runningModels] 
-        # 
         self.dx = [np.zeros(m.state.ndx) for m  in self.models()]
         self.du = [np.zeros(m.nu) for m  in self.problem.runningModels] 
         self.dx_tilde = [np.zeros(m.state.ndx) for m  in self.models()]
@@ -364,9 +386,27 @@ class FADMM(SolverAbstract):
         self.du_test = [np.zeros(m.nu) for m  in self.problem.runningModels] 
         # 
         self.lag_mul = [np.zeros(m.state.ndx) for m  in self.models()] 
+        self.dz_relaxed = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
+
+        self.rho_vec = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
+        self.rho_estimate_sparse = 0.0
+        self.rho_sparse = min(max(self.rho_sparse, self.rho_min), self.rho_max) 
+        for t, cmodel in enumerate(self.constraintModel):   
+            for k in range(cmodel.nc):  
+                if cmodel.lmin[k] == -np.inf and cmodel.lmax[k] == np.inf:
+                    self.rho_vec[t][k] = self.rho_min 
+                elif abs(cmodel.lmin[k] - cmodel.lmax[k]) < 1e-3:
+                    self.rho_vec[t][k] = 1e5 * self.rho_sparse
+                elif cmodel.lmin[k] != cmodel.lmax[k]:
+                    self.rho_vec[t][k] = self.rho_sparse
+
+    def allocateData(self):
+        self.xs_try = [np.zeros(m.state.nx) for m in self.models()] 
+        self.xs_try[0][:] = self.problem.x0.copy()
+        self.us_try = [np.zeros(m.nu) for m in self.problem.runningModels] 
+        # 
         #  
         self.constraintData = [cmodel.createData() for cmodel in self.constraintModel]
-        self.dz_relaxed = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
         #
         self.S = [np.zeros([m.state.ndx, m.state.ndx]) for m in self.models()]   
         self.s = [np.zeros(m.state.ndx) for m in self.models()]   
