@@ -56,13 +56,13 @@ class SQPOCP(FADMM, QPSolvers):
 
 
         for t, (cmodel, cdata, data) in enumerate(zip(self.constraintModel[:-1], self.constraintData[:-1], self.problem.runningDatas)):
-            cmodel.calc(cdata, data, self.xs[t], self.us[t])
+            cmodel.calc(cdata, data, self.xs_try[t], self.us_try[t])
 
             self.constraint_norm_try += np.linalg.norm(np.clip(cmodel.lmin - cdata.c, 0, np.inf), 1) 
             self.constraint_norm_try += np.linalg.norm(np.clip(cdata.c - cmodel.lmax, 0, np.inf), 1)
 
         cmodel, cdata = self.constraintModel[-1], self.constraintData[-1]
-        cmodel.calc(cdata, self.problem.terminalData, self.xs[-1])
+        cmodel.calc(cdata, self.problem.terminalData, self.xs_try[-1])
 
         self.constraint_norm_try += np.linalg.norm(np.clip(cmodel.lmin - cdata.c, 0, np.inf), 1) 
         self.constraint_norm_try += np.linalg.norm(np.clip(cdata.c - cmodel.lmax, 0, np.inf), 1)
@@ -130,6 +130,9 @@ class SQPOCP(FADMM, QPSolvers):
         if self.verbose:
             header = "{: >5} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >10}".format(*["iter", "KKT norm", "merit", "cost", "gap norm", "constraint norm", "QP iter ", "dx norm", "du norm", "alpha"])
 
+        cost_list = []
+        gap_list = []
+        constraint_list = []
         alpha = None
         for i in range(maxiter):
             if self.verbose and i % 40 == 0:
@@ -139,6 +142,11 @@ class SQPOCP(FADMM, QPSolvers):
                 self.computeDirectionFullQP()
             else:
                 self.computeDirection()
+
+            cost_list.append(self.cost)
+            gap_list.append(self.gap_norm)
+            constraint_list.append(self.constraint_norm)
+
 
             self.merit =  self.cost + self.mu1 * self.gap_norm + self.mu2 * self.constraint_norm
             if self.verbose:
@@ -154,6 +162,9 @@ class SQPOCP(FADMM, QPSolvers):
 
                 # if self.merit < self.merit_try:
                 if self.use_heuristic_ls:
+                    filter_list = [constraint < self.constraint_norm_try and gap < self.gap_norm_try and cost < self.cost_try for (constraint, gap, cost) in zip(constraint_list, gap_list, cost_list)]
+                    # filter_list = [gap < self.gap_norm_try and cost < self.cost_try for (gap, cost) in zip(gap_list, cost_list)]
+                    # if np.array(filter_list).any():
                     if self.cost < self.cost_try and self.gap_norm < self.gap_norm_try and self.constraint_norm < self.constraint_norm_try:
                         alpha *= 0.5
                         self.tryStep(alpha)
