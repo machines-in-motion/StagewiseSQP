@@ -124,6 +124,8 @@ class GNMSCPP(SolverFDDP):
         self.computeDirection(kkt_check=False)
         if(self.VERBOSE):
             print("iter", 0, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm)
+        cost_list = [self.cost]
+        gap_list = [self.gap_norm]
 
         for i in range(maxiter):
             alpha = 1.
@@ -138,7 +140,10 @@ class GNMSCPP(SolverFDDP):
                     return False
 
                 if self.use_heuristic_ls:
-                    if self.gap_norm < self.gap_norm_try and self.cost < self.cost_try:
+                    # filter_list = [gap < self.gap_norm_try and cost < self.cost_try for (gap, cost) in zip(gap_list, cost_list)]
+                    # if np.array(filter_list).any():
+
+                    if self.gap_norm < self.gap_norm_try and self.cost < self.cost_try :
                         alpha *= 0.5
                         self.tryStep(alpha)
                     else:
@@ -157,8 +162,10 @@ class GNMSCPP(SolverFDDP):
             if converged:
                 return False
             if(self.VERBOSE):
+                cost_list.append(self.cost)
+                gap_list.append(self.gap_norm)
                 print("iter", i+1,"Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
-            
+                
         return True 
 
     def models(self):
