@@ -101,10 +101,10 @@ class FADMM(SolverAbstract):
         # self.reset_params()
         # self.allocateQPData()
 
-        self.backwardPass_without_constraints()
-        self.computeUpdates()
-        self.update_lagrangian_parameters_infinity()
-        self.y = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
+        # self.backwardPass_without_constraints()
+        # self.computeUpdates()
+        # self.update_lagrangian_parameters_infinity()
+        # self.y = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
         
         for iter in range(1, self.max_iters+1):
             if (iter) % self.rho_update_interval == 1 or iter == 1:
@@ -146,14 +146,20 @@ class FADMM(SolverAbstract):
             if self.rho_estimate_sparse > self.rho_sparse* self.adaptive_rho_tolerance or\
                 self.rho_estimate_sparse < self.rho_sparse/ self.adaptive_rho_tolerance :
                 self.rho_sparse= self.rho_estimate_sparse
+                
                 for t, cmodel in enumerate(self.constraintModel):   
+                    if t == self.problem.T:
+                        scaler = 1e5
+                    else:
+                        scaler = 1
+                    
                     for k in range(cmodel.nc):  
                         if cmodel.lmin[k] == -np.inf and cmodel.lmax[k] == np.inf:
                             self.rho_vec[t][k] = self.rho_min 
                         elif abs(cmodel.lmin[k] - cmodel.lmax[k]) < 1e-3:
-                            self.rho_vec[t][k] = 1e3 * self.rho_sparse
+                            self.rho_vec[t][k] = scaler *1e3 * self.rho_sparse
                         elif cmodel.lmin[k] != cmodel.lmax[k]:
-                            self.rho_vec[t][k] = self.rho_sparse
+                            self.rho_vec[t][k] = scaler * self.rho_sparse
 
     def update_lagrangian_parameters_infinity(self):
 
@@ -392,13 +398,18 @@ class FADMM(SolverAbstract):
         self.rho_estimate_sparse = 0.0
         self.rho_sparse = min(max(self.rho_sparse, self.rho_min), self.rho_max) 
         for t, cmodel in enumerate(self.constraintModel):   
+            if t == self.problem.T:
+                scaler = 1e5
+            else:
+                scaler = 1
             for k in range(cmodel.nc):  
                 if cmodel.lmin[k] == -np.inf and cmodel.lmax[k] == np.inf:
                     self.rho_vec[t][k] = self.rho_min 
                 elif abs(cmodel.lmin[k] - cmodel.lmax[k]) < 1e-3:
-                    self.rho_vec[t][k] = 1e5 * self.rho_sparse
+                    self.rho_vec[t][k] = scaler * 1e3 * self.rho_sparse
                 elif cmodel.lmin[k] != cmodel.lmax[k]:
-                    self.rho_vec[t][k] = self.rho_sparse
+                    self.rho_vec[t][k] = scaler * self.rho_sparse
+
 
     def allocateData(self):
         self.xs_try = [np.zeros(m.state.nx) for m in self.models()] 

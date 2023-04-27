@@ -136,7 +136,7 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
         # import pdb; pdb.set_trace()
         if self.method == "ProxQP":
             qp = proxsuite.proxqp.dense.QP(n, self.n_eq, self.n_in)
-            qp.settings.eps_abs = 1e-5
+            qp.settings.eps_abs = 1e-4
             qp.init(P, q, A, B, C, l, u)      
             qp.solve()
             res = qp.results.x
