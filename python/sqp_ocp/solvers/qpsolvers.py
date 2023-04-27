@@ -140,10 +140,16 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
             qp.init(P, q, A, B, C, l, u)      
             qp.solve()
             res = qp.results.x
-            self.y_k = qp.results.y
+            self.z_k = qp.results.z
             self.y_k = qp.results.y
             self.QP_iter = qp.results.info.iter
 
+            # KKT1 = np.max(np.abs(P @ res + q + A.T @ self.y_k  + C.T @ self.z_k))
+            # KKT2 = np.max(np.abs(A @ res - B))
+            # KKT3 = np.max(np.abs(np.clip(l - C @ res, 0, np.inf)))
+            # KKT4 =  np.max(np.abs(np.clip(C @ res - u, 0, np.inf)))
+            # print("prox chek", max([KKT1, KKT2, KKT3, KKT4]) )
+            
             for t in range(self.problem.T):
                 self.lag_mul[t+1] = - qp.results.y[t * self.nx: (t+1) * self.nx] 
             nin_count = 0
@@ -153,6 +159,8 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
                     continue
                 self.y[t] = qp.results.z[nin_count:nin_count + cmodel.nc]
                 nin_count += cmodel.nc
+            
+            
 
         elif self.method == "OSQP":
             Aeq = sparse.csr_matrix(A)
