@@ -159,22 +159,32 @@ xs = [x0] * (problem.T + 1)
 us = problem.quasiStatic([x0] * problem.T)
 
 # Create solvers
-ddp0 = GNMSCPP(problem, use_heuristic_ls=True, VERBOSE=False)
+ddp0 = GNMSCPP(problem)
 ddp1 = crocoddyl.SolverGNMS(problem)
-# ddp2 = crocoddyl.SolverFDDP(problem)
 
+# Set Heuristic Line Search (filter)
+ddp0.use_filter_ls = True
+ddp1.use_filter_line_search = True
+
+# Set callbacks
 ddp0.VERBOSE = True
 ddp1.with_callbacks = True
-# ddp2.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
 
-ddp0.mu = 1e3
-ddp1.mu = 1e3
+# Set tolerance 
+ddp0.termination_tol = 1e-8
+ddp1.termination_tol = 1e-8
 
+# Set filter size
+ddp0.filter_size = 10
+ddp1.filter_size = 10
+# ddp0.mu = 1e3
+# ddp1.mu = 1e3
+
+# ddp1.termination_tolerance = 1e-2
 ddp0.solve(xs, us, 100, False)
 ddp1.solve(xs, us, 100, False)
-# ddp2.solve(xs, us, 100, False)
 
-##### UNIT TEST #####################################
+# ##### UNIT TEST #####################################
 
 set_tol = 1e-6
 assert np.linalg.norm(np.array(ddp0.xs) - np.array(ddp1.xs)) < set_tol, "Test failed"

@@ -11,13 +11,14 @@ from collections import deque
 
 class GNMSCPP(SolverFDDP):
 
-    def __init__(self, shootingProblem, use_heuristic_ls=False, VERBOSE=False):
+    def __init__(self, shootingProblem, use_filter_ls=False, VERBOSE=False):
         
         SolverFDDP.__init__(self, shootingProblem)
         self.mu = 1e0
         self.termination_tol = 1e-8
         self.VERBOSE = VERBOSE
-        self.use_heuristic_ls = use_heuristic_ls
+        self.use_filter_ls = use_filter_ls
+        self.filter_size = 10 #maxiter
 
         self.allocateData()
 
@@ -120,12 +121,11 @@ class GNMSCPP(SolverFDDP):
         self.computeDirection(kkt_check=False)
         if(self.VERBOSE):
             print("iter", 0, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm)
-        buffer_size = 10 #maxiter
-        cost_list = deque(maxlen=buffer_size)
+        cost_list = deque(maxlen=self.filter_size)
         cost_list.append(self.cost)
-        gap_list  = deque(maxlen=buffer_size)
+        gap_list  = deque(maxlen=self.filter_size)
         gap_list.append(self.gap_norm)
-        filter_list    = deque(maxlen=buffer_size)
+        filter_list    = deque(maxlen=self.filter_size)
 
         for i in range(maxiter):
             alpha = 1.
@@ -139,7 +139,7 @@ class GNMSCPP(SolverFDDP):
                         print("Terminated", "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
                     return False
 
-                if self.use_heuristic_ls:
+                if self.use_filter_ls:
                     filter_list = [gap < self.gap_norm_try and cost < self.cost_try for (gap, cost) in zip(gap_list, cost_list)]
                     # print("filter = \n", filter_list)
                     if np.array(filter_list).any():
