@@ -1,14 +1,16 @@
 import pathlib
 import os
-import sys
-python_path = pathlib.Path('.').absolute().parent.parent/'python'
+python_path = pathlib.Path('.').absolute().parent/'python'
 os.sys.path.insert(1, str(python_path))
-
+import sys
 import crocoddyl
 import numpy as np
 import example_robot_data
 import pinocchio
+np.set_printoptions(precision=4, linewidth=180)
+from sqp_ocp.solvers import GNMS, GNMSCPP
 
+LINE_WIDTH = 100
 
 # Load robot
 robot  = example_robot_data.load('talos')
@@ -145,69 +147,47 @@ runningModel2 = crocoddyl.IntegratedActionModelEuler(dmodelRunning2, DT)
 runningModel3 = crocoddyl.IntegratedActionModelEuler(dmodelRunning3, DT)
 terminalModel = crocoddyl.IntegratedActionModelEuler(dmodelTerminal, 0)
 
-# Problem definition & warm-start
+# Problem definition
 x0 = np.concatenate([q0, pinocchio.utils.zero(state.nv)])
-problem = crocoddyl.ShootingProblem(x0, [runningModel1] * T + [runningModel2] * T + [runningModel3] * T, terminalModel) 
+problem = crocoddyl.ShootingProblem(x0, [runningModel1] * T + [runningModel2] * T + [runningModel3] * T, terminalModel)
+
+print("TEST HUMANOID TAICHI PROBLEM GNMS".center(LINE_WIDTH, "-"))
+
+# Warm-start 
+# Solving it with the DDP algorithm
 xs = [x0] * (problem.T + 1)
 us = problem.quasiStatic([x0] * problem.T)
 
+# Create solvers
+ddp0 = GNMSCPP(problem, use_heuristic_ls=True, VERBOSE=False)
+ddp1 = crocoddyl.SolverGNMS(problem)
+# ddp2 = crocoddyl.SolverFDDP(problem)
 
+ddp0.VERBOSE = True
+ddp1.with_callbacks = True
+# ddp2.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
 
+ddp0.mu = 1e3
+ddp1.mu = 1e3
 
+ddp0.solve(xs, us, 100, False)
+ddp1.solve(xs, us, 100, False)
+# ddp2.solve(xs, us, 100, False)
 
-# Set up solvers
-MAXITER   = 500
-TOL       = 1e-6
-CALLBACKS = True
-KKT_COND  = True
+##### UNIT TEST #####################################
 
-# GNMS
-# from sqp_ocp.solvers import GNMSCPP,GNMS
+set_tol = 1e-6
+assert np.linalg.norm(np.array(ddp0.xs) - np.array(ddp1.xs)) < set_tol, "Test failed"
+# assert np.linalg.norm(np.array(ddp0.us) - np.array(ddp2.us)) < set_tol, "Test failed"
 
-solverGNMS = crocoddyl.SolverGNMS(problem)
-# solverGNMS = GNMSCPP(problem)
-# solverGNMS.termination_tol = TOL
-# solverGNMS.VERBOSE = CALLBACKS
-solverGNMS.termination_tolerance = TOL
-solverGNMS.with_callbacks = CALLBACKS
-solverGNMS.use_kkt_condition = KKT_COND
-print("Solver GNMS :")  
-# print("  Use KKT condition     = ", solverGNMS.use_kkt_condition)
-print("  Termination tolerance = ", solverGNMS.termination_tolerance)
-print("  Penalty parameter mu  = ", solverGNMS.mu)
-print("  use_heuristic_line_search  = ", solverGNMS.use_heuristic_line_search)
+assert ddp0.cost - ddp1.cost < set_tol, "Test failed"
+# assert ddp0.cost - ddp2.cost < set_tol, "Test failed"
 
+assert np.linalg.norm(np.array(ddp0.lag_mul) - np.array(ddp1.lag_mul)) < set_tol, "Test failed"
+# assert np.linalg.norm(np.array(ddp0.lag_mul) - np.array(ddp2.lag_mul)) < set_tol, "Test failed"
 
-# FDDP 
-solverFDDP = crocoddyl.SolverFDDP(problem)
-solverFDDP.termination_tolerance = TOL
-if(CALLBACKS): solverFDDP.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
-solverFDDP.use_kkt_condition = KKT_COND
-print("Solver FDPP :")  
-print("  Use KKT condition     = ", solverFDDP.use_kkt_condition)
-print("  Termination tolerance = ", solverFDDP.termination_tolerance)
+assert ddp0.KKT - ddp1.KKT < set_tol, "Test failed"
+# assert ddp0.KKT - ddp2.KKT < set_tol, "Test failed"
 
-
-# SOLVE GNMS
-mu_values      = [1e0, 1e2, 1e3]
-converged_gnms = []
-iter_gnms      = []
-for mu in mu_values:
-    solverGNMS.mu = mu
-    print('------------------')
-    print("mu = ", solverGNMS.mu)
-    converged_gnms.append(solverGNMS.solve(xs, us, MAXITER, False))
-    print("nb iter = ", solverGNMS.iter)
-    iter_gnms.append(solverGNMS.iter)
-    print('------------------')
-    
-# SOLVE FDDP
-converged_fddp = solverFDDP.solve(xs, us, MAXITER, False)
-iter_fddp      = solverFDDP.iter
-
-# Print
-print("GNMS mu \n", mu_values)
-print("GNMS iter \n", iter_gnms)
-print("GNMS converged \n", converged_gnms)
-print("FDDP iter \n", iter_fddp)
-print("FDDP converged \n", converged_fddp)
+print("TEST PASSED".center(LINE_WIDTH, "-"))
+print("\n")

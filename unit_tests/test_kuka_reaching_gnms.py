@@ -86,7 +86,7 @@ us = [np.zeros(nu)] * T
 
 # Create solvers
 ddp0 = GNMS(problem)
-ddp1 = GNMSCPP(problem)
+ddp1 = GNMSCPP(problem, use_heuristic_ls=True, VERBOSE=True)
 ddp2 = crocoddyl.SolverGNMS(problem)
 ddp3 = crocoddyl.SolverFDDP(problem)
 

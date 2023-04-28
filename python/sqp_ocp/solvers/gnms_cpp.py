@@ -6,6 +6,7 @@
 import numpy as np
 
 from crocoddyl import SolverFDDP
+from collections import deque
 
 
 class GNMSCPP(SolverFDDP):
@@ -86,11 +87,6 @@ class GNMSCPP(SolverFDDP):
             self.us_try[t] = self.us[t] + alpha*self.du[t]    
         self.xs_try[-1] = model.state.integrate(self.xs[-1], alpha*self.dx[-1]) ## terminal state update
 
-        ## TMP PROX !!!!
-        for i in range(self.problem.T+1):
-            self.xs_try[i][0] = np.clip(self.xs_try[i][0], -1.5, 1.5)
-
-
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
             model.calc(data, self.xs_try[t], self.us_try[t])  
             self.gap_try[t] = model.state.diff(self.xs_try[t+1], data.xnext) #gaps
@@ -124,8 +120,12 @@ class GNMSCPP(SolverFDDP):
         self.computeDirection(kkt_check=False)
         if(self.VERBOSE):
             print("iter", 0, "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm)
-        cost_list = [self.cost]
-        gap_list = [self.gap_norm]
+        buffer_size = 10 #maxiter
+        cost_list = deque(maxlen=buffer_size)
+        cost_list.append(self.cost)
+        gap_list  = deque(maxlen=buffer_size)
+        gap_list.append(self.gap_norm)
+        filter_list    = deque(maxlen=buffer_size)
 
         for i in range(maxiter):
             alpha = 1.
@@ -140,10 +140,10 @@ class GNMSCPP(SolverFDDP):
                     return False
 
                 if self.use_heuristic_ls:
-                    # filter_list = [gap < self.gap_norm_try and cost < self.cost_try for (gap, cost) in zip(gap_list, cost_list)]
-                    # if np.array(filter_list).any():
-
-                    if self.gap_norm < self.gap_norm_try and self.cost < self.cost_try :
+                    filter_list = [gap < self.gap_norm_try and cost < self.cost_try for (gap, cost) in zip(gap_list, cost_list)]
+                    # print("filter = \n", filter_list)
+                    if np.array(filter_list).any():
+                    # if self.gap_norm < self.gap_norm_try and self.cost < self.cost_try :
                         alpha *= 0.5
                         self.tryStep(alpha)
                     else:
@@ -162,10 +162,11 @@ class GNMSCPP(SolverFDDP):
             if converged:
                 return False
             if(self.VERBOSE):
-                cost_list.append(self.cost)
-                gap_list.append(self.gap_norm)
                 print("iter", i+1,"Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)
-                
+
+            cost_list.append(self.cost)
+            gap_list.append(self.gap_norm)
+        
         return True 
 
     def models(self):
