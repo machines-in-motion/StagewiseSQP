@@ -110,7 +110,7 @@ class SQPOCP(FADMM, QPSolvers):
 
         # Note that for this test to pass, the tolerance of the QP should be low.
         # assert KKT < 1e-6
-        print("\n THIS SHOULD BE ZERO ", KKT)
+        print("\n This should match the tolerance of the QP solver ", KKT)
 
     def KKT_check(self):
         # print(self.lag_mul)

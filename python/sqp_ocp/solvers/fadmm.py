@@ -34,8 +34,12 @@ class FADMM(SolverAbstract):
         self.allocateQPData()
         self.allocateData()
 
-        self.max_iters = 3000
+        self.max_iters = 10000
         self.verboseQP = verboseQP
+
+        self.OSQP_update = False
+        self.warmstart_rho = False
+
         if self.verboseQP:
             print("USING FADMM")
 
@@ -47,8 +51,8 @@ class FADMM(SolverAbstract):
         self.rho_max = 1e6
         self.alpha = 1.6
 
-        self.eps_abs = 1e-4
-        self.eps_rel = 1e-4
+        self.eps_abs = 1e-5
+        self.eps_rel = 0
         self.adaptive_rho_tolerance = 5
         self.rho_update_interval = 25
         self.regMin = 1e-6
@@ -85,7 +89,7 @@ class FADMM(SolverAbstract):
 
         for t, (model, data) in enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
             # model.calc(data, self.xs[t], self.us[t])  
-            self.gap[t] = model.state.diff(self.xs[t+1].copy(), data.xnext.copy()) #gaps
+            self.gap[t] = model.state.diff(self.xs[t+1].copy(), data.xnext.copy())
             self.cost += data.cost
 
 
@@ -98,7 +102,8 @@ class FADMM(SolverAbstract):
         if KKT:
             self.KKT_check()
 
-        # self.reset_params()
+        if not self.warmstart_rho:
+            self.reset_params()
         # self.allocateQPData()
 
         self.backwardPass_without_constraints()
@@ -117,8 +122,8 @@ class FADMM(SolverAbstract):
             self.update_lagrangian_parameters_infinity()
             self.update_rho_sparse(iter)
 
-            if self.norm_primal <= self.eps_abs + self.eps_rel*self.norm_primal_rel and\
-                    self.norm_dual <= self.eps_abs + self.eps_rel*self.norm_dual_rel:
+            if self.kkt_primal <= self.eps_abs + self.eps_rel*self.norm_primal_rel and\
+                    self.kkt_dual <= self.eps_abs + self.eps_rel*self.norm_dual_rel:
                         if self.verboseQP:
                             print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
                                 , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse)) 
@@ -135,7 +140,10 @@ class FADMM(SolverAbstract):
         self.QP_iter = iter
 
     def update_rho_sparse(self, iter):
-        scale = (self.norm_primal * self.norm_dual_rel)/(self.norm_dual * self.norm_primal_rel)
+        if self.OSQP_update:
+            scale = (self.norm_primal * self.norm_dual_rel)/(self.norm_dual * self.norm_primal_rel)
+        else:
+            scale = (self.kkt_primal)/(self.kkt_dual)
         scale = np.sqrt(scale)
         self.scale_sparse = scale
         self.rho_estimate_sparse = scale * self.rho_sparse
@@ -159,6 +167,9 @@ class FADMM(SolverAbstract):
 
         self.norm_primal = -np.inf
         self.norm_dual = -np.inf
+        self.kkt_primal = -np.inf
+        self.kkt_dual = -np.inf
+
         self.norm_primal_rel, self.norm_dual_rel = [-np.inf,-np.inf], -np.inf
         
         for t, (cmodel, cdata) in enumerate(zip(self.constraintModel[:-1], self.constraintData[:-1])):
@@ -182,11 +193,21 @@ class FADMM(SolverAbstract):
             self.dx[t] = self.dx_tilde[t].copy()
             self.du[t] = self.du_tilde[t].copy()
 
+            # OSQP
             dual_vecx = Cx.T @  np.multiply(self.rho_vec[t], (self.z[t] - z_k)) 
             dual_vecu = Cu.T @  np.multiply(self.rho_vec[t], (self.z[t] - z_k)) 
-
             self.norm_dual = max(self.norm_dual, max(abs(dual_vecx)), max(abs(dual_vecu)))
             self.norm_primal = max(self.norm_primal, max(abs(Cdx_Cdu - self.z[t])))
+
+            # KKT
+            data = self.problem.runningDatas[t]
+            dual_vecx = data.Lxx @ self.dx[t] + data.Lxu @ self.du[t] + data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t] + Cx.T @ self.y[t]
+            dual_vecu = data.Luu @ self.du[t] + data.Lxu.T @ self.dx[t] + data.Lu + data.Fu.T @ self.lag_mul[t+1] + Cu.T @ self.y[t]
+            self.kkt_dual = max(self.kkt_dual, max(abs(dual_vecx)), max(abs(dual_vecu)))
+            l1 = np.max(np.abs(np.clip(cmodel.lmin - Cx @ self.dx[t] - Cu @ self.du[t] - cdata.c, 0, np.inf)))
+            l2 = np.max(np.abs(np.clip( Cx @ self.dx[t] + Cu @ self.du[t] + cdata.c - cmodel.lmax, 0, np.inf)))
+            self.kkt_primal = max(self.kkt_primal, l1, l2)
+
             self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cdx_Cdu)))
             self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.z[t])))
             self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.y[t])), max(abs(Cu.T@self.y[t])))
@@ -209,15 +230,25 @@ class FADMM(SolverAbstract):
 
             self.dx[-1] = self.dx_tilde[-1].copy()
 
-            dual_vec = Cx.T@np.multiply(self.rho_vec[-1], (self.z[-1] - z_k))
-
-            self.norm_dual = max(self.norm_dual, max(abs(dual_vec)))
+            # OSQP
             self.norm_primal = max(self.norm_primal, max(abs(Cdx - self.z[-1])))
+            dual_vec = Cx.T@np.multiply(self.rho_vec[-1], (self.z[-1] - z_k))
+            self.norm_dual = max(self.norm_dual, max(abs(dual_vec)))
+
+            # KKT
+            dual_vec = self.problem.terminalData.Lxx @ self.dx[-1] + self.problem.terminalData.Lx - self.lag_mul[-1] +  Cx.T @ self.y[-1]
+            self.kkt_dual = max(self.kkt_dual, max(abs(dual_vec)))
+            l1 = np.max(np.abs(np.clip(cmodel.lmin - Cx @ self.dx[-1] - cdata.c, 0, np.inf)))
+            l2 = np.max(np.abs(np.clip( Cx @ self.dx[-1] + cdata.c - cmodel.lmax, 0, np.inf)))
+            self.kkt_primal = max(self.kkt_primal, l1, l2)
+
+
             self.norm_primal_rel[0] = max(self.norm_primal_rel[0], max(abs(Cx@self.dx[-1])))
             self.norm_primal_rel[1] = max(self.norm_primal_rel[1], max(abs(self.z[-1])))
             self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.y[-1])))
         self.norm_primal_rel = max(self.norm_primal_rel)
-   
+
+
     def acceptStep(self, alpha):
         
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
