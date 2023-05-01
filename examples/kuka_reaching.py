@@ -86,7 +86,7 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 # choose scenario: 0 or 1 or 2 or 3
-option = 0
+option = 2
 
 if option == 0:    
   clip_state_max = np.array([np.inf]*14)
