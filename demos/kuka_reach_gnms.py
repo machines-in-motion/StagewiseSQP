@@ -6,9 +6,8 @@ import pinocchio as pin
 import time
 
 import dynamic_graph_manager_cpp_bindings
-from robot_properties_kuka.config import IiwaConfig, IiwaReducedConfig
+from robot_properties_kuka.config import IiwaConfig
 from robot_properties_kuka.iiwaWrapper import IiwaRobot
-from robot_properties_kuka.iiwaReducedWrapper import IiwaReducedRobot
 from bullet_utils.env import BulletEnvWithGround
 
 import pathlib
@@ -19,17 +18,13 @@ os.sys.path.insert(1, str(python_path))
 from controllers.kuka_reach_gnms import KukaReachGNMS
 from core_mpc import path_utils, sim_utils
 
-SIM = True
+SIM = False
 
 DGM_PARAMS_PATH = "/home/skleff/ws/workspace/install/robot_properties_kuka/lib/python3.8/site-packages/robot_properties_kuka/robot_properties_kuka/dynamic_graph_manager/dgm_parameters_iiwa.yaml"
-# DGM_PARAMS_PATH = "/ws/workspace/install/robot_properties_kuka/lib/python3.8/site-packages/robot_properties_kuka/robot_properties_kuka/dynamic_graph_manager/dgm_parameters_iiwa_reduced.yaml"
-CONFIG_NAME = 'kuka_reach_gnms' # reaching_mpc_reduced
+CONFIG_NAME = 'kuka_reach_gnms'
 CONFIG_PATH = 'demos/'+CONFIG_NAME+".yml"
 
 
-# controlled_joints = ['A1', 'A2', 'A3', 'A4', 'A5', 'A6']
-# qref =  np.array([0.1, 0.7, 0., 0.7, -0.5, 1.5, 0.])
-# pin_robot = IiwaReducedConfig.buildRobotWrapper(controlled_joints, qref)
 pin_robot = IiwaConfig.buildRobotWrapper()
 config = path_utils.load_yaml_file(CONFIG_PATH)
 
@@ -37,13 +32,11 @@ config = path_utils.load_yaml_file(CONFIG_PATH)
 
 # SIMULATION
 if SIM:
-    env = BulletEnvWithGround(p.DIRECT)
+    env = BulletEnvWithGround(p.GUI)
     robot_simulator = env.add_robot(IiwaRobot())
     robot_simulator.pin_robot = pin_robot
-    # robot = IiwaReducedRobot(controlled_joints, qref)
-    q_init = np.zeros(pin_robot.model.nq) 
-    q_init[1] =0.34
-    q_init[3] = -0.75
+    q_init = np.asarray(config['q0'] )
+    v_init = np.asarray(config['dq0'])
     v_init = np.zeros(pin_robot.model.nv) 
     robot_simulator.reset_state(q_init, v_init)
     # Display the target 
@@ -59,7 +52,7 @@ else:
 
 
 
-ctrl = KukaReachGNMS(head, pin_robot, config, run_sim=SIM, use_gnms=False)
+ctrl = KukaReachGNMS(head, pin_robot, config, run_sim=SIM, use_gnms=config['USE_GNMS'])
 # ctrl.warm_start(100)
 # ctrl.update_desired_position(x_des)
 
@@ -80,13 +73,13 @@ thread_head.switch_controllers(ctrl)
 
 if SIM:
     # thread_head.start_logging(6, "test.mds")
-    thread_head.start_logging(5, "/tmp/kuka_reach_gnms_sim_FDDP.mds")
+    thread_head.start_logging(5, "/tmp/kuka_reach_gnms_sim_USE_GNMS="+str(config['USE_GNMS'])+".mds")
     thread_head.sim_run_timed(100000)
     # thread_head.stop_logging()
     thread_head.plot_timing()
 else:
     thread_head.start()
-    thread_head.start_logging(15, "/tmp/kuka_reach_gnms_real.mds")
+    thread_head.start_logging(15, "/tmp/kuka_reach_gnms_real_USE_GNMS="+str(config['USE_GNMS'])+".mds")
     # time.sleep(30)
     # thread_head.plot_timing()
 # ctrl.bench.plot_timer()

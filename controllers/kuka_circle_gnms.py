@@ -33,7 +33,7 @@ def solveOCP(q, v, ddp, nb_iter, node_id_circle, target_reach, TASK_PHASE):
             for k in range( node_id_circle, ddp.problem.T+1, 1 ):
                 m[k].differential.costs.costs["translation"].active = True
                 m[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-                m[k].differential.costs.costs["translation"].weight = 5.
+                m[k].differential.costs.costs["translation"].weight = 30.
     problem_formulation_time = time.time()
     t_child_1 =  problem_formulation_time - t
     # Solve OCP 
@@ -41,7 +41,8 @@ def solveOCP(q, v, ddp, nb_iter, node_id_circle, target_reach, TASK_PHASE):
     solve_time = time.time()
     ddp_iter = ddp.iter
     t_child =  solve_time - problem_formulation_time
-    return ddp.us, ddp.xs, ddp.K, t_child, ddp_iter, t_child_1
+    cost = ddp.cost
+    return ddp.us, ddp.xs, ddp.K, t_child, ddp_iter, t_child_1, cost
 
 
 def rt_SolveOCP(child_conn, ddp, nb_iter, node_id_circle, target_reach, TASK_PHASE):
@@ -74,7 +75,8 @@ def rt_SolveOCP(child_conn, ddp, nb_iter, node_id_circle, target_reach, TASK_PHA
         solve_time = time.time()
         ddp_iter = ddp.iter
         t_child =  solve_time - problem_formulation_time
-        child_conn.send((ddp.us, ddp.xs, ddp.K, t_child, ddp_iter, t_child_1))        
+        cost = ddp.cost
+        child_conn.send((ddp.us, ddp.xs, ddp.K, t_child, ddp_iter, t_child_1, cost))        
 
 
 
@@ -130,11 +132,22 @@ class KukaCircleGNMS:
         self.us = self.ddp.us ; self.xs = self.ddp.xs ; self.Ks = self.ddp.K 
         self.x = self.xs[0] ; self.tau_ff = self.us[0] ; self.K = self.Ks[0]
         self.tau = self.tau_ff.copy() ; self.tau_riccati = np.zeros(self.tau.shape)
-        # self.tau_ext = self.fext0.copy()
         self.x1 = self.xs[1]
         self.nb_ctrl = 0
         self.nb_plan = 0
 
+        # Initialize torque measurements 
+        if(self.RUN_SIM):
+            logger.debug("Initial torque measurement signal : simulation --> use u0 = g(q0)")
+            self.u0 = self.ug
+            self.joint_torques_total    = self.u0
+            self.joint_torques_measured = self.u0
+        # DANGER ZONE 
+        else:
+            logger.warning("Initial torque measurement signal : real robot --> use sensor signal 'joint_torques_total' ")
+            self.joint_torques_total    = head.get_sensor("joint_torques_total")
+            logger.warning("      >>> Correct minus sign in measured torques ! ")
+            self.joint_torques_measured = -self.joint_torques_total 
 
 
         # self.target_position = np.asarray(self.config['contactPosition']) + np.asarray(self.config['oPc_offset'])
@@ -144,7 +157,7 @@ class KukaCircleGNMS:
         self.target_position_traj = np.zeros( (N_total_pos, 3) )
         # absolute desired position
         self.pdes = np.asarray(self.config['frameTranslationRef']) 
-        radius = 0.07 ; omega = 2.
+        radius = 0.15 ; omega = 3.
         self.target_position_traj[0:N_circle, :] = [np.array([self.pdes[0],
                                                               self.pdes[1] + radius * np.sin(i*self.dt_ocp*omega), 
                                                               self.pdes[2] + radius * (1-np.cos(i*self.dt_ocp*omega)) ]) for i in range(N_circle)]
@@ -166,7 +179,7 @@ class KukaCircleGNMS:
         logger.debug("Size of MPC horizon in simu cycles = "+str(self.NH_SIMU))
         logger.debug("Start of circle phase in simu cycles = "+str(self.T_CIRCLE))
         logger.debug("OCP to SIMU time ratio = "+str(self.OCP_TO_SIMU_CYCLES))
- 
+        self.cumulative_cost = 0
 
     def warmup(self, thread):
         self.nb_iter = 100        
@@ -179,16 +192,17 @@ class KukaCircleGNMS:
             self.subp.start()
             # Read sensors and publish real state 
             self.parent_conn.send((self.joint_positions, self.joint_velocities, self.target_position))
-            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1  = self.parent_conn.recv()
+            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost  = self.parent_conn.recv()
         # NO pipe
         else:
-            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1 = solveOCP(self.joint_positions, 
+            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost = solveOCP(self.joint_positions, 
                                                                                             self.joint_velocities, 
                                                                                             self.ddp, 
                                                                                             self.nb_iter,
                                                                                             self.node_id_circle,
                                                                                             self.target_position,
                                                                                             self.TASK_PHASE)
+        self.cumulative_cost += self.cost
         self.check = 0
         self.nb_iter = self.config['maxiter']
         self.count = 0
@@ -201,6 +215,10 @@ class KukaCircleGNMS:
         # # # # # # # # # 
         q = self.joint_positions
         v = self.joint_velocities
+
+        # When getting torque measurement from robot, do not forget to flip the sign
+        if(not self.RUN_SIM):
+            self.joint_torques_measured = -self.joint_torques_total  
 
         # # # # # # # # # 
         # # Update OCP  #
@@ -247,7 +265,7 @@ class KukaCircleGNMS:
             # No pipe
             if(not USE_PIPE):
                 self.count = 0
-                self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1 = solveOCP(q, v, 
+                self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost = solveOCP(q, v, 
                                                                                                   self.ddp, 
                                                                                                   self.nb_iter,
                                                                                                   self.node_id_circle,
@@ -259,10 +277,11 @@ class KukaCircleGNMS:
                     self.is_plan_updated = False
                     self.parent_conn.send((q, v, self.target_position)) 
                     self.sent = True
+            self.cumulative_cost += self.cost
 
         if USE_PIPE and self.parent_conn.poll() and not self.is_plan_updated:
             self.count = 0
-            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1 = self.parent_conn.recv()
+            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost = self.parent_conn.recv()
             # record predictions here if necessary 
             self.sent = False
 

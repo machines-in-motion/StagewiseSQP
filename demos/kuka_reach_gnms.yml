@@ -24,9 +24,9 @@ RICCATI: False
 dt: 0.05                                             # OCP integration step 
 N_h: 20                                              # Horizon length in nodes
 maxiter: 1                                           # Max number of iterations in DDP
-q0: [0., 0.34, 0., -0.75, 0., 0., 0.]                # Initial robot joint configuration
-dq0: [0.,0.,0.,0.,0.,0.,0.]                          # Initial robot joint velocity
-tau0: [0., -2.3274, 0., 0.012262, 0., -0.010595, 0.] # Initial robot joint torque
+q0: [0., 1.0471975511965976, 0., -1.1344640137963142, 0.2,  0.7853981633974483, 0.]               # Initial robot joint configuration
+dq0: [0.,0.,0.,0.,0.,0.,0.]                         # Initial robot joint velocity
+
 
 
 # Cost function composition (a.k.a which terms will be actually used in the OCP)
@@ -51,10 +51,10 @@ ctrlRegRef: 'DEFAULT' # DEFAULT = g(q) | NOT used for 'ctrlRegGrav' cost
 
  # 'translation' : end-effector frame translation 
 frameTranslationWeights:  [1., 1., 1.]
-frameTranslationWeight: 5.
-frameTranslationWeightTerminal: 50. 
+frameTranslationWeight: 1.
+frameTranslationWeightTerminal: 10. 
 # frameTranslationRef: [-0.5, -0.2, 0.8]
-frameTranslationRef: [0.5, 0., 1.]
+frameTranslationRef: [0.5, 0., .5]
 frameTranslationFrameName: 'contact'  
 
 
@@ -80,26 +80,3 @@ coef_ulim: 1.
 # armature
 armature: [0., 0., 0., 0., 0., 0., 0.]
 
-
-
-# # # # # # # # # # # # # # # # # # # # # #
-# Low-level simulation (actuation model)  #
-# # # # # # # # # # # # # # # # # # # # # #
-  # Scaling of desired torque
-alpha_min: 0.95
-alpha_max: 1.05
-beta_min: -0.1
-beta_max: 0.1
-  # White noise on desired torque and measured state
-var_u: [3.0, 3.0, 2.0, 2.0, 1.0, 0.1, 0.1]
-var_q: 0.028 #x10
-var_v: 0.028 #x10
-  # Buffer for torque delay
-delay_OCP_ms: 1    # in ms
-delay_sim_cycle: 2 # in HF cycles
-  # Proportional-integral torque control gains
-Kp_low: [.2, .2, .2, .2, .2, .2, .2  ]
-Ki_low: [.001, .001, .001, .001, .001, .001, .01]
-Kd_low: [.00001, .00001, .00001, .00001, .00001, .00001, .00001]
-u_avg_filter_length: 20 #8 # in HF cycles
-x_avg_filter_length: 5  #20 #8 # in HF cycles
