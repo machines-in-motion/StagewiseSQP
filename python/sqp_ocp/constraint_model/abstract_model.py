@@ -6,39 +6,36 @@ import numpy as np
 import pinocchio
 import pinocchio as pin
 
+try:
+    from crocoddyl import ConstraintModelAbstract, NoConstraintModel
+except:
+    print("USING PYTHON ABSTRACT")
 
-class ConstraintModelAbstact():
-    def __init__(self, nc, nx, nu):
-        self.nc = nc
-        self.nx = nx
-        self.nu = nu
+    class ConstraintModelAbstract():
+        def __init__(self, state, nc, nu, lb, ub):
+            self.state = state
+            self.nc = nc
+            self.nu = nu
+            self.lb = lb
+            self.ub = ub
 
-    def createData(self):
-        data = ConstraintData(self)
-        return data
-        
-
-class ConstraintData():
-    def __init__(self, cmodel):
-        self.c = np.zeros(cmodel.nc)
-        self.Cx = np.zeros((cmodel.nc, cmodel.nx))
-        self.Cu = np.zeros((cmodel.nc, cmodel.nu))
-
+        def createData(self):
+            data = ConstraintData(self)
+            return data
+            
+    class ConstraintData():
+        def __init__(self, cmodel):
+            self.c = np.zeros(cmodel.nc)
+            self.Cx = np.zeros((cmodel.nc, cmodel.state.nx))
+            self.Cu = np.zeros((cmodel.nc, cmodel.nu))
 
 
-class NoConstraint(ConstraintModelAbstact):
-    def __init__(self, nx, nu):
-        ConstraintModelAbstact.__init__(self, 0, nx, nu)
-        self.nc = 0
-        self.Cx = np.zeros((self.nc, nx))
-        self.Cu = np.zeros((self.nc, nu))
-        self.lmin = np.array([])
-        self.lmax = np.array([])
+    class NoConstraintModel(ConstraintModelAbstract):
+        def __init__(self, state, nu):
+            ConstraintModelAbstract.__init__(self, state, 0, nu, np.zeros(0), np.zeros(0))
 
-    def calc(self, cdata, data, x, u=None): 
-        cdata.c = np.array([])
+        def calc(self, cdata, data, x, u=None): 
+            pass
 
-    def calcDiff(self, cdata, data, x, u=None):
-        cdata.Cx = self.Cx
-        cdata.Cu = self.Cu
-
+        def calcDiff(self, cdata, data, x, u=None):
+            pass

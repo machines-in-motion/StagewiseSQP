@@ -1,17 +1,15 @@
-### UNIT TEST for GNMS solvers on Kuka reaching task
+### Kuka reaching example with different constraint implementation
 
 import pathlib
 import os
-python_path = pathlib.Path('.').absolute().parent/'python'
+python_path = pathlib.Path('.').absolute().parent.parent/'python'
 os.sys.path.insert(1, str(python_path))
-
+import time
 import crocoddyl
 import numpy as np
 import pinocchio as pin
 np.set_printoptions(precision=4, linewidth=180)
-from sqp_ocp.solvers import GNMS, GNMSCPP
 
-LINE_WIDTH = 100
 
 # # # # # # # # # # # # #
 ### LOAD ROBOT MODEL  ###
@@ -74,49 +72,83 @@ dt = 1e-2
 runningModel = crocoddyl.IntegratedActionModelEuler(running_DAM, dt)
 terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
 
+# Optionally add armature to take into account actuator's inertia
+# runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
+# terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
 
 # Create the shooting problem
 T = 10
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
-print("TEST KUKA PROBLEM GNMS".center(LINE_WIDTH, "-"))
+
+# Set up solvers
+MAXITER   = 1
+TOL       = 1e-8
+CALLBACKS = False
+KKT_COND  = True
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
+solverGNMS = crocoddyl.SolverGNMS(problem)
+solverGNMS.termination_tolerance = TOL
+solverGNMS.VERBOSE = CALLBACKS
+# solverGNMS.use_heuristic_line_search = True
+# solverGNMS.termination_tolerance = TOL
+solverGNMS.with_callbacks = CALLBACKS
+solverGNMS.use_kkt_condition = KKT_COND
+solverGNMS.computeDirection(True)
+t1 = time.time()
+solverGNMS.computeDirection(False)
 
-# Create solvers
-ddp0 = GNMS(problem)
-ddp1 = GNMSCPP(problem)
-ddp2 = crocoddyl.SolverGNMS(problem)
-ddp3 = crocoddyl.SolverFDDP(problem)
+# tmp = solverGNMS.solve(xs, us, MAXITER, False)
+t2 = time.time()
+print(t2 - t1)
 
-ddp0.solve(xs, us, 100)
-ddp1.solve(xs, us, 100)
-ddp2.solve(xs, us, 100)
-ddp3.solve(xs, us, 100)
+from sqp_ocp.constraint_model import StateConstraintModel, ControlConstraintModel, EndEffConstraintModel, NoConstraint, ConstraintModelStack
+from sqp_ocp.solvers import SQPOCP
 
+constraintModels = [NoConstraint(len(x0), actuation.nu)] * (T+1)
 
-##### UNIT TEST #####################################
+problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
-set_tol = 1e-4
-assert np.linalg.norm(np.array(ddp0.xs) - np.array(ddp1.xs)) < set_tol, "Test failed"
-assert np.linalg.norm(np.array(ddp0.us) - np.array(ddp1.us)) < set_tol, "Test failed"
-assert np.linalg.norm(np.array(ddp0.xs) - np.array(ddp2.xs)) < set_tol, "Test failed"
-assert np.linalg.norm(np.array(ddp0.us) - np.array(ddp2.us)) < set_tol, "Test failed"
-assert np.linalg.norm(np.array(ddp0.xs) - np.array(ddp3.xs)) < set_tol, "Test failed"
-assert np.linalg.norm(np.array(ddp0.us) - np.array(ddp3.us)) < set_tol, "Test failed"
+solver = SQPOCP(problem, constraintModels, "ProxQP")
+solver.verbose = True
+tmp = solver.solve(xs, us, MAXITER, CALLBACKS)
+print(solver.time)
+# mu_values      = [1e-6, 1e-2, 1e-3]
+# converged_gnms = []
+# iter_gnms      = []
+# for mu in mu_values:
+#     solverGNMS.mu = mu
+#     print('------------------')
+#     print("mu = ", solverGNMS.mu)
+#     t1 = time.time()
+#     tmp = solverGNMS.solve(xs, us, MAXITER, False)
+#     t2 = time.time()
+#     converged_gnms.append(tmp)
+#     print("GNMS", 1e3*(t2 - t1))
+#     print("nb iter = ", solverGNMS.iter)
 
-assert ddp0.cost - ddp1.cost < set_tol, "Test failed"
-assert ddp0.cost - ddp2.cost < set_tol, "Test failed"
-assert ddp0.cost - ddp3.cost < set_tol, "Test failed"
+#     iter_gnms.append(solverGNMS.iter)
+#     print('------------------')
+    
 
-assert np.linalg.norm(np.array(ddp0.lag_mul) - np.array(ddp1.lag_mul)) < set_tol, "Test failed"
-assert np.linalg.norm(np.array(ddp0.lag_mul) - np.array(ddp2.lag_mul)) < set_tol, "Test failed"
-assert np.linalg.norm(np.array(ddp0.lag_mul) - np.array(ddp3.lag_mul)) < set_tol, "Test failed"
+# # SOLVE FDDP
+# solverFDDP = crocoddyl.SolverFDDP(problem)
+# solverFDDP.termination_tolerance = TOL
+# if(CALLBACKS): 
+#     solverFDDP.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
 
-assert ddp0.KKT - ddp1.KKT < set_tol, "Test failed"
-assert ddp0.KKT - ddp2.KKT < set_tol, "Test failed"
-assert ddp0.KKT - ddp3.KKT < set_tol, "Test failed"
+# t1 = time.time()
+# converged_fddp = solverFDDP.solve(xs, us, MAXITER, False)
+# t2 = time.time()
+# print("FDDP", 1e3*(t2 - t1))
 
-print("TEST PASSED".center(LINE_WIDTH, "-"))
-print("\n")
+# iter_fddp      = solverFDDP.iter
+
+# # Print
+# print("GNMS mu \n", mu_values)
+# print("GNMS iter \n", iter_gnms)
+# print("GNMS converged \n", converged_gnms)
+# print("FDDP iter \n", iter_fddp)
+# print("FDDP converged \n", converged_fddp)

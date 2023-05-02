@@ -2,23 +2,25 @@
 ## Author : Armand Jordana
 ## Date : 12/04/2023
 
-import numpy as np
-from . abstract_model import ConstraintModelAbstact
+
+try:
+  from crocoddyl import StateConstraintModel
+except:
+  print("USING PYTHON CONSTRAINT")
+  import numpy as np
+  from . abstract_model import ConstraintModelAbstract
 
 
-class StateConstraintModel(ConstraintModelAbstact):
-    def __init__(self, lxmin, lxmax, nc, nx, nu):
-      ConstraintModelAbstact.__init__(self, nc, nx, nu)
-      self.lmin = lxmin
-      self.lmax = lxmax
+  class StateConstraintModel(ConstraintModelAbstract):
+      def __init__(self, state, nu, lxmin, lxmax):
+        ConstraintModelAbstract.__init__(self, state, state.nx, nu, lxmin, lxmax)
 
-      self.Cx = np.eye(len(lxmin))
-      self.Cu = np.zeros((len(lxmin), nu))
-      self.nc = len(lxmin)
+        self.Cx = np.eye(len(lxmin))
+        self.Cu = np.zeros((len(lxmin), nu))
 
-    def calc(self, cdata, data, x, u=None): 
-      cdata.c = x
+      def calc(self, cdata, data, x, u=None): 
+        cdata.c = x
 
-    def calcDiff(self, cdata, data, x, u=None): 
-      cdata.Cx = self.Cx 
-      cdata.Cu = self.Cu
+      def calcDiff(self, cdata, data, x, u=None): 
+        cdata.Cx = self.Cx 
+        cdata.Cu = self.Cu

@@ -51,15 +51,15 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
             cmodel.calc(cdata, data, self.xs[t], self.us[t])
             cmodel.calcDiff(cdata, data, self.xs[t], self.us[t])
 
-            self.constraint_norm += np.linalg.norm(np.clip(cmodel.lmin - cdata.c, 0, np.inf), 1) 
-            self.constraint_norm += np.linalg.norm(np.clip(cdata.c - cmodel.lmax, 0, np.inf), 1)
+            self.constraint_norm += np.linalg.norm(np.clip(cmodel.lb - cdata.c, 0, np.inf), 1) 
+            self.constraint_norm += np.linalg.norm(np.clip(cdata.c - cmodel.ub, 0, np.inf), 1)
 
         cmodel, cdata = self.constraintModel[-1], self.constraintData[-1]
         cmodel.calc(cdata, self.problem.terminalData, self.xs[-1])
         cmodel.calcDiff(cdata, self.problem.terminalData, self.xs[-1])
 
-        self.constraint_norm += np.linalg.norm(np.clip(cmodel.lmin - cdata.c, 0, np.inf), 1) 
-        self.constraint_norm += np.linalg.norm(np.clip(cdata.c - cmodel.lmax, 0, np.inf), 1)
+        self.constraint_norm += np.linalg.norm(np.clip(cmodel.lb - cdata.c, 0, np.inf), 1) 
+        self.constraint_norm += np.linalg.norm(np.clip(cdata.c - cmodel.ub, 0, np.inf), 1)
 
         for t, (model, data) in enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
             # model.calc(data, self.xs[t], self.us[t])  
@@ -124,8 +124,8 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
         for t, (cmodel, cdata) in enumerate(zip(self.constraintModel, self.constraintData)):
             if cmodel.nc == 0:
                 continue
-            l[nin_count: nin_count + cmodel.nc] = cmodel.lmin - cdata.c
-            u[nin_count: nin_count + cmodel.nc] = cmodel.lmax - cdata.c
+            l[nin_count: nin_count + cmodel.nc] = cmodel.lb - cdata.c
+            u[nin_count: nin_count + cmodel.nc] = cmodel.ub - cdata.c
             if t > 0:
                 C[nin_count: nin_count + cmodel.nc, (t-1)*self.nx: t*self.nx] = cdata.Cx
             if t < self.problem.T:
@@ -133,7 +133,6 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
             nin_count += cmodel.nc
 
 
-        # import pdb; pdb.set_trace()
         if self.method == "ProxQP":
             qp = proxsuite.proxqp.dense.QP(n, self.n_eq, self.n_in)
             qp.settings.eps_abs = 1e-4

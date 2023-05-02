@@ -8,9 +8,9 @@ os.sys.path.insert(1, str(python_path))
 
 
 import numpy as np
-from cartpole_utils import animateCartpole
+# from cartpole_utils import animateCartpole
 import crocoddyl
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from sqp_ocp.solvers import GNMSCPP,GNMS
 
 class DifferentialActionModelCartpole(crocoddyl.DifferentialActionModelAbstract):
@@ -51,67 +51,67 @@ class DifferentialActionModelCartpole(crocoddyl.DifferentialActionModelAbstract)
         pass
 
 
-# Creating the DAM for the cartpole
-cartpoleDAM = DifferentialActionModelCartpole()
-cartpoleData = cartpoleDAM.createData()
-cartpoleDAM = model = DifferentialActionModelCartpole()
+# # Creating the DAM for the cartpole
+# cartpoleDAM = DifferentialActionModelCartpole()
+# cartpoleData = cartpoleDAM.createData()
+# cartpoleDAM = model = DifferentialActionModelCartpole()
 
-# Using NumDiff for computing the derivatives. We specify the
-# withGaussApprox=True to have approximation of the Hessian based on the
-# Jacobian of the cost residuals.
-cartpoleND = crocoddyl.DifferentialActionModelNumDiff(cartpoleDAM, True)
+# # Using NumDiff for computing the derivatives. We specify the
+# # withGaussApprox=True to have approximation of the Hessian based on the
+# # Jacobian of the cost residuals.
+# cartpoleND = crocoddyl.DifferentialActionModelNumDiff(cartpoleDAM, True)
 
-# Getting the IAM using the simpletic Euler rule
-timeStep = 5e-2
-cartpoleIAM = crocoddyl.IntegratedActionModelEuler(cartpoleND, timeStep)
+# # Getting the IAM using the simpletic Euler rule
+# timeStep = 5e-2
+# cartpoleIAM = crocoddyl.IntegratedActionModelEuler(cartpoleND, timeStep)
 
-# Creating the shooting problem
-x0 = np.array([0., 3.14, 0., 0.])
-T = 50
+# # Creating the shooting problem
+# x0 = np.array([0., 3.14, 0., 0.])
+# T = 50
 
-terminalCartpole = DifferentialActionModelCartpole()
-terminalCartpoleDAM = crocoddyl.DifferentialActionModelNumDiff(terminalCartpole, True)
-terminalCartpoleIAM = crocoddyl.IntegratedActionModelEuler(terminalCartpoleDAM)
+# terminalCartpole = DifferentialActionModelCartpole()
+# terminalCartpoleDAM = crocoddyl.DifferentialActionModelNumDiff(terminalCartpole, True)
+# terminalCartpoleIAM = crocoddyl.IntegratedActionModelEuler(terminalCartpoleDAM)
 
-terminalCartpole.costWeights[0] = 200
-terminalCartpole.costWeights[1] = 200
-terminalCartpole.costWeights[2] = 1.
-terminalCartpole.costWeights[3] = 0.1
-terminalCartpole.costWeights[4] = 0.01
-terminalCartpole.costWeights[5] = 0.0001
-problem = crocoddyl.ShootingProblem(x0, [cartpoleIAM] * T, terminalCartpoleIAM)
-# Solving it using DDP
-# ddp = crocoddyl.SolverDDP(problem)
-ddp = GNMSCPP(problem)
+# terminalCartpole.costWeights[0] = 200
+# terminalCartpole.costWeights[1] = 200
+# terminalCartpole.costWeights[2] = 1.
+# terminalCartpole.costWeights[3] = 0.1
+# terminalCartpole.costWeights[4] = 0.01
+# terminalCartpole.costWeights[5] = 0.0001
+# problem = crocoddyl.ShootingProblem(x0, [cartpoleIAM] * T, terminalCartpoleIAM)
+# # Solving it using DDP
+# # ddp = crocoddyl.SolverDDP(problem)
+# ddp = GNMSCPP(problem)
 
-ddp.setCallbacks([crocoddyl.CallbackVerbose()])
-xs = [x0] * (ddp.problem.T + 1)
-us = [np.zeros(1)] * ddp.problem.T 
+# ddp.setCallbacks([crocoddyl.CallbackVerbose()])
+# xs = [x0] * (ddp.problem.T + 1)
+# us = [np.zeros(1)] * ddp.problem.T 
 
-# ddp.solve(xs, us, maxiter=300)
-ddp.solve(maxiter=150)
+# # ddp.solve(xs, us, maxiter=300)
+# ddp.solve(maxiter=150)
 
-fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1)
-ax1.plot(np.array(ddp.xs)[:, 0], label="ddp")
-ax2.plot(np.array(ddp.xs)[:, 1], label="ddp")
-ax3.plot(np.array(ddp.xs)[:, 2], label="ddp")
-ax4.plot(np.array(ddp.xs)[:, 2], label="ddp")
+# fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1)
+# ax1.plot(np.array(ddp.xs)[:, 0], label="ddp")
+# ax2.plot(np.array(ddp.xs)[:, 1], label="ddp")
+# ax3.plot(np.array(ddp.xs)[:, 2], label="ddp")
+# ax4.plot(np.array(ddp.xs)[:, 2], label="ddp")
 
-ax1.set_ylabel(r"$x$")
-ax2.set_ylabel(r"theta")
-ax3.set_ylabel(r"$v_x$")
-ax4.set_ylabel(r"theta dot")
-
-
-
-fig, (ax1) = plt.subplots(1, 1)
-ax1.plot(np.array(ddp.us)[:, 0], label="ddp")
-
-ax1.set_ylabel(r"$u$")
-# plt.show()
+# ax1.set_ylabel(r"$x$")
+# ax2.set_ylabel(r"theta")
+# ax3.set_ylabel(r"$v_x$")
+# ax4.set_ylabel(r"theta dot")
 
 
-# plt.show()
 
-# Display animation
-animateCartpole(ddp.xs, show=True)
+# fig, (ax1) = plt.subplots(1, 1)
+# ax1.plot(np.array(ddp.us)[:, 0], label="ddp")
+
+# ax1.set_ylabel(r"$u$")
+# # plt.show()
+
+
+# # plt.show()
+
+# # Display animation
+# animateCartpole(ddp.xs, show=True)

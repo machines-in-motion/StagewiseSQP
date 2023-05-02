@@ -58,14 +58,14 @@ class SQPOCP(FADMM, QPSolvers):
         for t, (cmodel, cdata, data) in enumerate(zip(self.constraintModel[:-1], self.constraintData[:-1], self.problem.runningDatas)):
             cmodel.calc(cdata, data, self.xs_try[t], self.us_try[t])
 
-            self.constraint_norm_try += np.linalg.norm(np.clip(cmodel.lmin - cdata.c, 0, np.inf), 1) 
-            self.constraint_norm_try += np.linalg.norm(np.clip(cdata.c - cmodel.lmax, 0, np.inf), 1)
+            self.constraint_norm_try += np.linalg.norm(np.clip(cmodel.lb - cdata.c, 0, np.inf), 1) 
+            self.constraint_norm_try += np.linalg.norm(np.clip(cdata.c - cmodel.ub, 0, np.inf), 1)
 
         cmodel, cdata = self.constraintModel[-1], self.constraintData[-1]
-        cmodel.calc(cdata, self.problem.terminalData, self.xs_try[-1])
+        cmodel.calc(cdata, self.problem.terminalData, self.xs_try[-1], np.zeros(4))
 
-        self.constraint_norm_try += np.linalg.norm(np.clip(cmodel.lmin - cdata.c, 0, np.inf), 1) 
-        self.constraint_norm_try += np.linalg.norm(np.clip(cdata.c - cmodel.lmax, 0, np.inf), 1)
+        self.constraint_norm_try += np.linalg.norm(np.clip(cmodel.lb - cdata.c, 0, np.inf), 1) 
+        self.constraint_norm_try += np.linalg.norm(np.clip(cdata.c - cmodel.ub, 0, np.inf), 1)
 
 
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
@@ -132,7 +132,6 @@ class SQPOCP(FADMM, QPSolvers):
         self.KKT = max(self.KKT, max(abs(lx)))
         self.KKT = max(self.KKT, max(abs(np.array(self.gap).flatten())))
         self.KKT = max(self.KKT, self.constraint_norm)
-
 
     def solve(self, init_xs=None, init_us=None, maxiter=100, isFeasible=False, regInit=None):
         #___________________ Initialize ___________________#
@@ -203,5 +202,5 @@ class SQPOCP(FADMM, QPSolvers):
                 break
         if self.verbose:
             self.calc()
-            self.KKT_check()
+            # self.KKT_check()
             print("{: >5} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >10}".format(*["Final", pp(self.KKT), pp(self.merit), pp(self.cost), pp(self.gap_norm),  pp(self.constraint_norm), " ", " ", " ", " "]))
