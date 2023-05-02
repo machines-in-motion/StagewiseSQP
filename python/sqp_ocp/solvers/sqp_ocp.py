@@ -82,18 +82,35 @@ class SQPOCP(FADMM, QPSolvers):
 
     def LQ_problem_KKT_check(self):
         KKT = 0
-        for t, (cdata, data) in enumerate(zip(self.constraintData[:-1], self.problem.runningDatas)):
+        for t, (cmodel, cdata, data) in enumerate(zip(self.constraintModel[:-1], self.constraintData[:-1], self.problem.runningDatas)):
+            Cx, Cu = cdata.Cx, cdata.Cu
+            if t == 0:
+                lu = data.Luu @ self.du[t] + data.Lxu.T @ self.dx[t] + data.Lu + data.Fu.T @ self.lag_mul[t+1] + Cu.T @ self.y[t]
+                KKT = max(KKT, max(abs(lu)))
+                continue
 
             lx = data.Lxx @ self.dx[t] + data.Lxu @ self.du[t] + data.Lx + data.Fx.T @ self.lag_mul[t+1] - self.lag_mul[t] + Cx.T @ self.y[t]
             lu = data.Luu @ self.du[t] + data.Lxu.T @ self.dx[t] + data.Lu + data.Fu.T @ self.lag_mul[t+1] + Cu.T @ self.y[t]
             KKT = max(KKT, max(abs(lx)), max(abs(lu)))
 
-        Cx = self.constraintData[-1].Cx
+            l1 = np.max(np.abs(np.clip(cmodel.lmin - Cx @ self.dx[t] - Cu @ self.du[t] - cdata.c, 0, np.inf)))
+            l2 = np.max(np.abs(np.clip( Cx @ self.dx[t] + Cu @ self.du[t] + cdata.c - cmodel.lmax, 0, np.inf)))
+            l3 =  np.max(np.abs(self.dx[t+1] - data.Fx @ self.dx[t] - data.Fu @ self.du[t] - self.gap[t]))
+            KKT = max(KKT, l1, l2, l3)
+
+        cmodel = self.constraintModel[-1]
+        cdata = self.constraintData[-1]
+        Cx = cdata.Cx
+
+        l1 = np.max(np.abs(np.clip(cmodel.lmin - Cx @ self.dx[-1] - cdata.c, 0, np.inf)))
+        l2 = np.max(np.abs(np.clip(Cx @ self.dx[-1] + cdata.c- cmodel.lmax, 0, np.inf)))
         lx = self.problem.terminalData.Lxx @ self.dx[-1] + self.problem.terminalData.Lx - self.lag_mul[-1] +  Cx.T @ self.y[-1]
+        KKT =  max(KKT, l1, l2)
         KKT = max(KKT, max(abs(lx)))
+
         # Note that for this test to pass, the tolerance of the QP should be low.
         # assert KKT < 1e-6
-        print("\n THIS SHOULD BE ZERO ", KKT)
+        print("\n This should match the tolerance of the QP solver ", KKT)
 
     def KKT_check(self):
         # print(self.lag_mul)
@@ -140,6 +157,8 @@ class SQPOCP(FADMM, QPSolvers):
                 self.computeDirectionFullQP()
             else:
                 self.computeDirection()
+                
+            # self.LQ_problem_KKT_check()
 
             cost_list.append(self.cost)
             gap_list.append(self.gap_norm)
@@ -161,7 +180,6 @@ class SQPOCP(FADMM, QPSolvers):
                 # if self.merit < self.merit_try:
                 if self.use_heuristic_ls:
                     filter_list = [constraint < self.constraint_norm_try and gap < self.gap_norm_try and cost < self.cost_try for (constraint, gap, cost) in zip(constraint_list, gap_list, cost_list)]
-                    # filter_list = [gap < self.gap_norm_try and cost < self.cost_try for (gap, cost) in zip(gap_list, cost_list)]
                     # if np.array(filter_list).any():
                     if self.cost < self.cost_try and self.gap_norm < self.gap_norm_try and self.constraint_norm < self.constraint_norm_try:
                         alpha *= 0.5
@@ -185,4 +203,3 @@ class SQPOCP(FADMM, QPSolvers):
             self.calc()
             # self.KKT_check()
             print("{: >5} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >10}".format(*["Final", pp(self.KKT), pp(self.merit), pp(self.cost), pp(self.gap_norm),  pp(self.constraint_norm), " ", " ", " ", " "]))
-    
