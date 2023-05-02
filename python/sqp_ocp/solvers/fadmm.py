@@ -35,6 +35,14 @@ class FADMM(SolverAbstract):
         self.allocateData()
 
         self.max_iters = 3000
+
+        self.eps_abs = 1e-4
+        self.eps_rel = 1e-4
+        self.adaptive_rho_tolerance = 5
+        self.rho_update_interval = 25
+        self.regMin = 1e-6
+        self.alpha = 1.6
+
         self.verboseQP = verboseQP
         if self.verboseQP:
             print("USING FADMM")
@@ -45,14 +53,9 @@ class FADMM(SolverAbstract):
         self.rho_sparse= 1e-1
         self.rho_min = 1e-6
         self.rho_max = 1e6
-        self.alpha = 1.6
 
-        self.eps_abs = 1e-4
-        self.eps_rel = 1e-4
-        self.adaptive_rho_tolerance = 5
-        self.rho_update_interval = 25
-        self.regMin = 1e-6
-        self.allocateQPData()
+        self.z = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
+        self.y = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
 
 
     def models(self):
@@ -99,12 +102,9 @@ class FADMM(SolverAbstract):
             self.KKT_check()
 
         self.reset_params()
-        self.allocateQPData()
-
         self.backwardPass_without_constraints()
         self.computeUpdates()
-        self.update_lagrangian_parameters_infinity()
-        self.y = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
+        self.update_lagrangian_parameters_infinity(False)
         
         for iter in range(1, self.max_iters+1):
             if (iter) % self.rho_update_interval == 1 or iter == 1:
@@ -115,7 +115,7 @@ class FADMM(SolverAbstract):
                 self.backwardPass_without_rho_update()
             
             self.computeUpdates()
-            self.update_lagrangian_parameters_infinity()
+            self.update_lagrangian_parameters_infinity(True)
             self.update_rho_sparse(iter)
 
             if self.norm_primal <= self.eps_abs + self.eps_rel*self.norm_primal_rel and\
@@ -162,7 +162,7 @@ class FADMM(SolverAbstract):
                         elif cmodel.lb[k] != cmodel.ub[k]:
                             self.rho_vec[t][k] = scaler * self.rho_sparse
 
-    def update_lagrangian_parameters_infinity(self):
+    def update_lagrangian_parameters_infinity(self, update_y):
 
         self.norm_primal = -np.inf
         self.norm_dual = -np.inf
@@ -183,8 +183,8 @@ class FADMM(SolverAbstract):
             self.dz_relaxed[t] = self.alpha * (Cdx_Cdu) + (1 - self.alpha)*self.z[t]
 
             self.z[t] = np.clip(self.dz_relaxed[t] + np.divide(self.y[t], self.rho_vec[t]), cmodel.lb - cdata.c, cmodel.ub - cdata.c)
-            
-            self.y[t] += np.multiply(self.rho_vec[t], (self.dz_relaxed[t] - self.z[t])) 
+            if update_y:
+                self.y[t] += np.multiply(self.rho_vec[t], (self.dz_relaxed[t] - self.z[t])) 
 
             self.dx[t] = self.dx_tilde[t].copy()
             self.du[t] = self.du_tilde[t].copy()
@@ -212,8 +212,9 @@ class FADMM(SolverAbstract):
             self.z[-1] = np.clip(self.dz_relaxed[-1] + np.divide(self.y[-1], self.rho_vec[-1]), cmodel.lb - cdata.c, cmodel.ub - cdata.c)
             # print(cdata.c)
             # print(self.dz_relaxed[-1])
-
-            self.y[-1] += np.multiply(self.rho_vec[-1], (self.dz_relaxed[-1] - self.z[-1])) 
+            
+            if update_y:
+                self.y[-1] += np.multiply(self.rho_vec[-1], (self.dz_relaxed[-1] - self.z[-1])) 
 
             self.dx[-1] = self.dx_tilde[-1].copy()
 
@@ -240,7 +241,7 @@ class FADMM(SolverAbstract):
         self.expected_decrease = 0
         assert np.linalg.norm(self.dx[0]) < 1e-6
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
-                self.lag_mul[t] = self.S[t] @ self.dx[t] + self.s[t]
+                self.lag_mul[t] = self.S[t] @ self.dx_tilde[t] + self.s[t]
                 self.du_tilde[t][:] = self.L[t].dot(self.dx_tilde[t]) + self.l[t] 
                 A = data.Fx.copy()
                 B = data.Fu.copy()      
@@ -252,7 +253,7 @@ class FADMM(SolverAbstract):
                     BL = B@self.L[t]
                 self.dx_tilde[t+1] = (A + BL)@self.dx_tilde[t] + bl + self.gap[t].copy()  
 
-        self.lag_mul[-1] = self.S[-1] @ self.dx[-1] + self.s[-1]
+        self.lag_mul[-1] = self.S[-1] @ self.dx_tilde[-1] + self.s[-1]
 
         self.x_grad_norm = np.linalg.norm(self.dx_tilde)/(self.problem.T+1)
         self.u_grad_norm = np.linalg.norm(self.du_tilde)/self.problem.T

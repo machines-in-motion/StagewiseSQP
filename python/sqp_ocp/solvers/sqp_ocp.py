@@ -123,7 +123,7 @@ class SQPOCP(FADMM, QPSolvers):
         if init_us is None or len(init_us) < 1:
             init_us = [np.zeros(m.nu) for m in self.problem.runningModels] 
 
-        init_xs[0][:] = self.problem.x0.copy() # Initial condition guess must be x0
+        init_xs[0] = self.problem.x0.copy() # Initial condition guess must be x0
         self.setCandidate(init_xs, init_us, False)
         if self.verbose:
             header = "{: >5} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >14} {: >10}".format(*["iter", "KKT norm", "merit", "cost", "gap norm", "constraint norm", "QP iter ", "dx norm", "du norm", "alpha"])
