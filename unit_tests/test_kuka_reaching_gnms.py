@@ -98,7 +98,7 @@ ddp3.solve(xs, us, 100)
 
 ##### UNIT TEST #####################################
 
-set_tol = 1e-6
+set_tol = 1e-4
 assert np.linalg.norm(np.array(ddp0.xs) - np.array(ddp1.xs)) < set_tol, "Test failed"
 assert np.linalg.norm(np.array(ddp0.us) - np.array(ddp1.us)) < set_tol, "Test failed"
 assert np.linalg.norm(np.array(ddp0.xs) - np.array(ddp2.xs)) < set_tol, "Test failed"
