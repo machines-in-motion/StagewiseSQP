@@ -73,15 +73,15 @@ class FADMM(SolverAbstract):
             cmodel.calc(cdata, data, self.xs[t], self.us[t])
             cmodel.calcDiff(cdata, data, self.xs[t], self.us[t])
 
-            self.constraint_norm += np.linalg.norm(np.clip(cmodel.lmin - cdata.c, 0, np.inf), 1) 
-            self.constraint_norm += np.linalg.norm(np.clip(cdata.c - cmodel.lmax, 0, np.inf), 1)
+            self.constraint_norm += np.linalg.norm(np.clip(cmodel.lb - cdata.c, 0, np.inf), 1) 
+            self.constraint_norm += np.linalg.norm(np.clip(cdata.c - cmodel.ub, 0, np.inf), 1)
 
         cmodel, cdata = self.constraintModel[-1], self.constraintData[-1]
-        cmodel.calc(cdata, self.problem.terminalData, self.xs[-1])
-        cmodel.calcDiff(cdata, self.problem.terminalData, self.xs[-1])
+        cmodel.calc(cdata, self.problem.terminalData, self.xs[-1], np.zeros(7))
+        cmodel.calcDiff(cdata, self.problem.terminalData, self.xs[-1], np.zeros(7))
 
-        self.constraint_norm += np.linalg.norm(np.clip(cmodel.lmin - cdata.c, 0, np.inf), 1) 
-        self.constraint_norm += np.linalg.norm(np.clip(cdata.c - cmodel.lmax, 0, np.inf), 1)
+        self.constraint_norm += np.linalg.norm(np.clip(cmodel.lb - cdata.c, 0, np.inf), 1) 
+        self.constraint_norm += np.linalg.norm(np.clip(cdata.c - cmodel.ub, 0, np.inf), 1)
 
         for t, (model, data) in enumerate(zip(self.problem.runningModels,self.problem.runningDatas)):
             # model.calc(data, self.xs[t], self.us[t])  
@@ -98,17 +98,18 @@ class FADMM(SolverAbstract):
         if KKT:
             self.KKT_check()
 
-        # self.reset_params()
-        # self.allocateQPData()
+        self.reset_params()
+        self.allocateQPData()
 
-        # self.backwardPass_without_constraints()
-        # self.computeUpdates()
-        # self.update_lagrangian_parameters_infinity()
-        # self.y = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
+        self.backwardPass_without_constraints()
+        self.computeUpdates()
+        self.update_lagrangian_parameters_infinity()
+        self.y = [np.zeros(cmodel.nc) for cmodel in self.constraintModel]
         
         for iter in range(1, self.max_iters+1):
             if (iter) % self.rho_update_interval == 1 or iter == 1:
-                self.backwardPass()  
+                self.backwardPass() 
+ 
             else:
                 # self.backwardPass()  
                 self.backwardPass_without_rho_update()
@@ -149,16 +150,16 @@ class FADMM(SolverAbstract):
                 
                 for t, cmodel in enumerate(self.constraintModel):   
                     if t == self.problem.T:
-                        scaler = 1e5
+                        scaler = 1
                     else:
                         scaler = 1
                     
                     for k in range(cmodel.nc):  
-                        if cmodel.lmin[k] == -np.inf and cmodel.lmax[k] == np.inf:
+                        if cmodel.lb[k] == -np.inf and cmodel.ub[k] == np.inf:
                             self.rho_vec[t][k] = self.rho_min 
-                        elif abs(cmodel.lmin[k] - cmodel.lmax[k]) < 1e-3:
+                        elif abs(cmodel.lb[k] - cmodel.ub[k]) < 1e-3:
                             self.rho_vec[t][k] = scaler *1e3 * self.rho_sparse
-                        elif cmodel.lmin[k] != cmodel.lmax[k]:
+                        elif cmodel.lb[k] != cmodel.ub[k]:
                             self.rho_vec[t][k] = scaler * self.rho_sparse
 
     def update_lagrangian_parameters_infinity(self):
@@ -181,7 +182,7 @@ class FADMM(SolverAbstract):
 
             self.dz_relaxed[t] = self.alpha * (Cdx_Cdu) + (1 - self.alpha)*self.z[t]
 
-            self.z[t] = np.clip(self.dz_relaxed[t] + np.divide(self.y[t], self.rho_vec[t]), cmodel.lmin - cdata.c, cmodel.lmax - cdata.c)
+            self.z[t] = np.clip(self.dz_relaxed[t] + np.divide(self.y[t], self.rho_vec[t]), cmodel.lb - cdata.c, cmodel.ub - cdata.c)
             
             self.y[t] += np.multiply(self.rho_vec[t], (self.dz_relaxed[t] - self.z[t])) 
 
@@ -198,7 +199,6 @@ class FADMM(SolverAbstract):
             self.norm_dual_rel = max(self.norm_dual_rel, max(abs(Cx.T@self.y[t])), max(abs(Cu.T@self.y[t])))
 
         self.dx[-1] = self.dx_tilde[-1].copy()
-        self.du[-1] = self.du_tilde[-1].copy()
         if self.constraintModel[-1].nc != 0:
             cmodel = self.constraintModel[-1]
             cdata = self.constraintData[-1]
@@ -209,8 +209,10 @@ class FADMM(SolverAbstract):
             Cdx = Cx @ self.dx_tilde[-1].copy()
 
             self.dz_relaxed[-1] = self.alpha * Cdx + (1 - self.alpha)*self.z[-1]
+            self.z[-1] = np.clip(self.dz_relaxed[-1] + np.divide(self.y[-1], self.rho_vec[-1]), cmodel.lb - cdata.c, cmodel.ub - cdata.c)
+            # print(cdata.c)
+            # print(self.dz_relaxed[-1])
 
-            self.z[-1] = np.clip(self.dz_relaxed[-1] + np.divide(self.y[-1], self.rho_vec[-1]), cmodel.lmin - cdata.c, cmodel.lmax - cdata.c)
             self.y[-1] += np.multiply(self.rho_vec[-1], (self.dz_relaxed[-1] - self.z[-1])) 
 
             self.dx[-1] = self.dx_tilde[-1].copy()
@@ -399,15 +401,15 @@ class FADMM(SolverAbstract):
         self.rho_sparse = min(max(self.rho_sparse, self.rho_min), self.rho_max) 
         for t, cmodel in enumerate(self.constraintModel):   
             if t == self.problem.T:
-                scaler = 1e5
+                scaler = 1
             else:
                 scaler = 1
             for k in range(cmodel.nc):  
-                if cmodel.lmin[k] == -np.inf and cmodel.lmax[k] == np.inf:
+                if cmodel.lb[k] == -np.inf and cmodel.ub[k] == np.inf:
                     self.rho_vec[t][k] = self.rho_min 
-                elif abs(cmodel.lmin[k] - cmodel.lmax[k]) < 1e-3:
+                elif abs(cmodel.lb[k] - cmodel.ub[k]) < 1e-3:
                     self.rho_vec[t][k] = scaler * 1e3 * self.rho_sparse
-                elif cmodel.lmin[k] != cmodel.lmax[k]:
+                elif cmodel.lb[k] != cmodel.ub[k]:
                     self.rho_vec[t][k] = scaler * self.rho_sparse
 
 

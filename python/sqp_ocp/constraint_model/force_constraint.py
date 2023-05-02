@@ -3,12 +3,12 @@
 ## Date : 12/04/2023
 
 import numpy as np
-from . abstract_model import ConstraintModelAbstact
+from . abstract_model import ConstraintModelAbstract
 
 
-class Force6DConstraintModel(ConstraintModelAbstact):
+class Force6DConstraintModel(ConstraintModelAbstract):
     def __init__(self, Fmin, Fmax, nc, nx, nu):
-        ConstraintModelAbstact.__init__(self, nc, nx, nu)
+        ConstraintModelAbstract.__init__(self, nc, nx, nu)
         self.lmin = Fmin
         self.lmax = Fmax
 
@@ -21,9 +21,9 @@ class Force6DConstraintModel(ConstraintModelAbstact):
         cdata.Cx = data.differential.df_dx
         cdata.Cu = data.differential.df_du
 
-class LocalCone(ConstraintModelAbstact):
+class LocalCone(ConstraintModelAbstract):
     def __init__(self, mu, nc, nx, nu):
-        ConstraintModelAbstact.__init__(self, nc, nx, nu)
+        ConstraintModelAbstract.__init__(self, nc, nx, nu)
         self.lmin = np.array([0.])
         self.lmax = np.array([np.inf])
         self.mu = mu
