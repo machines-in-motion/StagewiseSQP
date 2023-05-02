@@ -9,10 +9,10 @@ import crocoddyl
 import numpy as np
 import pinocchio as pin
 np.set_printoptions(precision=4, linewidth=180)
-import ocp_utils
 from sqp_ocp.constraint_model import StateConstraintModel, ControlConstraintModel, EndEffConstraintModel, NoConstraintModel, ConstraintModelStack
 from sqp_ocp.solvers import SQPOCP
 
+LINE_WIDTH = 100
 
 # # # # # # # # # # # # #
 ### LOAD ROBOT MODEL  ###
@@ -135,7 +135,7 @@ sqp_ites = 10
 eps_abs = 1e-4
 eps_rel = 1e-4
 
-ddp.with_callbacks = True
+ddp.with_callbacks = False
 ddp.use_filter_ls = True
 ddp.filter_size = 10
 ddp.termination_tol = 1e-3
@@ -165,7 +165,7 @@ ddppy = SQPOCP(problem, constraintModels, "FADMM")
 ddppy.eps_abs = eps_abs
 ddppy.eps_rel = eps_rel
 
-ddppy.verbose = True
+ddppy.verbose = False
 # ddppy.verboseQP = False
 ddppy.max_iters = qp_iters
 
@@ -213,9 +213,5 @@ assert (np.linalg.norm(np.array(ddp.xs) - ddppy.xs)/(T+1)) < tol
 assert (np.linalg.norm(np.array(ddp.us) - ddppy.us)/T) < tol
 
 
-
-# Extract DDP data and plot
-# ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
-
-# ocp_utils.plot_ocp_results(ddp_data, which_plots="all", labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
-
+print("TEST PASSED".center(LINE_WIDTH, "-"))
+print("\n")
