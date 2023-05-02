@@ -84,27 +84,27 @@ else:
                   ylims=[-model.effortLimit, +model.effortLimit] )
 
 
-p_mea = get_p_(r.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
-p_mea2 = get_p_(r2.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
-p_des = get_p_(r.data['x_des'][:,:nq], pinrobot.model, pinrobot.model.getFrameId('contact'))
-target_position = np.zeros((N, 3)) #r.data['target_position'] #
-target_position[:,0] = r.data['target_position_x'][:,0]
-target_position[:,1] = r.data['target_position_y'][:,0]
-target_position[:,2] = r.data['target_position_z'][:,0]
-s.plot_ee_pos( [p_mea, 
-                p_mea2,
-                target_position],  
-               ['fddp', 'gnms', 'ref (position cost)'], 
-               ['r', 'b', 'k', 'g'], 
-               linestyle=['solid','solid', 'dotted', 'solid'])
+# p_mea = get_p_(r.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
+# p_mea2 = get_p_(r2.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
+# p_des = get_p_(r.data['x_des'][:,:nq], pinrobot.model, pinrobot.model.getFrameId('contact'))
+# target_position = np.zeros((N, 3)) #r.data['target_position'] #
+# target_position[:,0] = r.data['target_position_x'][:,0]
+# target_position[:,1] = r.data['target_position_y'][:,0]
+# target_position[:,2] = r.data['target_position_z'][:,0]
+# s.plot_ee_pos( [p_mea, 
+#                 p_mea2,
+#                 target_position],  
+#                ['fddp', 'gnms', 'ref (position cost)'], 
+#                ['r', 'b', 'k', 'g'], 
+#                linestyle=['solid','solid', 'dotted', 'solid'])
 
-v_mea = get_v_(r.data['joint_positions'], r.data['joint_velocities'], pinrobot.model, pinrobot.model.getFrameId('contact'))
-v_mea2 = get_v_(r2.data['joint_positions'], r2.data['x_des'][:,nq:nq+nv], pinrobot.model, pinrobot.model.getFrameId('contact'))
-s.plot_ee_vel( [v_mea, 
-                v_mea2],  
-               ['fddp', 'gnms'], 
-               ['r', 'b'], 
-               linestyle=['solid','solid'])
+# v_mea = get_v_(r.data['joint_positions'], r.data['joint_velocities'], pinrobot.model, pinrobot.model.getFrameId('contact'))
+# v_mea2 = get_v_(r2.data['joint_positions'], r2.data['x_des'][:,nq:nq+nv], pinrobot.model, pinrobot.model.getFrameId('contact'))
+# s.plot_ee_vel( [v_mea, 
+#                 v_mea2],  
+#                ['fddp', 'gnms'], 
+#                ['r', 'b'], 
+#                linestyle=['solid','solid'])
 # target_force_3d = np.zeros((N, 3))
 # target_force_3d[:,0] = -r.data['target_force'][:,0]*0
 # target_force_3d[:,1] = r.data['target_force'][:,0]*0

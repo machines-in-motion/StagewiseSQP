@@ -43,5 +43,5 @@ ddp.termination_tol = 1e-3
 ddp.warm_start = True
 ddp.max_qp_iters = qp_iters
 
-ddp.xs = [x0]*(config['N_h']+1)
+# ddp.xs = [x0]*(config['N_h']+1)
 ddp.solve()

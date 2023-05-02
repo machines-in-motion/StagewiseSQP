@@ -1,4 +1,4 @@
-# Circle tracking task with constraints
+# Square tracking task with constraints
 
 
 # MPC & sim parameters
@@ -8,12 +8,12 @@ T_tot: 1000.            # Simulation duration (s)
 # Simulation options
 RICCATI: False
 # Task phases
-T_CIRCLE: 2.
+T_CIRCLE: 0.
 # OCP 
 dt: 0.02                                             # OCP integration step 
 N_h: 10                                              # Horizon length in nodes
 q0: [0., 1.0471975511965976, 0., -1.1344640137963142, 0.2,  0.7853981633974483, 0.]               # Initial robot joint configuration
-dq0: [0.,0.,0.,0.,0.,0.,0.]                         # Initial robot joint velocity
+dq0: [0.,0.,0.,0.,0.,0.,0.]                          # Initial robot joint velocity
 
 
 # FADMM solver parameters
@@ -24,7 +24,7 @@ use_filter_ls: True
 filter_size: 1
 termination_tol: 0.001
 warm_start: True
-max_qp_iters: 1
+max_qp_iters: 100
 
 
 
@@ -50,7 +50,6 @@ ctrlLimit: [320., 320., 176., 176., 110.,  40.,  40.] #'DEFAULT'
 eeLowerLimit: 'None' #[1., 1., 1. ]
 eeUpperLimit: 'None' #[1., 1., 1. ]
 eeLimitTolerance: 0.1
-
 
 
 
@@ -80,7 +79,7 @@ frameTranslationWeight: 1.
 frameTranslationWeightTerminal: 10. 
 alpha_quadflatlog: 0.3
 # frameTranslationRef: [-0.5, -0.2, 0.8]
-frameTranslationRef: [0.8, 0., .5]
+frameTranslationRef: 'DEFAULT' #[0.8, 0., .5]
 frameTranslationFrameName: 'contact'  
 
 

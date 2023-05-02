@@ -34,11 +34,16 @@ def solveOCP(q, v, ddp, sqp_iter, qp_iter, node_id_circle, target_reach, TASK_PH
                 m[k].differential.costs.costs["translation"].active = True
                 m[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
                 m[k].differential.costs.costs["translation"].weight = 30.
+                # m[k].
+    # logger.warning("formulated problem")
     problem_formulation_time = time.time()
     t_child_1 =  problem_formulation_time - t
     # Solve OCP 
     ddp.max_qp_iters = qp_iter
+    # logger.warning("about t solve")
     ddp.solve(xs_init, us_init, maxiter=sqp_iter, isFeasible=False)
+    # logger.warning("SOLVED")
+    
     solve_time = time.time()
     ddp_iter = ddp.iter
     t_child =  solve_time - problem_formulation_time
@@ -82,7 +87,7 @@ def rt_SolveOCP(child_conn, ddp, sqp_iter, qp_iter, node_id_circle, target_reach
 
 
 
-class KukaCircleFADMM:
+class KukaSquareFADMM:
 
     def __init__(self, head, robot, config, run_sim):
         """
@@ -151,18 +156,25 @@ class KukaCircleFADMM:
             self.joint_torques_measured = -self.joint_torques_total 
 
 
-        # self.target_position = np.asarray(self.config['contactPosition']) + np.asarray(self.config['oPc_offset'])
         # Circle trajectory 
         N_total_pos = int((self.config['T_tot'] - 0.)/self.dt_ocp + self.Nh)
-        N_circle = int((self.config['T_tot'] - self.config['T_CIRCLE'])/self.dt_ocp) + self.Nh
+        N_square = int((self.config['T_tot'] - self.config['T_CIRCLE'])/self.dt_ocp) + self.Nh
+
         self.target_position_traj = np.zeros( (N_total_pos, 3) )
         # absolute desired position
-        self.pdes = np.asarray(self.config['frameTranslationRef']) 
-        radius = 0.15 ; omega = 3.
-        self.target_position_traj[0:N_circle, :] = [np.array([self.pdes[0],
-                                                              self.pdes[1] + radius * np.sin(i*self.dt_ocp*omega), 
-                                                              self.pdes[2] + radius * (1-np.cos(i*self.dt_ocp*omega)) ]) for i in range(N_circle)]
-        self.target_position_traj[N_circle:, :] = self.target_position_traj[N_circle-1,:]
+        self.pdes = self.robot.data.oMf[self.endeffFrameId].translation #np.asarray(self.config['frameTranslationRef']) 
+        squareSize = 0.2
+        squareVel = 0.2
+        def phi(x):
+            return max(0, min(1,3/2-np.abs(x)))
+        def gamma(t):
+            return np.array([phi(t-3/2), phi(t-5/2)])
+        logger.warning("creating square traje")
+        # self.target_position_traj[0:N_square, :] = [np.array([self.pdes[0],
+        #                                                       gamma(i*self.dt_ocp*squareVel)[0], 
+        #                                                       gamma(i*self.dt_ocp*squareVel)[1]]) for i in range(N_square)]
+        self.target_position_traj[0:N_square, :] = self.pdes 
+        self.target_position_traj[N_square:, :] = self.target_position_traj[N_square-1,:]
         # plt.plot(self.target_position_traj, label='pos')
         # plt.show()
         # Targets over one horizon (initially = absolute target position)
@@ -183,6 +195,8 @@ class KukaCircleFADMM:
         self.cumulative_cost = 0
 
     def warmup(self, thread):
+        logger.warning("begin warmup")
+
         self.sqp_iter = 100   
         self.qp_iter  = 10000   
         self.ddp.xs = [self.x0 for i in range(self.config['N_h']+1)]
@@ -197,6 +211,7 @@ class KukaCircleFADMM:
             self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost  = self.parent_conn.recv()
         # NO pipe
         else:
+            logger.warning("no pipe")
             self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost = solveOCP(self.joint_positions, 
                                                                                             self.joint_velocities, 
                                                                                             self.ddp, 
@@ -210,7 +225,7 @@ class KukaCircleFADMM:
         self.qp_iter  = self.config['max_qp_iters']
         self.count = 0
         self.sent = False
-
+        logger.warning("ok")
     def run(self, thread):        
         t1 = time.time()
         # # # # # # # # # 
@@ -218,7 +233,7 @@ class KukaCircleFADMM:
         # # # # # # # # # 
         q = self.joint_positions
         v = self.joint_velocities
-
+        # logger.warning("cycle "+str(thread.ti))
         # When getting torque measurement from robot, do not forget to flip the sign
         if(not self.RUN_SIM):
             self.joint_torques_measured = -self.joint_torques_total  
