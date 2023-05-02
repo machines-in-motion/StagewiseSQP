@@ -180,7 +180,6 @@ class SQPOCP(FADMM, QPSolvers):
                 # if self.merit < self.merit_try:
                 if self.use_heuristic_ls:
                     filter_list = [constraint < self.constraint_norm_try and gap < self.gap_norm_try and cost < self.cost_try for (constraint, gap, cost) in zip(constraint_list, gap_list, cost_list)]
-                    # filter_list = [gap < self.gap_norm_try and cost < self.cost_try for (gap, cost) in zip(gap_list, cost_list)]
                     # if np.array(filter_list).any():
                     if self.cost < self.cost_try and self.gap_norm < self.gap_norm_try and self.constraint_norm < self.constraint_norm_try:
                         alpha *= 0.5

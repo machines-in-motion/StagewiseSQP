@@ -268,7 +268,7 @@ class FADMM(SolverAbstract):
         self.expected_decrease = 0
         assert np.linalg.norm(self.dx[0]) < 1e-6
         for t, (model, data) in enumerate(zip(self.problem.runningModels, self.problem.runningDatas)):
-                self.lag_mul[t] = self.S[t] @ self.dx[t] + self.s[t]
+                self.lag_mul[t] = self.S[t] @ self.dx_tilde[t] + self.s[t]
                 self.du_tilde[t][:] = self.L[t].dot(self.dx_tilde[t]) + self.l[t] 
                 A = data.Fx.copy()
                 B = data.Fu.copy()      
@@ -280,7 +280,7 @@ class FADMM(SolverAbstract):
                     BL = B@self.L[t]
                 self.dx_tilde[t+1] = (A + BL)@self.dx_tilde[t] + bl + self.gap[t].copy()  
 
-        self.lag_mul[-1] = self.S[-1] @ self.dx[-1] + self.s[-1]
+        self.lag_mul[-1] = self.S[-1] @ self.dx_tilde[-1] + self.s[-1]
 
         self.x_grad_norm = np.linalg.norm(self.dx_tilde)/(self.problem.T+1)
         self.u_grad_norm = np.linalg.norm(self.du_tilde)/self.problem.T
