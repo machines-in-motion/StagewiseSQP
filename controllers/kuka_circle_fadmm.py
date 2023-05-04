@@ -169,7 +169,7 @@ class KukaCircleFADMM:
         self.target_position_traj = np.zeros( (N_total_pos, 3) )
         # absolute desired position
         self.pdes = np.asarray(self.config['frameTranslationRef']) 
-        radius = 0.3 ; omega = 3.
+        radius = 0.3 ; omega = 1.
         self.target_position_traj[0:N_circle, :] = [np.array([self.pdes[0],
                                                               self.pdes[1] + radius * np.sin(i*self.dt_ocp*omega), 
                                                               self.pdes[2] + radius * (1-np.cos(i*self.dt_ocp*omega)) ]) for i in range(N_circle)]

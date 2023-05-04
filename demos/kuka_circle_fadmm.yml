@@ -3,7 +3,7 @@
 
 # MPC & sim parameters
 simu_freq: 1000         # Simulation frequency in Hz
-plan_freq: 500         # Planning frequency (Hz)
+plan_freq: 100         # Planning frequency (Hz)
 T_tot: 1000.            # Simulation duration (s)
 # Simulation options
 RICCATI: False
@@ -11,7 +11,7 @@ RICCATI: False
 T_CIRCLE: 2.
 # OCP 
 dt: 0.02                                             # OCP integration step 
-N_h: 10                                              # Horizon length in nodes
+N_h: 25                                              # Horizon length in nodes
 q0: [0., 1.0471975511965976, 0., -1.1344640137963142, 0.2,  0.7853981633974483, 0.]               # Initial robot joint configuration
 dq0: [0.,0.,0.,0.,0.,0.,0.]                         # Initial robot joint velocity
 
@@ -24,7 +24,7 @@ use_filter_ls: True
 filter_size: 1
 termination_tol: 0.0000001
 warm_start: True
-max_qp_iters: 50 
+max_qp_iters: 50    #125 
 qp_termination_tol_abs: 0.00001
 qp_termination_tol_rel: 0.00001
 
@@ -41,11 +41,10 @@ WHICH_CONSTRAINTS: ['stateBox']
 # stateUpperLimit: [2.96706, 2.0944 , 2.96706, 2.0944 , 2.96706, 2.0944 , 3.05433,
 #                   1.48353, 1.48353, 1.74533, 1.309  , 2.26893, 2.35619, 2.35619] #'DEFAULT'
 
-stateLowerLimit: [-2.96706, -2.0944 , -2.96706, -2.0944 , -2.96706, -2.0944 , -3.05433,
-                  -0.5, -1.48353, -1.74533, -1.309  , -2.26893, -2.35619, -2.35619] #'DEFAULT'
-stateUpperLimit: [2.96706, 2.0944 , 2.96706, 2.0944 , 2.96706, 2.0944 , 3.05433,
-                  0.5, 1.48353, 1.74533, 1.309  , 2.26893, 2.35619, 2.35619] #'DEFAULT'
-
+stateLowerLimit: [-0.2, -2.0944 , -2.96706, -2.0944 , -2.96706, -2.0944 , -3.05433,
+                  -1.48353, -1.48353, -1.74533, -1.309  , -2.26893, -2.35619, -2.35619] #'DEFAULT'
+stateUpperLimit: [0.2, 2.0944 , 2.96706, 2.0944 , 2.96706, 2.0944 , 3.05433,
+                  1.48353, 1.48353, 1.74533, 1.309  , 2.26893, 2.35619, 2.35619] #'DEFAULT'
 # 'ctrlBox'
 # ctrlLimit: [320., 320., 176., 176., 110.,  40.,  40.] #'DEFAULT'
 ctrlLimit: [100, 100, 50, 50, 20, 10, 10]
