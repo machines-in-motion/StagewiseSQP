@@ -89,7 +89,8 @@ if SIM:
 else:
     thread_head.start()
     # thread_head.start_logging(15, "/tmp/kuka_circle_real_"+suffix+"_"+suffix2+"_"+suffix3+"_allJoints.mds")
-    thread_head.start_logging(20, "/tmp/kuka_circle_real_="+suffix+".mds")
+    thread_head.start_logging(30, "/tmp/kuka_circle_real_FADMM_no_constraint")
+    # thread_head.start_logging(30, "/tmp/kuka_circle_real_FADMM_constraint_jointPos1.mds")
     # thread_head.start_logging(15, "/tmp/kuka_circle_real_="+suffix+"_FULL.mds")
     time.sleep(30)
     # thread_head.plot_timing()

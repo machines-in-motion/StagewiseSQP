@@ -36,7 +36,7 @@ def solveOCP(q, v, ddp, max_sqp_iter, max_qp_iter, node_id_circle, target_reach,
             for k in range( node_id_circle, ddp.problem.T+1, 1 ):
                 m[k].differential.costs.costs["translation"].active = True
                 m[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-                m[k].differential.costs.costs["translation"].weight = 2.
+                m[k].differential.costs.costs["translation"].weight = 25.
     problem_formulation_time = time.time()
     t_child_1 =  problem_formulation_time - t
     # Solve OCP 
@@ -169,7 +169,7 @@ class KukaCircleFADMM:
         self.target_position_traj = np.zeros( (N_total_pos, 3) )
         # absolute desired position
         self.pdes = np.asarray(self.config['frameTranslationRef']) 
-        radius = 0.3 ; omega = 1.
+        radius = 0.3 ; omega = 2.
         self.target_position_traj[0:N_circle, :] = [np.array([self.pdes[0],
                                                               self.pdes[1] + radius * np.sin(i*self.dt_ocp*omega), 
                                                               self.pdes[2] + radius * (1-np.cos(i*self.dt_ocp*omega)) ]) for i in range(N_circle)]
@@ -201,8 +201,8 @@ class KukaCircleFADMM:
 
 
     def warmup(self, thread):
-        self.max_sqp_iter = 100   
-        self.max_qp_iters  = 10000   
+        self.max_sqp_iter = 10  
+        self.max_qp_iters  = 100   
         self.ddp.xs = [self.x0 for i in range(self.config['N_h']+1)]
         self.ddp.us = [self.ug for i in range(self.config['N_h'])]
         self.is_plan_updated = False

@@ -33,7 +33,7 @@ reset_rho: False
 
 # Constraints terms
 # to select from the list : 'stateBox', 'ctrlBox', 'translationBox', 'None'
-WHICH_CONSTRAINTS: ['stateBox']
+WHICH_CONSTRAINTS: ['None']
 
 # 'stateBox'
 # stateLowerLimit: [-2.96706, -2.0944 , -2.96706, -2.0944 , -2.96706, -2.0944 , -3.05433,
@@ -64,7 +64,7 @@ WHICH_COSTS: ['translation', 'ctrlRegGrav', 'stateReg']
 
 # Cost function weights and activations
  # 'stateReg' : state regularization  
-stateRegWeights: [10., 5, 5., 1., 1., 1., 1., 5., 5., 5., 5., 5., 5., 5.]
+stateRegWeights: [10., 5, 1., 1., 1., 1., 1., 5., 5., 5., 5., 5., 5., 5.]
 stateRegWeight: 0.01
 stateRegWeightTerminal: 0.01
 stateRegRef: 'DEFAULT'  # 'DEFAULT' = [q0, v0]
@@ -83,7 +83,7 @@ frameTranslationWeight: 1.
 frameTranslationWeightTerminal: 10. 
 alpha_quadflatlog: 0.3
 # frameTranslationRef: [-0.5, -0.2, 0.8]
-frameTranslationRef: [0.8, 0., .5]
+frameTranslationRef: [0.6, 0., .3]
 frameTranslationFrameName: 'contact'  
 
 
