@@ -19,7 +19,7 @@ from controllers.kuka_circle_fadmm import KukaCircleFADMM
 from core_mpc import path_utils, sim_utils
 
 
-SIM = True
+SIM = False
 
 DGM_PARAMS_PATH = "/home/skleff/ws/workspace/install/robot_properties_kuka/lib/python3.8/site-packages/robot_properties_kuka/robot_properties_kuka/dynamic_graph_manager/dgm_parameters_iiwa.yaml"
 CONFIG_NAME = 'kuka_circle_fadmm' 
@@ -32,7 +32,7 @@ config = path_utils.load_yaml_file(CONFIG_PATH)
 
 # SIMULATION
 if SIM:
-    env = BulletEnvWithGround(p.DIRECT)
+    env = BulletEnvWithGround(p.GUI)
     robot_simulator = env.add_robot(IiwaRobot())
     robot_simulator.pin_robot = pin_robot
     q_init = np.asarray(config['q0'] )
@@ -76,15 +76,21 @@ if(config['USE_PROXQP']):
 else:
     suffix = 'FADMM'
 
+suffix2 = "warm_start_y="+str(config['warm_start_y'])
+suffix3 = "reset_rho="+str(config['reset_rho'])
+
 if SIM:
     # thread_head.start_logging(6, "test.mds")
-    thread_head.start_logging(10, "/tmp/kuka_circle_sim_"+suffix+".mds")
+    # thread_head.start_logging(10, "/tmp/kuka_circle_sim_"+suffix+"_NO_CONSTRAINT.mds")
+    thread_head.start_logging(10, "/tmp/kuka_circle_sim_"+suffix+"_"+suffix2+"_"+suffix3+"sqp3.mds")
     thread_head.sim_run_timed(100000)
     # thread_head.stop_logging()
     thread_head.plot_timing()
 else:
     thread_head.start()
+    # thread_head.start_logging(15, "/tmp/kuka_circle_real_"+suffix+"_"+suffix2+"_"+suffix3+"_allJoints.mds")
     thread_head.start_logging(15, "/tmp/kuka_circle_real_="+suffix+".mds")
+    # thread_head.start_logging(15, "/tmp/kuka_circle_real_="+suffix+"_FULL.mds")
     time.sleep(30)
     # thread_head.plot_timing()
 # ctrl.bench.plot_timer()
