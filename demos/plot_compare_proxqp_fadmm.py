@@ -50,7 +50,7 @@ else:
 
     # r1 = DataReader('/tmp/kuka_circle_real_=FADMM_NO_CONSTRAINT.mds')  # baseline
     r1 = DataReader('/tmp/kuka_circle_real_FADMM_no_constraint.mds')  
-    r2 = DataReader('/tmp/kuka_circle_real_FADMM_constraint_jointPos1.mds')  
+    r2 = DataReader('/tmp/kuka_circle_real_FADMM_no_constraint_1683238349.2458613.mds')  
     # r1 = DataReader('/tmp/kuka_circle_real_PROXQP_warm_start_y=False_reset_rho=False_allJoints.mds')  # current best
     # r2 = r1
     r3 = r1
