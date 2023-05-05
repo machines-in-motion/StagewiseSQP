@@ -33,7 +33,7 @@ reset_rho: False
 
 # Constraints terms
 # to select from the list : 'stateBox', 'ctrlBox', 'translationBox', 'None'
-WHICH_CONSTRAINTS: ['stateBox']
+WHICH_CONSTRAINTS: ['translationBox']
 
 # 'stateBox'
 # stateLowerLimit: [-2.96706, -2.0944 , -2.96706, -2.0944 , -2.96706, -2.0944 , -3.05433,
@@ -41,20 +41,18 @@ WHICH_CONSTRAINTS: ['stateBox']
 # stateUpperLimit: [2.96706, 2.0944 , 2.96706, 2.0944 , 2.96706, 2.0944 , 3.05433,
 #                   1.48353, 1.48353, 1.74533, 1.309  , 2.26893, 2.35619, 2.35619] #'DEFAULT'
 
-stateLowerLimit: [-0.05, -2.0944 , -2.96706, -2.0944 , -2.96706, -2.0944 , -3.05433,
+stateLowerLimit: [-2.96706, -2.0944 , -2.96706, -2.0944 , -2.96706, -2.0944 , -3.05433,
                   -1.48353, -1.48353, -1.74533, -1.309  , -2.26893, -2.35619, -2.35619] #'DEFAULT'
-stateUpperLimit: [0.05, 2.0944 , 2.96706, 2.0944 , 2.96706, 2.0944 , 3.05433,
+stateUpperLimit: [2.96706, 2.0944 , 2.96706, 2.0944 , 2.96706, 2.0944 , 3.05433,
                   1.48353, 1.48353, 1.74533, 1.309  , 2.26893, 2.35619, 2.35619] #'DEFAULT'
 # 'ctrlBox'
 # ctrlLimit: [320., 320., 176., 176., 110.,  40.,  40.] #'DEFAULT'
 ctrlLimit: [100, 100, 50, 50, 20, 10, 10]
 
 # 'translation'
-eeLowerLimit: 'None' #[1., 1., 1. ]
-eeUpperLimit: 'None' #[1., 1., 1. ]
-eeLimitTolerance: 0.1
-
-
+eeLowerLimit: [-10., 0., -10]
+eeUpperLimit: [10., 0., 10]
+eeConstraintFrameName: 'contact'
 
 
 # Cost function terms

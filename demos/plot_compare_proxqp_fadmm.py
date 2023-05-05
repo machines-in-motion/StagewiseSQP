@@ -36,7 +36,7 @@ if(SIM):
     # r = DataReader('/home/skleff/Desktop/circle_PROXQP.mds')
     # r1 = DataReader('/home/skleff/Desktop/circle_FADMM.mds')
     # r1 = DataReader('/tmp/kuka_circle_sim_PROXQP.mds')
-    r1 = DataReader('/tmp/kuka_circle_sim_FADMM_warm_start_y=False_reset_rho=Falsesqp3.mds') #r2
+    r1 = DataReader('/tmp/kuka_square_sim_square_constraintEEy.mds') #r2
     r2 = r1
     # r2 = DataReader('/tmp/kuka_circle_sim_PROXQP_warm_start_y=False_reset_rho=Falsesqp3.mds') #r2
     # r2 = r1 #DataReader('/tmp/kuka_circle_sim_FADMM_warm_start_y=True_reset_rho=False.mds')
@@ -49,10 +49,10 @@ else:
     # r1 = DataReader('/tmp/kuka_circle_real_=PROXQP.mds')
 
     # r1 = DataReader('/tmp/kuka_circle_real_=FADMM_NO_CONSTRAINT.mds')  # baseline
-    r1 = DataReader('/tmp/kuka_circle_real_FADMM_no_constraint.mds')  
-    r2 = DataReader('/tmp/kuka_circle_real_FADMM_no_constraint_1683238349.2458613.mds')  
+    # r1 = DataReader('/tmp/kuka_circle_real_FADMM_no_constraint.mds')  
+    r1 = DataReader('/tmp/kuka_square_real_FADMM_no_constraint_1683246326.52043.mds')  
     # r1 = DataReader('/tmp/kuka_circle_real_PROXQP_warm_start_y=False_reset_rho=False_allJoints.mds')  # current best
-    # r2 = r1
+    r2 = r1
     r3 = r1
 N = r1.data['tau'].shape[0]
 

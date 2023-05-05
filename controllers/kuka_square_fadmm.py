@@ -15,7 +15,7 @@ from multiprocessing import Pipe, Process
 USE_PIPE = False
 
 
-def solveOCP(q, v, ddp, sqp_iter, qp_iter, node_id_circle, target_reach, TASK_PHASE):
+def solveOCP(q, v, ddp, max_sqp_iter, max_qp_iter, node_id_circle, target_reach, TASK_PHASE):
     # Read state last measurement from parent process
     t = time.time()
     x = np.concatenate([q, v])
@@ -33,25 +33,27 @@ def solveOCP(q, v, ddp, sqp_iter, qp_iter, node_id_circle, target_reach, TASK_PH
             for k in range( node_id_circle, ddp.problem.T+1, 1 ):
                 m[k].differential.costs.costs["translation"].active = True
                 m[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-                m[k].differential.costs.costs["translation"].weight = 30.
-                # m[k].
-    # logger.warning("formulated problem")
+                m[k].differential.costs.costs["translation"].weight = 25.
+                if(k!=0):
+                    ddp.cmodels[k].lb = target_reach[k] - 0.02
+                    ddp.cmodels[k].ub = target_reach[k] + 0.02
     problem_formulation_time = time.time()
     t_child_1 =  problem_formulation_time - t
     # Solve OCP 
-    ddp.max_qp_iters = qp_iter
-    # logger.warning("about t solve")
-    ddp.solve(xs_init, us_init, maxiter=sqp_iter, isFeasible=False)
-    # logger.warning("SOLVED")
-    
+    ddp.max_qp_iters = max_qp_iter
+    ddp.solve(xs_init, us_init, maxiter=max_sqp_iter, isFeasible=False)
     solve_time = time.time()
     ddp_iter = ddp.iter
     t_child =  solve_time - problem_formulation_time
     cost = ddp.cost
-    return ddp.us, ddp.xs, ddp.K, t_child, ddp_iter, t_child_1, cost
+    constraint_norm = ddp.constraint_norm
+    gap_norm = ddp.gap_norm
+    qp_iters = ddp.qp_iters
+    kkt_norm = ddp.KKT_norm
+    return ddp.us, ddp.xs, ddp.K, t_child, ddp_iter, t_child_1, cost, constraint_norm, gap_norm, qp_iters, kkt_norm
 
 
-def rt_SolveOCP(child_conn, ddp, sqp_iter, qp_iter, node_id_circle, target_reach, TASK_PHASE):
+def rt_SolveOCP(child_conn, ddp, max_sqp_iter, max_qp_iter, node_id_circle, target_reach, TASK_PHASE):
     while True:
         # Read state last measurement from parent process
         q, v, node_id_circle, target_reach, TASK_PHASE = child_conn.recv()
@@ -76,14 +78,18 @@ def rt_SolveOCP(child_conn, ddp, sqp_iter, qp_iter, node_id_circle, target_reach
         problem_formulation_time = time.time()
         t_child_1 =  problem_formulation_time - t
         # Solve OCP 
-        ddp.max_qp_iters = qp_iter
-        ddp.solve(xs_init, us_init, maxiter=sqp_iter, isFeasible=False)
+        ddp.max_qp_iters = max_qp_iter
+        ddp.solve(xs_init, us_init, maxiter=max_sqp_iter, isFeasible=False)
         # Send solution to parent process + riccati gains
         solve_time = time.time()
         ddp_iter = ddp.iter
         t_child =  solve_time - problem_formulation_time
         cost = ddp.cost
-        child_conn.send((ddp.us, ddp.xs, ddp.K, t_child, ddp_iter, t_child_1, cost))        
+        constraint_norm = ddp.constraint_norm
+        gap_norm = ddp.gap_norm
+        qp_iters = ddp.qp_iters
+        kkt_norm = ddp.KKT_norm
+        child_conn.send((ddp.us, ddp.xs, ddp.K, t_child, ddp_iter, t_child_1, cost, constraint_norm, gap_norm, qp_iters, kkt_norm))        
 
 
 
@@ -156,26 +162,48 @@ class KukaSquareFADMM:
             self.joint_torques_measured = -self.joint_torques_total 
 
 
-        # Circle trajectory 
+        # # self.target_position = np.asarray(self.config['contactPosition']) + np.asarray(self.config['oPc_offset'])
+        # # Circle trajectory 
+        # N_total_pos = int((self.config['T_tot'] - 0.)/self.dt_ocp + self.Nh)
+        # N_circle = int((self.config['T_tot'] - self.config['T_CIRCLE'])/self.dt_ocp) + self.Nh
+        # self.target_position_traj = np.zeros( (N_total_pos, 3) )
+        # # absolute desired position
+        # self.pdes = np.asarray(self.config['frameTranslationRef']) 
+        # radius = 0.3 ; omega = 2.
+        # self.target_position_traj[0:N_circle, :] = [np.array([self.pdes[0],
+        #                                                       self.pdes[1] + radius * np.sin(i*self.dt_ocp*omega), 
+        #                                                       self.pdes[2] + radius * (1-np.cos(i*self.dt_ocp*omega)) ]) for i in range(N_circle)]
+        # self.target_position_traj[N_circle:, :] = self.target_position_traj[N_circle-1,:]
+        # # plt.plot(self.target_position_traj, label='pos')
+        # # plt.show()
+        # # Targets over one horizon (initially = absolute target position)
+        # self.target_position = np.zeros((self.Nh+1, 3)) 
+        # self.target_position[:,:] = self.pdes.copy() 
+        # self.target_position_x = self.target_position[:,0] 
+        # self.target_position_y = self.target_position[:,1] 
+        # self.target_position_z = self.target_position[:,2]
+
+
+        # Square trajectory 
         N_total_pos = int((self.config['T_tot'] - 0.)/self.dt_ocp + self.Nh)
         N_square = int((self.config['T_tot'] - self.config['T_CIRCLE'])/self.dt_ocp) + self.Nh
-
         self.target_position_traj = np.zeros( (N_total_pos, 3) )
         # absolute desired position
-        self.pdes = self.robot.data.oMf[self.endeffFrameId].translation #np.asarray(self.config['frameTranslationRef']) 
-        squareSize = 0.2
+        self.pdes = np.asarray(self.config['frameTranslationRef']) 
+        squareSize = 0.4
         squareVel = 0.2
         def phi(x):
             return max(0, min(1,3/2-np.abs(x)))
         def gamma(t):
             return np.array([phi(t-3/2), phi(t-5/2)])
         logger.warning("creating square traje")
-        # self.target_position_traj[0:N_square, :] = [np.array([self.pdes[0],
-        #                                                       gamma(i*self.dt_ocp*squareVel)[0], 
-        #                                                       gamma(i*self.dt_ocp*squareVel)[1]]) for i in range(N_square)]
-        self.target_position_traj[0:N_square, :] = self.pdes 
-        self.target_position_traj[N_square:, :] = self.target_position_traj[N_square-1,:]
-        # plt.plot(self.target_position_traj, label='pos')
+        self.target_position_traj[0:self.Nh, :] = self.pdes
+        self.target_position_traj[self.Nh:N_square+self.Nh, :] = [np.array([self.pdes[0],
+                                                              self.pdes[1] + squareSize*gamma(i*self.dt_ocp*squareVel)[0], 
+                                                              self.pdes[2] + squareSize*gamma(i*self.dt_ocp*squareVel)[1]]) for i in range(N_square)]
+        # self.target_position_traj[0:N_square, :] = self.pdes 
+        self.target_position_traj[N_square+self.Nh:, :] = self.target_position_traj[N_square-1+self.Nh,:]
+        # plt.plot(self.target_position_traj[:N_square,1], self.target_position_traj[:N_square,2], label='pos')
         # plt.show()
         # Targets over one horizon (initially = absolute target position)
         self.target_position = np.zeros((self.Nh+1, 3)) 
@@ -183,6 +211,7 @@ class KukaSquareFADMM:
         self.target_position_x = self.target_position[:,0] 
         self.target_position_y = self.target_position[:,1] 
         self.target_position_z = self.target_position[:,2]
+
 
         self.node_id_circle = -1
         self.TASK_PHASE = 0
@@ -194,38 +223,43 @@ class KukaSquareFADMM:
         logger.debug("OCP to SIMU time ratio = "+str(self.OCP_TO_SIMU_CYCLES))
         self.cumulative_cost = 0
 
-    def warmup(self, thread):
-        logger.warning("begin warmup")
+        # Solver logs
+        self.gap_norm = np.inf
+        self.constraint_norm = np.inf
+        self.qp_iters = 0
+        self.kkt_norm = np.inf
 
-        self.sqp_iter = 100   
-        self.qp_iter  = 10000   
+
+    def warmup(self, thread):
+        self.max_sqp_iter = 10  
+        self.max_qp_iters  = 100   
         self.ddp.xs = [self.x0 for i in range(self.config['N_h']+1)]
         self.ddp.us = [self.ug for i in range(self.config['N_h'])]
         self.is_plan_updated = False
         # USE pipe
         if(USE_PIPE):
-            self.subp = Process(target=rt_SolveOCP, args=(self.child_conn, self.ddp, self.sqp_iter, self.qp_iter, self.node_id_circle, self.target_position, self.TASK_PHASE))
+            self.subp = Process(target=rt_SolveOCP, args=(self.child_conn, self.ddp, self.max_sqp_iter, self.max_qp_iters, self.node_id_circle, self.target_position, self.TASK_PHASE))
             self.subp.start()
             # Read sensors and publish real state 
             self.parent_conn.send((self.joint_positions, self.joint_velocities, self.target_position))
-            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost  = self.parent_conn.recv()
+            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost, self.constraint_norm, self.gap_norm, self.qp_iters, self.kkt_norm  = self.parent_conn.recv()
         # NO pipe
         else:
-            logger.warning("no pipe")
-            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost = solveOCP(self.joint_positions, 
+            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost, self.constraint_norm, self.gap_norm, self.qp_iters, self.kkt_norm = solveOCP(self.joint_positions, 
                                                                                             self.joint_velocities, 
                                                                                             self.ddp, 
-                                                                                            self.sqp_iter, self.qp_iter,
+                                                                                            self.max_sqp_iter, 
+                                                                                            self.max_qp_iters,
                                                                                             self.node_id_circle,
                                                                                             self.target_position,
                                                                                             self.TASK_PHASE)
         self.cumulative_cost += self.cost
         self.check = 0
-        self.sqp_iter = self.config['maxiter']
-        self.qp_iter  = self.config['max_qp_iters']
+        self.max_sqp_iter = self.config['maxiter']
+        self.max_qp_iters  = self.config['max_qp_iters']
         self.count = 0
         self.sent = False
-        logger.warning("ok")
+
     def run(self, thread):        
         t1 = time.time()
         # # # # # # # # # 
@@ -233,7 +267,11 @@ class KukaSquareFADMM:
         # # # # # # # # # 
         q = self.joint_positions
         v = self.joint_velocities
-        # logger.warning("cycle "+str(thread.ti))
+        
+        # # Add noise on the joint velocities if simulation 
+        # if(self.RUN_SIM):
+        #     v += 0.1*np.random.rand(self.nv)
+
         # When getting torque measurement from robot, do not forget to flip the sign
         if(not self.RUN_SIM):
             self.joint_torques_measured = -self.joint_torques_total  
@@ -246,7 +284,10 @@ class KukaSquareFADMM:
 
         if(time_to_circle == 0): 
             print("Entering circle phase")
+            print(self.endeffFrameId)
             self.position_at_contact_switch = self.robot.data.oMf[self.endeffFrameId].translation.copy()
+            offset_xy = self.position_at_contact_switch- self.pdes
+            self.target_position_traj += offset_xy
             self.target_position[:,:] = self.position_at_contact_switch.copy()
             self.target_position_x = self.target_position[:,0] 
             self.target_position_y = self.target_position[:,1] 
@@ -261,14 +302,11 @@ class KukaSquareFADMM:
 
         if(0 <= time_to_circle and time_to_circle%self.OCP_TO_SIMU_CYCLES == 0):
             # set position refs over current horizon
-            ti  = int(time_to_circle/self.OCP_TO_SIMU_CYCLES)
+            ti  = int(time_to_circle/self.OCP_TO_SIMU_CYCLES) 
             tf  = ti + self.Nh+1
             # Target in (x,y)  = circle trajectory + offset to start from current position instead of absolute target
-            offset_xy = self.position_at_contact_switch- self.pdes
-            self.target_position = self.target_position_traj[ti:tf,:] + offset_xy
-            # Target in z is fixed to the anchor at switch (equals absolute target if RESET_ANCHOR = False)
-            # No position tracking in z : redundant with zero activation weight on z
-            # self.target_position[:,2]  = self.robot.data.oMf[self.endeffFrameId].translation[2].copy()
+            # offset_xy = self.position_at_contact_switch- self.pdes
+            self.target_position = self.target_position_traj[ti:tf,:] #+ offset_xy
             # Record target signals
             self.target_position_x = self.target_position[:,0] 
             self.target_position_y = self.target_position[:,1] 
@@ -283,9 +321,10 @@ class KukaSquareFADMM:
             # No pipe
             if(not USE_PIPE):
                 self.count = 0
-                self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost = solveOCP(q, v, 
+                self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost, self.constraint_norm, self.gap_norm, self.qp_iters, self.kkt_norm = solveOCP(q, v, 
                                                                                                   self.ddp, 
-                                                                                                  self.sqp_iter, self.qp_iter,
+                                                                                                  self.max_sqp_iter, 
+                                                                                                  self.max_qp_iters,
                                                                                                   self.node_id_circle,
                                                                                                   self.target_position,
                                                                                                   self.TASK_PHASE)
@@ -299,7 +338,7 @@ class KukaSquareFADMM:
 
         if USE_PIPE and self.parent_conn.poll() and not self.is_plan_updated:
             self.count = 0
-            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost = self.parent_conn.recv()
+            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost, self.constraint_norm, self.gap_norm, self.qp_iters, self.kkt_norm = self.parent_conn.recv()
             # record predictions here if necessary 
             self.sent = False
 

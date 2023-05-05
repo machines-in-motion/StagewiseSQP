@@ -82,7 +82,7 @@ suffix3 = "reset_rho="+str(config['reset_rho'])
 if SIM:
     # thread_head.start_logging(6, "test.mds")
     # thread_head.start_logging(10, "/tmp/kuka_circle_sim_"+suffix+"_NO_CONSTRAINT.mds")
-    thread_head.start_logging(10, "/tmp/kuka_circle_sim_"+suffix+"_"+suffix2+"_"+suffix3+"sqp3.mds")
+    thread_head.start_logging(10, "/tmp/kuka_circle_sim_circle_constraintEEy.mds")
     thread_head.sim_run_timed(100000)
     # thread_head.stop_logging()
     thread_head.plot_timing()
