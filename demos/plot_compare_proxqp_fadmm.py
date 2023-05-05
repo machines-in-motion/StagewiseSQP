@@ -50,7 +50,7 @@ else:
 
     # r1 = DataReader('/tmp/kuka_circle_real_=FADMM_NO_CONSTRAINT.mds')  # baseline
     # r1 = DataReader('/tmp/kuka_circle_real_FADMM_no_constraint.mds')  
-    r1 = DataReader('/tmp/kuka_square_real_FADMM_no_constraint_1683246326.52043.mds')  
+    r1 = DataReader('/home/skleff/Desktop/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_plane_cost_1683301600.3164508.mds')  
     # r1 = DataReader('/tmp/kuka_circle_real_PROXQP_warm_start_y=False_reset_rho=False_allJoints.mds')  # current best
     r2 = r1
     r3 = r1

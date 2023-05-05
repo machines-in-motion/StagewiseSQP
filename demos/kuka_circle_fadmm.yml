@@ -41,17 +41,17 @@ WHICH_CONSTRAINTS: ['translationBox']
 # stateUpperLimit: [2.96706, 2.0944 , 2.96706, 2.0944 , 2.96706, 2.0944 , 3.05433,
 #                   1.48353, 1.48353, 1.74533, 1.309  , 2.26893, 2.35619, 2.35619] #'DEFAULT'
 
-stateLowerLimit: [-2.96706, -2.0944 , -2.96706, -2.0944 , -2.96706, -2.0944 , -3.05433,
+stateLowerLimit: [-0.05, -2.0944 , -2.96706, -2.0944 , -2.96706, -2.0944 , -3.05433,
                   -1.48353, -1.48353, -1.74533, -1.309  , -2.26893, -2.35619, -2.35619] #'DEFAULT'
-stateUpperLimit: [2.96706, 2.0944 , 2.96706, 2.0944 , 2.96706, 2.0944 , 3.05433,
+stateUpperLimit: [0.05, 2.0944 , 2.96706, 2.0944 , 2.96706, 2.0944 , 3.05433,
                   1.48353, 1.48353, 1.74533, 1.309  , 2.26893, 2.35619, 2.35619] #'DEFAULT'
 # 'ctrlBox'
 # ctrlLimit: [320., 320., 176., 176., 110.,  40.,  40.] #'DEFAULT'
 ctrlLimit: [100, 100, 50, 50, 20, 10, 10]
 
 # 'translation'
-eeLowerLimit: [-10., 0., -10]
-eeUpperLimit: [10., 0., 10]
+eeLowerLimit: [-10., -10., 0.15]
+eeUpperLimit: [10., 10., 0.16]
 eeConstraintFrameName: 'contact'
 
 
@@ -76,12 +76,12 @@ ctrlRegRef: 'DEFAULT' # DEFAULT = g(q) | NOT used for 'ctrlRegGrav' cost
 
 
  # 'translation' : end-effector frame translation 
-frameTranslationWeights:  [1., 1., 1.]
+frameTranslationWeights:  [0., 0., 1.]
 frameTranslationWeight: 1.
 frameTranslationWeightTerminal: 10. 
 alpha_quadflatlog: 0.3
 # frameTranslationRef: [-0.5, -0.2, 0.8]
-frameTranslationRef: [0.6, 0., .3]
+frameTranslationRef: [0.6, 0., 0.155] # 0.3
 frameTranslationFrameName: 'contact'  
 
 
