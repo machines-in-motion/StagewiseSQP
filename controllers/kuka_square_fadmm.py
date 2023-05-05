@@ -33,10 +33,10 @@ def solveOCP(q, v, ddp, max_sqp_iter, max_qp_iter, node_id_circle, target_reach,
             for k in range( node_id_circle, ddp.problem.T+1, 1 ):
                 m[k].differential.costs.costs["translation"].active = True
                 m[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-                m[k].differential.costs.costs["translation"].weight = 25.
-                if(k!=0):
-                    ddp.cmodels[k].lb = target_reach[k] - 0.02
-                    ddp.cmodels[k].ub = target_reach[k] + 0.02
+                m[k].differential.costs.costs["translation"].weight = 50.
+                # if(k!=0):
+                #     ddp.cmodels[k].lb = target_reach[k] - 0.02
+                #     ddp.cmodels[k].ub = target_reach[k] + 0.02
     problem_formulation_time = time.time()
     t_child_1 =  problem_formulation_time - t
     # Solve OCP 
@@ -162,48 +162,33 @@ class KukaSquareFADMM:
             self.joint_torques_measured = -self.joint_torques_total 
 
 
-        # # self.target_position = np.asarray(self.config['contactPosition']) + np.asarray(self.config['oPc_offset'])
-        # # Circle trajectory 
-        # N_total_pos = int((self.config['T_tot'] - 0.)/self.dt_ocp + self.Nh)
-        # N_circle = int((self.config['T_tot'] - self.config['T_CIRCLE'])/self.dt_ocp) + self.Nh
-        # self.target_position_traj = np.zeros( (N_total_pos, 3) )
-        # # absolute desired position
-        # self.pdes = np.asarray(self.config['frameTranslationRef']) 
-        # radius = 0.3 ; omega = 2.
-        # self.target_position_traj[0:N_circle, :] = [np.array([self.pdes[0],
-        #                                                       self.pdes[1] + radius * np.sin(i*self.dt_ocp*omega), 
-        #                                                       self.pdes[2] + radius * (1-np.cos(i*self.dt_ocp*omega)) ]) for i in range(N_circle)]
-        # self.target_position_traj[N_circle:, :] = self.target_position_traj[N_circle-1,:]
-        # # plt.plot(self.target_position_traj, label='pos')
-        # # plt.show()
-        # # Targets over one horizon (initially = absolute target position)
-        # self.target_position = np.zeros((self.Nh+1, 3)) 
-        # self.target_position[:,:] = self.pdes.copy() 
-        # self.target_position_x = self.target_position[:,0] 
-        # self.target_position_y = self.target_position[:,1] 
-        # self.target_position_z = self.target_position[:,2]
-
-
-        # Square trajectory 
+        # self.target_position = np.asarray(self.config['contactPosition']) + np.asarray(self.config['oPc_offset'])
+        # Circle trajectory 
         N_total_pos = int((self.config['T_tot'] - 0.)/self.dt_ocp + self.Nh)
-        N_square = int((self.config['T_tot'] - self.config['T_CIRCLE'])/self.dt_ocp) + self.Nh
+        N_circle = int((self.config['T_tot'] - self.config['T_CIRCLE'])/self.dt_ocp) + self.Nh
         self.target_position_traj = np.zeros( (N_total_pos, 3) )
         # absolute desired position
-        self.pdes = np.asarray(self.config['frameTranslationRef']) 
-        squareSize = 0.4
-        squareVel = 0.2
-        def phi(x):
-            return max(0, min(1,3/2-np.abs(x)))
-        def gamma(t):
-            return np.array([phi(t-3/2), phi(t-5/2)])
-        logger.warning("creating square traje")
-        self.target_position_traj[0:self.Nh, :] = self.pdes
-        self.target_position_traj[self.Nh:N_square+self.Nh, :] = [np.array([self.pdes[0],
-                                                              self.pdes[1] + squareSize*gamma(i*self.dt_ocp*squareVel)[0], 
-                                                              self.pdes[2] + squareSize*gamma(i*self.dt_ocp*squareVel)[1]]) for i in range(N_square)]
-        # self.target_position_traj[0:N_square, :] = self.pdes 
-        self.target_position_traj[N_square+self.Nh:, :] = self.target_position_traj[N_square-1+self.Nh,:]
-        # plt.plot(self.target_position_traj[:N_square,1], self.target_position_traj[:N_square,2], label='pos')
+        self.pdes = np.array([0.6, -0., .2]) # np.asarray(self.config['frameTranslationRef']) 
+        radius = 0.4 ; omega = 1.
+        self.target_position_traj[0:N_circle, :] = [np.array([self.pdes[0],
+                                                              self.pdes[1] + 1.1*radius * np.sin(i*self.dt_ocp*omega), 
+                                                              self.pdes[2] + 1.1*radius * (1-np.cos(i*self.dt_ocp*omega)) ]) for i in range(N_circle)]
+        self.target_position_traj[N_circle:, :] = self.target_position_traj[N_circle-1,:]
+        plt.plot(self.target_position_traj[:,1], self.target_position_traj[:,2], label='pos')
+        self.center_y = self.pdes[1] 
+        self.center_z = self.pdes[2] + 1.1*radius
+        self.radius2 = radius/np.sqrt(2)
+        plt.plot(self.center_y + self.radius2, self.center_z + self.radius2, marker='o', label='pos')
+        plt.plot(self.center_y - self.radius2, self.center_z + self.radius2, marker='o', label='pos')
+        plt.plot(self.center_y + self.radius2, self.center_z - self.radius2, marker='o', label='pos')
+        plt.plot(self.center_y - self.radius2, self.center_z - self.radius2, marker='o', label='pos')
+        # plt.plot(center_y - radius2, center_z, marker='o', label='pos')
+        # plt.plot(center_y - radius2, center_z, marker='o', label='pos')
+
+        # # plt.plot(self.pdes[1]+radius2, self.pdes[2], marker='o', label='pos')
+        # plt.plot(self.pdes[1]-radius2, self.pdes[2], marker='o', label='pos')
+        # # plt.plot(self.pdes[1]-radius2, self.pdes[2]+2*radius2, marker='o', label='pos')
+        # plt.plot(self.pdes[1]+radius2, self.pdes[2]+2*radius2, marker='o', label='pos')
         # plt.show()
         # Targets over one horizon (initially = absolute target position)
         self.target_position = np.zeros((self.Nh+1, 3)) 
@@ -211,7 +196,9 @@ class KukaSquareFADMM:
         self.target_position_x = self.target_position[:,0] 
         self.target_position_y = self.target_position[:,1] 
         self.target_position_z = self.target_position[:,2]
-
+        
+        self.lb_square = np.array([-np.inf, self.center_y - self.radius2, self.center_z - self.radius2])
+        self.ub_square = np.array([np.inf, self.center_y + self.radius2, self.center_z + self.radius2])
 
         self.node_id_circle = -1
         self.TASK_PHASE = 0
@@ -287,11 +274,17 @@ class KukaSquareFADMM:
             print(self.endeffFrameId)
             self.position_at_contact_switch = self.robot.data.oMf[self.endeffFrameId].translation.copy()
             offset_xy = self.position_at_contact_switch- self.pdes
-            self.target_position_traj += offset_xy
+            # self.target_position_traj += offset_xy
             self.target_position[:,:] = self.position_at_contact_switch.copy()
             self.target_position_x = self.target_position[:,0] 
             self.target_position_y = self.target_position[:,1] 
             self.target_position_z = self.target_position[:,2]
+            # Updates nodes between node_id and terminal node 
+            cmodels = self.ddp.cmodels
+            for _ , m in enumerate(cmodels[1:]):
+                m.lb = self.lb_square #np.array([-np.inf, self.center_y - self.radius2, self.center_z - self.radius2])
+                m.ub = self.ub_square #np.array([+np.inf, self.center_y + self.radius2, self.center_z + self.radius2])
+            self.pdes = np.array([0.6, -0., .5])
         # If circle tracking phase enters the MPC horizon, start updating models from the end with tracking models      
         if(0 <= time_to_circle and time_to_circle <= self.NH_SIMU):
             self.TASK_PHASE = 1

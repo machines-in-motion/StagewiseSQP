@@ -89,7 +89,9 @@ if SIM:
 else:
     thread_head.start()
     # thread_head.start_logging(15, "/tmp/kuka_square_real_"+suffix+"_"+suffix2+"_"+suffix3+"_allJoints.mds")
-    thread_head.start_logging(30, "/tmp/kuka_square_real_FADMM_no_constraint_"+str(time.time())+".mds")
+    # thread_head.start_logging(30, "/tmp/kuka_square_real_FADMM_no_constraint_"+str(time.time())+".mds")
+    thread_head.start_logging(30, "/home/skleff/Desktop/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_square_"+str(time.time())+".mds")
+
     # thread_head.start_logging(30, "/tmp/kuka_square_real_FADMM_constraint_jointPos1.mds")
     # thread_head.start_logging(15, "/tmp/kuka_square_real_="+suffix+"_FULL.mds")
     time.sleep(30)

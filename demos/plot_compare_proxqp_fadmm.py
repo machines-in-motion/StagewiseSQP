@@ -50,7 +50,7 @@ else:
 
     # r1 = DataReader('/tmp/kuka_circle_real_=FADMM_NO_CONSTRAINT.mds')  # baseline
     # r1 = DataReader('/tmp/kuka_circle_real_FADMM_no_constraint.mds')  
-    r1 = DataReader('/home/skleff/Desktop/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_plane_cost_1683301600.3164508.mds')  
+    r1 = DataReader('/home/skleff/Desktop/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_square_1683311293.0681663.mds')  
     # r1 = DataReader('/tmp/kuka_circle_real_PROXQP_warm_start_y=False_reset_rho=False_allJoints.mds')  # current best
     r2 = r1
     r3 = r1
@@ -148,6 +148,11 @@ p_mea1 = get_p_(r1.data['joint_positions'], pinrobot.model, pinrobot.model.getFr
 p_mea2 = get_p_(r2.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
 p_mea3 = get_p_(r3.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
 p_des = get_p_(r1.data['x_des'][:,:nq], pinrobot.model, pinrobot.model.getFrameId('contact'))
+
+plb = r1.data['lb_square']
+pub = r1.data['ub_square']
+print()
+# pub = np.array([np.inf, r1.data['center_y'] + r1.data['radius2'], r1.data['center_z'] + r1.data['radius2']]) 
 target_position = np.zeros((N, 3)) #r.data['target_position'] #
 target_position[:,0] = r1.data['target_position_x'][:,0]
 target_position[:,1] = r1.data['target_position_y'][:,0]
@@ -155,11 +160,16 @@ target_position[:,2] = r1.data['target_position_z'][:,0]
 s.plot_ee_pos( [p_mea1,
                 p_mea2,
                 p_mea3,
-                target_position],  
-               ['Data 1', 'Data 2','Data 3', 'Reference'], 
-               ['b', 'r', 'g', 'k'], 
-               linestyle=['solid','solid', 'solid', 'dotted'])
+                target_position,
+                plb, pub,],  
+               ['Data 1', 'Data 2','Data 3', 'Reference', 'lb', 'ub'], 
+               ['b', 'r', 'g', 'y', 'k', 'k'], 
+               linestyle=['solid','solid', 'solid', 'dotted', 'dotted', 'dotted'])
 
+plt.figure()
+plt.plot(p_mea1[:,1], p_mea1[:,2])
+plt.plot(p_des[:,1], p_des[:,2])
+plt.plot(target_position[:,1], target_position[:,2])
 # v_mea1 = get_v_(r1.data['joint_positions'], r1.data['joint_velocities'], pinrobot.model, pinrobot.model.getFrameId('contact'))
 # v_mea2 = get_v_(r2.data['joint_positions'], r2.data['joint_velocities'], pinrobot.model, pinrobot.model.getFrameId('contact'))
 # v_mea3 = get_v_(r3.data['joint_positions'], r3.data['joint_velocities'], pinrobot.model, pinrobot.model.getFrameId('contact'))

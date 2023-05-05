@@ -50,8 +50,8 @@ stateUpperLimit: [2.96706, 2.0944 , 2.96706, 2.0944 , 2.96706, 2.0944 , 3.05433,
 ctrlLimit: [100, 100, 50, 50, 20, 10, 10]
 
 # 'translation'
-eeLowerLimit: [-10., -10., -10]
-eeUpperLimit: [10., 10., 10]
+eeLowerLimit: [-10.,-10, 0.]
+eeUpperLimit: [10., 10, 10]
 eeConstraintFrameName: 'contact'
 
 
@@ -81,7 +81,7 @@ frameTranslationWeight: 1.
 frameTranslationWeightTerminal: 10. 
 alpha_quadflatlog: 0.3
 # frameTranslationRef: [-0.5, -0.2, 0.8]
-frameTranslationRef: [0.6, -0.1, .3]
+frameTranslationRef: [0.6, -0., .5]
 frameTranslationFrameName: 'contact'  
 
 
