@@ -12,7 +12,7 @@ def create_double_pendulum_problem(x0, solver_name='FDDP'):
     '''
     Create shooting problem for the double pendulum model
     '''
-    print("Created double pendulum problem")
+    print("Created double pendulum problem ("+solver_name+")...")
     # Loading the double pendulum model
     pendulum = example_robot_data.load('double_pendulum')
     model = pendulum.model
@@ -56,7 +56,7 @@ def create_cartpole_problem(x0, solver_name='FDDP'):
     '''
     Create shooting problem for Cartpole
     '''
-    print("Create cartpole problem...")
+    print("Create cartpole problem ("+solver_name+")...")
     # Creating the DAM for the cartpole
     cartpoleDAM = DifferentialActionModelCartpole()
     # Using NumDiff for computing the derivatives. We specify the
@@ -97,7 +97,7 @@ def create_kuka_problem(x0, solver_name='FDDP'):
     '''
     Create shooting problem for kuka reaching task
     '''
-    print("Create kuka problem...")
+    print("Create kuka problem ("+solver_name+")...")
     robot = IiwaConfig.buildRobotWrapper()
     model = robot.model
     nq = model.nq; nv = model.nv; nu = nq; nx = nq+nv
@@ -160,7 +160,7 @@ def create_quadrotor_problem(x0, solver_name='FDDP'):
     '''
     Create shooting problem for quadrotor task
     '''
-    print("Create quadrotor problem...")
+    print("Create quadrotor problem ("+solver_name+")...")
     hector = example_robot_data.load('hector')
     robot_model = hector.model
     target_pos = np.array([1., 0., 1.])
@@ -217,7 +217,7 @@ def create_humanoid_taichi_problem(x0, solver_name='FDDP'):
     '''
     Create shooting problem for Talos taichi task
     '''
-    print("Create humanoid problem...")
+    print("Create humanoid problem ("+solver_name+")...")
     # Load robot
     robot = example_robot_data.load('talos')
     rmodel = robot.model
@@ -362,104 +362,104 @@ def create_humanoid_taichi_problem(x0, solver_name='FDDP'):
 
 # Problem names
 names = ['Pendulum',
-        #  'Cartpole',  #--> need to explain why it doesn't converge otherwise leave it out 
          'Kuka',
+        #  'Cartpole',  #--> need to explain why it doesn't converge otherwise leave it out 
          'Quadrotor',
          'Humanoid']
-# Initial states 
-if("Pendulum" in names): 
-    pendulum_x0  = np.array([3.14, 0., 0., 0.])
-if("Cartpole" in names): 
-    cartpole_x0  = np.array([0., 3.14, 0., 0.])
-if("Kuka" in names): 
-    kuka_x0      = np.array([0.1, 0.7, 0., 0.7, -0.5, 1.5, 0.] + [0.]*7)
-if("Quadrotor" in names): 
-    quadrotor    = example_robot_data.load('hector') 
-    quadrotor_x0 = np.array(list(quadrotor.q0) + [0.]*quadrotor.model.nv)  
-if("Humanoid" in names): 
-    humanoid     = example_robot_data.load('talos')
-    humanoid_x0  = np.concatenate([humanoid.model.referenceConfigurations["half_sitting"], pin.utils.zero(humanoid.model.nv)])
+# # Initial states 
+# if("Pendulum" in names): 
+#     pendulum_x0  = np.array([3.14, 0., 0., 0.])
+# if("Cartpole" in names): 
+#     cartpole_x0  = np.array([0., 3.14, 0., 0.])
+# if("Kuka" in names): 
+#     kuka_x0      = np.array([0.1, 0.7, 0., 0.7, -0.5, 1.5, 0.] + [0.]*7)
+# if("Quadrotor" in names): 
+#     quadrotor    = example_robot_data.load('hector') 
+#     quadrotor_x0 = np.array(list(quadrotor.q0) + [0.]*quadrotor.model.nv)  
+# if("Humanoid" in names): 
+#     humanoid     = example_robot_data.load('talos')
+#     humanoid_x0  = np.concatenate([humanoid.model.referenceConfigurations["half_sitting"], pin.utils.zero(humanoid.model.nv)])
 
 N_pb = len(names)
 
 
-# Solvers 
-solversGNMS = []
-solversFDDP = []
-if("Pendulum" in names): 
-    solversGNMS.append(create_double_pendulum_problem(pendulum_x0, solver_name='GNMS'))
-    solversFDDP.append(create_double_pendulum_problem(pendulum_x0, solver_name='FDDP'))
-if("Cartpole" in names): 
-    solversGNMS.append(create_cartpole_problem(cartpole_x0, solver_name='GNMS'))
-    solversFDDP.append(create_cartpole_problem(cartpole_x0, solver_name='FDDP'))
-if("Kuka" in names): 
-    solversGNMS.append(create_kuka_problem(kuka_x0, solver_name='GNMS'))
-    solversFDDP.append(create_kuka_problem(kuka_x0, solver_name='FDDP'))
-if("Quadrotor" in names): 
-    solversGNMS.append(create_quadrotor_problem(quadrotor_x0, solver_name='GNMS'))
-    solversFDDP.append(create_quadrotor_problem(quadrotor_x0, solver_name='FDDP'))
-if("Humanoid" in names): 
-    solversGNMS.append(create_humanoid_taichi_problem(humanoid_x0, solver_name='GNMS'))
-    solversFDDP.append(create_humanoid_taichi_problem(humanoid_x0, solver_name='FDDP'))
+# # Solvers 
+# solversGNMS = []
+# solversFDDP = []
+# if("Pendulum" in names): 
+#     solversGNMS.append(create_double_pendulum_problem(pendulum_x0, solver_name='GNMS'))
+#     solversFDDP.append(create_double_pendulum_problem(pendulum_x0, solver_name='FDDP'))
+# if("Cartpole" in names): 
+#     solversGNMS.append(create_cartpole_problem(cartpole_x0, solver_name='GNMS'))
+#     solversFDDP.append(create_cartpole_problem(cartpole_x0, solver_name='FDDP'))
+# if("Kuka" in names): 
+#     solversGNMS.append(create_kuka_problem(kuka_x0, solver_name='GNMS'))
+#     solversFDDP.append(create_kuka_problem(kuka_x0, solver_name='FDDP'))
+# if("Quadrotor" in names): 
+#     solversGNMS.append(create_quadrotor_problem(quadrotor_x0, solver_name='GNMS'))
+#     solversFDDP.append(create_quadrotor_problem(quadrotor_x0, solver_name='FDDP'))
+# if("Humanoid" in names): 
+#     solversGNMS.append(create_humanoid_taichi_problem(humanoid_x0, solver_name='GNMS'))
+#     solversFDDP.append(create_humanoid_taichi_problem(humanoid_x0, solver_name='FDDP'))
 
-print("Created solvers FDDP & GNMS !")
+# print("Created solvers FDDP & GNMS !")
 
 
 # Compare both solvers with heuristic line-search using KKT condition
 MAXITER   = 500 
-TOL       = 1e-8
+TOL       = 1e-8 #1e-8
 CALLBACKS = False
 # KKT_COND  = True
 
-# Solve fddp
-import matplotlib.pyplot as plt
-fddp_iter = np.zeros((N_pb, 1))
-fddp_kkt = np.zeros((N_pb, 1))
-for k,solver in enumerate(solversFDDP):
-    # Solver setting
-    solver.termination_tolerance = TOL
-    if(CALLBACKS): solver.setCallbacks([crocoddyl.CallbackVerbose()])
-    # solver.use_kkt_criteria = KKT_COND
-    # Warm start & solve
-    print("FDDP solve "+str(k+1)+"/"+str(N_pb)+" : "+names[k])
-    solver.solve(solver.xs, solver.us, MAXITER, False)
-    fddp_iter[k, 0] = solver.iter
-    fddp_kkt[k, 0] = solver.KKT
-    print("iter = ", solver.iter)
-    # if(k==0):
-    #     plt.plot(np.array(solversFDDP[0].xs))
-    #     plt.plot(np.array(solversFDDP[0].us))
-    #     plt.show()
+# # Solve fddp
+# import matplotlib.pyplot as plt
+# fddp_iter = np.zeros((N_pb, 1))
+# fddp_kkt = np.zeros((N_pb, 1))
+# for k,solver in enumerate(solversFDDP):
+#     # Solver setting
+#     solver.termination_tolerance = TOL
+#     if(CALLBACKS): solver.setCallbacks([crocoddyl.CallbackVerbose()])
+#     # solver.use_kkt_criteria = KKT_COND
+#     # Warm start & solve
+#     print("FDDP solve "+str(k+1)+"/"+str(N_pb)+" : "+names[k])
+#     solver.solve(solver.xs, solver.us, MAXITER, False)
+#     fddp_iter[k, 0] = solver.iter
+#     fddp_kkt[k, 0] = solver.KKT
+#     print("iter = ", solver.iter)
+#     # if(k==0):
+#     #     plt.plot(np.array(solversFDDP[0].xs))
+#     #     plt.plot(np.array(solversFDDP[0].us))
+#     #     plt.show()
 
-# Solve GNMS 
-gnms_iter = np.zeros((N_pb, 1))
-gnms_kkt = np.zeros((N_pb, 1))
-for k,solver in enumerate(solversGNMS):
-    solver.termination_tol = TOL
-    solver.with_callbacks = False #CALLBACKS
-    # solver.use_kkt_criteria = KKT_COND
-    solver.use_filter_line_search = True
-    solver.filter_size = MAXITER
-    # Warm start & solve
-    print("GNMS solve "+str(k+1)+"/"+str(N_pb)+" : "+names[k])
-    solver.solve(solver.xs, solver.us, MAXITER, False)
-    gnms_iter[k, 0] = solver.iter
-    gnms_kkt[k, 0] = solver.KKT
-    print("iter = ", solver.iter)
+# # Solve GNMS 
+# gnms_iter = np.zeros((N_pb, 1))
+# gnms_kkt = np.zeros((N_pb, 1))
+# for k,solver in enumerate(solversGNMS):
+#     solver.termination_tol = TOL
+#     solver.with_callbacks = False #CALLBACKS
+#     # solver.use_kkt_criteria = KKT_COND
+#     solver.use_filter_line_search = True
+#     solver.filter_size = MAXITER
+#     # Warm start & solve
+#     print("GNMS solve "+str(k+1)+"/"+str(N_pb)+" : "+names[k])
+#     solver.solve(solver.xs, solver.us, MAXITER, False)
+#     gnms_iter[k, 0] = solver.iter
+#     gnms_kkt[k, 0] = solver.KKT
+#     print("iter = ", solver.iter)
 
-print("Test results\n")
-for k, name in enumerate(names):
-    print(name+ "_FDDP : "+str(solversFDDP[k].iter))
-for k, name in enumerate(names):
-    print(name+ "_GNMS : "+str(solversGNMS[k].iter))
+# print("Test results\n")
+# for k, name in enumerate(names):
+#     print(name+ "_FDDP : "+str(solversFDDP[k].iter))
+# for k, name in enumerate(names):
+#     print(name+ "_GNMS : "+str(solversGNMS[k].iter))
 
 
 # Randomize the tests over initial states
-SEED = 1
+SEED = 5
 np.random.seed(SEED)
-N_samples = 2
+N_samples = 10
 
-
+# Initial state samples
 pendulum_x0_samples  = np.zeros((N_samples, 4))
 cartpole_x0_samples  = np.zeros((N_samples, 4))
 kuka                 = IiwaConfig.buildRobotWrapper()
@@ -468,7 +468,6 @@ quadrotor            = example_robot_data.load('hector')
 humanoid             = example_robot_data.load('talos')
 quadrotor_x0_samples = np.zeros((N_samples, quadrotor.model.nq + quadrotor.model.nv))
 humanoid_x0_samples  = np.zeros((N_samples, humanoid.model.nq + humanoid.model.nv))
-
 for i in range(N_samples):
     pendulum_x0_samples[i,:]  = np.array([np.pi*(2*np.random.rand()-1), 0., 0., 0.])
     cartpole_x0_samples[i,:]  = np.array([0., np.pi*(2*np.random.rand()-1), 0., 0.])
@@ -477,75 +476,126 @@ for i in range(N_samples):
     humanoid_x0_samples[i,:]  = np.concatenate([pin.randomConfiguration(humanoid.model), np.zeros(humanoid.model.nv)])
 print("Created "+str(N_samples)+" random initial states per model !")
 
-
-problems_samples = []
+# Solvers
+solversGNMS = []
+solversFDDP = []
 for i in range(N_samples):
     # Create problems
-    pbs = []
+    solversGNMS.append([])
+    solversFDDP.append([])
     print("---")
-    print("Problems "+str(i+1)+'/'+str(N_samples))
-    pendulum_pb  = create_double_pendulum_problem(pendulum_x0)
-    cartpole_pb   = create_cartpole_problem(cartpole_x0)
-    kuka_pb      = create_kuka_problem(kuka_x0)
-    quadrotor_pb = create_quadrotor_problem(quadrotor_x0)
-    humanoid_pb  = create_humanoid_taichi_problem(humanoid_x0)
-    if("Double pendulum" in names): problems.append(pendulum_pb)
-    if("Cartpole" in names):        problems.append(cartpole_pb)
-    if("Kuka" in names):            problems.append(kuka_pb)
-    if("Quadrotor" in names):       problems.append(quadrotor_pb) 
-    if("Humanoid Taichi" in names): problems.append(humanoid_pb)
-    problems_samples.append(pbs)  
-print("Created "+str(N_samples)+" problems per model !")
+    print("Sample "+str(i+1)+'/'+str(N_samples))
+    if("Pendulum" in names): 
+        solversGNMS[i].append(create_double_pendulum_problem(pendulum_x0_samples[i,:], solver_name='GNMS'))
+        solversFDDP[i].append(create_double_pendulum_problem(pendulum_x0_samples[i,:], solver_name='FDDP'))
+    if("Cartpole" in names):        
+        solversGNMS[i].append(create_cartpole_problem(cartpole_x0_samples[i,:], solver_name='GNMS'))
+        solversFDDP[i].append(create_cartpole_problem(cartpole_x0_samples[i,:], solver_name='FDDP'))
+    if("Kuka" in names):
+        solversGNMS[i].append(create_kuka_problem(kuka_x0_samples[i,:], solver_name='GNMS'))
+        solversFDDP[i].append(create_kuka_problem(kuka_x0_samples[i,:], solver_name='FDDP'))
+    if("Quadrotor" in names):
+        solversGNMS[i].append(create_quadrotor_problem(quadrotor_x0_samples[i,:], solver_name='GNMS'))
+        solversFDDP[i].append(create_quadrotor_problem(quadrotor_x0_samples[i,:], solver_name='FDDP'))
+    if("Humanoid" in names): 
+        solversGNMS[i].append(create_humanoid_taichi_problem(humanoid_x0_samples[i,:], solver_name='GNMS'))
+        solversFDDP[i].append(create_humanoid_taichi_problem(humanoid_x0_samples[i,:], solver_name='FDDP'))
+print("Created "+str(N_samples)+" solvers per model !")
 
-
-# Warm-starts = quasi-static
-xss_samples = []
-uss_samples = []
-for i in range(N_samples):
-    xss_samples.append([])
-    uss_samples.append([])
-    for pb in problems:
-        xss_samples[i].append([pb.x0] * (pb.T + 1))
-        uss_samples[i].append(pb.quasiStatic([pb.x0] * pb.T))
-    print("Created warm-starts !")
 
 # Solve fddp
 fddp_iter_samples = []  
 fddp_kkt_samples  =  []
 for i in range(N_samples):
-    fddp_i = np.zeros((N_pb, 1))
-    fddp_k = np.zeros((N_pb, 1))
-    for k,solver in enumerate(solversFDDP):
+    print("FDDP sample "+str(i+1)+"/"+str(N_samples))
+    fddp_iter_samples.append([])
+    fddp_kkt_samples.append([])
+    for k,solver in enumerate(solversFDDP[i]):
         # Solver setting
         solver.termination_tolerance = TOL
         if(CALLBACKS): solver.setCallbacks([crocoddyl.CallbackVerbose()])
         # solver.use_kkt_criteria = KKT_COND
         # Warm start & solve
-        print("FDDP solve "+str(k+1)+"/"+str(N_pb)+" : "+names[k])
-        print("initial state = ", xss_samples[i][0])
-        solver.solve(xss_samples[i], uss_samples[i], MAXITER, False)
-        fddp_i[k, 0] = solver.iter
-        fddp_k[k, 0] = solver.KKT
-    fddp_iter_samples.append(fddp_i)
-    fddp_kkt_samples.append(fddp_k)
+        print(" Problem "+str(k+1)+"/"+str(N_pb)+" : "+names[k])
+        solver.solve(solver.xs, solver.us, MAXITER, False)
+        fddp_iter_samples[i].append(solver.iter)
+        fddp_kkt_samples[i].append(solver.KKT)
+
 
 # Solve GNMS 
 gnms_iter_samples = []  
 gnms_kkt_samples  =  []
 for i in range(N_samples):
-    gnms_i = np.zeros((N_pb, 1))
-    gnms_k = np.zeros((N_pb, 1))
-    for k,solver in enumerate(solversGNMS):
+    print("GNMS sample "+str(i+1)+"/"+str(N_samples))
+    gnms_iter_samples.append([])
+    gnms_kkt_samples.append([])
+    for k,solver in enumerate(solversGNMS[i]):
         solver.termination_tol = TOL
         solver.with_callbacks = False #CALLBACKS
         # solver.use_kkt_criteria = KKT_COND
         solver.use_filter_line_search = True
         solver.filter_size = MAXITER
         # Warm start & solve
-        print("GNMS solve "+str(k+1)+"/"+str(N_pb)+" : "+names[k])
-        print("initial state = ", xss_samples[i][0])
-        solver.solve(xss_samples[i], uss_samples[i], MAXITER, False)
-        gnms_i[k, 0] = solver.iter
-        gnms_k[k, 0] = solver.KKT
-    gnms_iter_samples.append(gnms_i)
-    gnms_kkt_samples.append(gnms_k)
+        print(" Problem "+str(k+1)+"/"+str(N_pb)+" : "+names[k])
+        solver.solve(solver.xs, solver.us, MAXITER, False)
+        gnms_iter_samples[i].append(solver.iter)
+        gnms_kkt_samples[i].append(solver.KKT)
+
+
+# Generate plot of number of iterations for each problem
+import matplotlib.pyplot as plt
+# Plot 
+fig1, ax1 = plt.subplots(1, 1, figsize=(19.2,10.8)) # Err position 
+# Average fddp iters
+gnms_iter_avg = np.zeros(N_pb)
+fddp_iter_avg = np.zeros(N_pb)
+gnms_iter_std = np.zeros(N_pb)
+fddp_iter_std = np.zeros(N_pb)
+for k,exp in enumerate(names):
+    fddp_iter_avg[k] = np.mean(np.array(fddp_iter_samples)[:,k])
+    gnms_iter_avg[k] = np.mean(np.array(gnms_iter_samples)[:,k]) 
+    fddp_iter_std[k] = np.std(np.array(fddp_iter_samples)[:,k])
+    gnms_iter_std[k] = np.std(np.array(gnms_iter_samples)[:,k]) 
+
+# Create bar plot
+X = np.arange(N_pb)
+b1 = ax1.bar(X - 0.13, fddp_iter_avg, yerr=fddp_iter_std, color = 'r', width = 0.25, capsize=10, label='FDDP')
+b2 = ax1.bar(X + 0.13, gnms_iter_avg, yerr=gnms_iter_std, color = 'g', width = 0.25, capsize=10, label='GNMS')
+
+# Set axis and stuff
+ax1.set_ylabel('Number of iterations', fontsize=26)
+ax1.set_ylim(0, 500)
+# ax1.set_yticks(X)
+ax1.tick_params(axis = 'y', labelsize=22)
+# ax1.set_xlabel('Experiment', fontsize=26)
+ax1.set_xticks(X)
+ax1.set_xticklabels(names, rotation='horizontal', fontsize=18)
+ax1.tick_params(axis = 'x', labelsize = 22)
+
+# ax1.set_title('Performance of GNMS and FDDP', fontdict={'size': 26})
+ax1.grid(True) 
+
+# Legend 
+handles1, labels1 = ax1.get_legend_handles_labels()
+fig1.legend(handles1, labels1, loc='upper right', prop={'size': 26}) #, ncols=2)
+# Save, show , clean
+# fig1.savefig(PREFIX+'pos_err_test_'+str(CUTOFF)+'_new.png')
+plt.show()
+plt.close('all')
+
+
+
+
+# for i in range(N_pb):
+#     if(i == N_pb-1):
+#         lab_fddp = 'FDDP' 
+#         lab_gnms = 'GNMS'
+#     else:
+#         lab_fddp = None 
+#         lab_gnms = None 
+#     ax1.plot(i, fddp_iter_avg[i], marker='o', markerfacecolor='r', linestyle='None', markersize=18, markeredgecolor='k', alpha=1., label=lab_fddp)
+#     ax1.plot(i, gnms_iter_avg[i], marker='o', markerfacecolor='b', linestyle='None', markersize=18, markeredgecolor='k', alpha=1., label=lab_gnms)
+    
+#     for j in range(N_samples):
+#         ax1.plot(i, fddp_iter_avg[i], marker='o', markerfacecolor='r', linestyle='None', markersize=12, alpha=0.3)
+#         ax1.plot(i, gnms_iter_avg[i], marker='o', markerfacecolor='b', linestyle='None', markersize=12, alpha=0.3)
