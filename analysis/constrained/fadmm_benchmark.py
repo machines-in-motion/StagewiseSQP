@@ -1,13 +1,5 @@
 '''
-Compare linear (GNMS) vs nonlinear (FDDP) rollouts
-For this purpose, filter line-search is used in both solvers
-Also compare with FDDP (original LS) and DDP 
-
-- kuka
-- quadrotor
-- double pendulum
-
-Randomizing over initial states
+Compare FADMM with and without constraints
 '''
 import sys
 import numpy as np
@@ -16,7 +8,7 @@ import pinocchio as pin
 
 from robot_properties_kuka.config import IiwaConfig
 import example_robot_data
-from bench_utils.cartpole_swingup import DifferentialActionModelCartpole
+from cartpole_swingup import DifferentialActionModelCartpole
 from crocoddyl.utils.pendulum import CostModelDoublePendulum, ActuationModelDoublePendulum
 
 def create_double_pendulum_problem(x0):
@@ -168,8 +160,9 @@ def create_quadrotor_problem(x0):
 
 
 
+
 # Solver params
-MAXITER     = 100 
+MAXITER     = 500 
 TOL         = 1e-4 
 CALLBACKS   = False
 FILTER_SIZE = MAXITER
