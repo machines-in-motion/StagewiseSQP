@@ -280,7 +280,7 @@ for k,name in enumerate(names):
 # Randomize the tests over initial states
 SEED = 1
 np.random.seed(SEED)
-N_samples = 10
+N_samples = 100
 # Initial state samples
 humanoid_x0_samples  = np.zeros((N_samples, 3))
 for i in range(N_samples):
@@ -294,15 +294,19 @@ print("Created "+str(N_samples)+" random initial states per model !")
 ddp_iter_samples = []  
 ddp_kkt_samples  =  []
 ddp_solved_samples  =  []
+
 fddp_iter_samples = []  
 fddp_kkt_samples  =  []
 fddp_solved_samples  =  []
+
 fddp_filter_iter_samples = []  
 fddp_filter_kkt_samples  =  []
 fddp_filter_solved_samples  =  []
+
 gnms_iter_samples = []  
 gnms_kkt_samples  =  []
 gnms_solved_samples  =  []
+
 for i in range(N_samples):
     ddp_iter_samples.append([])
     ddp_kkt_samples.append([])
@@ -347,6 +351,7 @@ for i in range(N_samples):
         models = list(solverfddp.problem.runningModels) + [solverfddp.problem.terminalModel]
         for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), x0.copy())
         solverfddp.xs = [solverfddp.problem.x0] * (solverfddp.problem.T + 1) 
+        assert(solverfddp.use_filter_line_search == False)
         solverfddp.us = solverfddp.problem.quasiStatic([solverfddp.problem.x0] * solverfddp.problem.T)
         solverfddp.solve(solverfddp.xs, solverfddp.us, MAXITER, False)
             # Check convergence
@@ -367,6 +372,8 @@ for i in range(N_samples):
         for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), x0.copy())
         solverfddp_filter.xs = [solverfddp_filter.problem.x0] * (solverfddp_filter.problem.T + 1) 
         solverfddp_filter.us = solverfddp_filter.problem.quasiStatic([solverfddp_filter.problem.x0] * solverfddp_filter.problem.T)
+        assert(solverfddp_filter.use_filter_line_search == True)
+        assert(solverfddp_filter.filter_size == MAXITER)
         solverfddp_filter.solve(solverfddp_filter.xs, solverfddp_filter.us, MAXITER, False)
             # Check convergence
         solved = (solverfddp_filter.iter < MAXITER) and (solverfddp_filter.KKT < TOL)
@@ -401,14 +408,6 @@ for i in range(N_samples):
 
 
 # Average fddp iters
-# gnms_iter_avg = np.zeros(N_pb)
-# fddp_iter_avg = np.zeros(N_pb)
-# fddp_filter_iter_avg = np.zeros(N_pb)
-# ddp_iter_avg = np.zeros(N_pb)
-# gnms_iter_std = np.zeros(N_pb)
-# fddp_iter_std = np.zeros(N_pb)
-# fddp_filter_iter_std = np.zeros(N_pb)
-# ddp_iter_std = np.zeros(N_pb)
 
 ddp_iter_solved = np.zeros((MAXITER, N_pb))
 fddp_iter_solved = np.zeros((MAXITER, N_pb))
@@ -416,14 +415,6 @@ fddp_filter_iter_solved = np.zeros((MAXITER, N_pb))
 gnms_iter_solved = np.zeros((MAXITER, N_pb))
 
 for k,exp in enumerate(names):
-    # fddp_iter_avg[k] = np.mean(np.array(fddp_iter_samples)[:,k])
-    # fddp_filter_iter_avg[k] = np.mean(np.array(fddp_filter_iter_samples)[:,k])
-    # ddp_iter_avg[k] = np.mean(np.array(ddp_iter_samples)[:,k])
-    # gnms_iter_avg[k] = np.mean(np.array(gnms_iter_samples)[:,k]) 
-    # fddp_iter_std[k] = np.std(np.array(fddp_iter_samples)[:,k])
-    # fddp_filter_iter_std[k] = np.std(np.array(fddp_filter_iter_samples)[:,k])
-    # ddp_iter_std[k] = np.std(np.array(ddp_iter_samples)[:,k])
-    # gnms_iter_std[k] = np.std(np.array(gnms_iter_samples)[:,k]) 
     # Count number of problems solved for each sample initial state 
     for i in range(N_samples):
         # For sample i of problem k , compare nb iter to max iter
@@ -439,7 +430,9 @@ for k,exp in enumerate(names):
 
 # Generate plot of number of iterations for each problem
 import matplotlib.pyplot as plt
-# Plot 
+import matplotlib
+matplotlib.rcParams["pdf.fonttype"] = 42
+matplotlib.rcParams["ps.fonttype"] = 42
 fig0, ax0 = plt.subplots(1, 1, figsize=(19.2,10.8)) 
 # x-axis : max number of iterations
 xdata     = range(0,MAXITER)
@@ -452,8 +445,7 @@ for k in range(N_pb):
 # Set axis and stuff
 ax0.set_ylabel('Number of problem solved', fontsize=26)
 ax0.set_xlabel('Max. number of iterations', fontsize=26)
-ax0.set_ylim(0,100)
-# ax0.set_ylim(-10, MAXITER)
+ax0.set_ylim(-10, MAXITER)
 ax0.tick_params(axis = 'y', labelsize=22)
 ax0.tick_params(axis = 'x', labelsize = 22)
 ax0.grid(True) 
@@ -463,48 +455,6 @@ fig0.legend(handles0, labels0, loc='upper right', prop={'size': 26})
 # Save, show , clean
 fig0.savefig('/home/skleff/data_paper_fadmm/bench_taichi_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.png')
 
-
-# # Plot CV
-# fig1, ax1 = plt.subplots(1, 1, figsize=(19.2,10.8)) 
-# # Create bar plot
-# X = np.arange(N_pb)
-# b1 = ax1.bar(X - 0.13, ddp_iter_avg, yerr=ddp_iter_std, color = 'r', width = 0.22, capsize=10, label='DDP')
-# b2 = ax1.bar(X, fddp_iter_avg, yerr=fddp_iter_std, color = 'g', width = 0.22, capsize=10, label='FDDP')
-# b3 = ax1.bar(X + 0.13, gnms_iter_avg, yerr=gnms_iter_std, color = 'b', width = 0.22, capsize=10, label='GNMS')
-# # b1 = ax1.bar(X - 0.13, fddp_iter_avg, yerr=fddp_iter_std, color = 'r', width = 0.25, capsize=10, label='FDDP')
-# # b2 = ax1.bar(X + 0.13, gnms_iter_avg, yerr=gnms_iter_std, color = 'g', width = 0.25, capsize=10, label='GNMS')
-# # Set axis and stuff
-# ax1.set_ylabel('Number of iterations', fontsize=26)
-# ax1.set_ylim(-10, MAXITER)
-# # ax1.set_yticks(X)
-# ax1.tick_params(axis = 'y', labelsize=22)
-# # ax1.set_xlabel('Experiment', fontsize=26)
-# ax1.set_xticks(X)
-# ax1.set_xticklabels(names, rotation='horizontal', fontsize=18)
-# ax1.tick_params(axis = 'x', labelsize = 22)
-# # ax1.set_title('Performance of GNMS and FDDP', fontdict={'size': 26})
-# ax1.grid(True) 
-# # Legend 
-# handles1, labels1 = ax1.get_legend_handles_labels()
-# fig1.legend(handles1, labels1, loc='upper right', prop={'size': 26}) #, ncols=2)
-# # Save, show , clean
-# fig1.savefig('/tmp/gnms_fddp_bench_SEED='+str(SEED)+'.png')
-
-
 plt.show()
 plt.close('all')
 
-
-# for i in range(N_pb):
-#     if(i == N_pb-1):
-#         lab_fddp = 'FDDP' 
-#         lab_gnms = 'GNMS'
-#     else:
-#         lab_fddp = None 
-#         lab_gnms = None 
-#     ax1.plot(i, fddp_iter_avg[i], marker='o', markerfacecolor='r', linestyle='None', markersize=18, markeredgecolor='k', alpha=1., label=lab_fddp)
-#     ax1.plot(i, gnms_iter_avg[i], marker='o', markerfacecolor='b', linestyle='None', markersize=18, markeredgecolor='k', alpha=1., label=lab_gnms)
-    
-#     for j in range(N_samples):
-#         ax1.plot(i, fddp_iter_avg[i], marker='o', markerfacecolor='r', linestyle='None', markersize=12, alpha=0.3)
-#         ax1.plot(i, gnms_iter_avg[i], marker='o', markerfacecolor='b', linestyle='None', markersize=12, alpha=0.3)

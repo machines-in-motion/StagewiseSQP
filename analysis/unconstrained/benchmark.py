@@ -297,8 +297,8 @@ names = [
 N_pb = len(names)
 
 # Problems with nominal initial states
-MAXITER   = 3000 
-TOL       = 1e-8 #1e-8
+MAXITER   = 200 
+TOL       = 1e-4 #1e-8
 CALLBACKS = False
 # KKT_COND  = True
 solversDDP = []
@@ -466,12 +466,16 @@ for i in range(N_samples):
         if(name == "Kuka"):      x0 = kuka_x0_samples[i,:]
         if(name == "Quadrotor"): x0 = quadrotor_x0_samples[i,:]
         if(name == "Humanoid"):  x0 = humanoid_x0_samples[i,:]
+        
         # DDP (SS)
         print("   Problem : "+name+" DDP")
         solverddp = solversDDP[k]
         solverddp.problem.x0 = x0
         solverddp.xs = [x0] * (solverddp.problem.T + 1) 
-        solverddp.us = solverddp.problem.quasiStatic([x0] * solverddp.problem.T)
+        solverddp.us = [np.zeros(solverddp.problem.runningModels[0].differential.nu)]*solverddp.problem.T #solverddp.problem.quasiStatic([x0] * solverddp.problem.T) #[np.zeros(solverddp.problem.runningModels[0].differential.nu)]*solverddp.problem.T #
+        # solverddp.problem.calc(solverddp.xs, solverddp.us)
+        # solverddp.forwardPass(0.)
+        # print(np.linalg.norm(np.array(solverddp.problem.runningDatas[0].xnext - solverddp.xs[1])))
         solverddp.solve(solverddp.xs, solverddp.us, MAXITER, False)
             # Check convergence
         solved = (solverddp.iter < MAXITER) and (solverddp.KKT < TOL)
@@ -483,6 +487,7 @@ for i in range(N_samples):
         else:
             ddp_iter_samples[i].append(solverddp.iter)
         ddp_kkt_samples[i].append(solverddp.KKT)
+
         # FDDP (MS)
         print("   Problem : "+name+" FDDP")
         solverfddp = solversFDDP[k]
