@@ -292,18 +292,18 @@ def create_humanoid_taichi_problem(x0):
 
 # Problem names
 names = [
-    #    'Pendulum']
-        #  'Kuka']
+    #    'Pendulum'] # maxiter = 500
+        #  'Kuka'] # maxiter = 150
         #  'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
-         'Quadrotor']
-        #  'Humanoid']
+        #  'Quadrotor'] # 200
+        #  'Humanoid'] # ?
 
 N_pb = len(names)
 
 
 # Problems with nominal initial states
-MAXITER     = 10000 
-TOL         = 1e-6 #1e-8
+MAXITER     = 1000 # 
+TOL         = 1e-4 #1e-8
 CALLBACKS   = False
 FILTER_SIZE = MAXITER
 # KKT_COND    = True
@@ -517,33 +517,33 @@ ax0.grid(True)
 handles0, labels0 = ax0.get_legend_handles_labels()
 fig0.legend(handles0, labels0, loc='upper right', prop={'size': 26}) 
 # Save, show , clean
-fig0.savefig('/tmp/gnms_bench_SEED='+str(SEED)+'_metric.png')
+fig0.savefig('/home/skleff/data_paper_fadmm/bench_'+names[0]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.png')
 
 
-# Plot CV
-fig1, ax1 = plt.subplots(1, 1, figsize=(19.2,10.8)) 
-# Create bar plot
-X = np.arange(N_pb)
-b2 = ax1.bar(X, fddp_iter_avg, yerr=fddp_iter_std, color = 'g', width = 0.22, capsize=10, label='FDDP')
-b3 = ax1.bar(X + 0.13, gnms_iter_avg, yerr=gnms_iter_std, color = 'b', width = 0.22, capsize=10, label='GNMS')
-# b1 = ax1.bar(X - 0.13, fddp_iter_avg, yerr=fddp_iter_std, color = 'r', width = 0.25, capsize=10, label='FDDP')
-# b2 = ax1.bar(X + 0.13, gnms_iter_avg, yerr=gnms_iter_std, color = 'g', width = 0.25, capsize=10, label='GNMS')
-# Set axis and stuff
-ax1.set_ylabel('Number of iterations', fontsize=26)
-ax1.set_ylim(-10, MAXITER)
-# ax1.set_yticks(X)
-ax1.tick_params(axis = 'y', labelsize=22)
-# ax1.set_xlabel('Experiment', fontsize=26)
-ax1.set_xticks(X)
-ax1.set_xticklabels(names, rotation='horizontal', fontsize=18)
-ax1.tick_params(axis = 'x', labelsize = 22)
-# ax1.set_title('Performance of GNMS and FDDP', fontdict={'size': 26})
-ax1.grid(True) 
-# Legend 
-handles1, labels1 = ax1.get_legend_handles_labels()
-fig1.legend(handles1, labels1, loc='upper right', prop={'size': 26}) #, ncols=2)
+# # Plot CV
+# fig1, ax1 = plt.subplots(1, 1, figsize=(19.2,10.8)) 
+# # Create bar plot
+# X = np.arange(N_pb)
+# b2 = ax1.bar(X, fddp_iter_avg, yerr=fddp_iter_std, color = 'g', width = 0.22, capsize=10, label='FDDP')
+# b3 = ax1.bar(X + 0.13, gnms_iter_avg, yerr=gnms_iter_std, color = 'b', width = 0.22, capsize=10, label='GNMS')
+# # b1 = ax1.bar(X - 0.13, fddp_iter_avg, yerr=fddp_iter_std, color = 'r', width = 0.25, capsize=10, label='FDDP')
+# # b2 = ax1.bar(X + 0.13, gnms_iter_avg, yerr=gnms_iter_std, color = 'g', width = 0.25, capsize=10, label='GNMS')
+# # Set axis and stuff
+# ax1.set_ylabel('Number of iterations', fontsize=26)
+# ax1.set_ylim(-10, MAXITER)
+# # ax1.set_yticks(X)
+# ax1.tick_params(axis = 'y', labelsize=22)
+# # ax1.set_xlabel('Experiment', fontsize=26)
+# ax1.set_xticks(X)
+# ax1.set_xticklabels(names, rotation='horizontal', fontsize=18)
+# ax1.tick_params(axis = 'x', labelsize = 22)
+# # ax1.set_title('Performance of GNMS and FDDP', fontdict={'size': 26})
+# ax1.grid(True) 
+# # Legend 
+# handles1, labels1 = ax1.get_legend_handles_labels()
+# fig1.legend(handles1, labels1, loc='upper right', prop={'size': 26}) #, ncols=2)
 # Save, show , clean
-fig1.savefig('/tmp/gnms_fddp_bench_SEED='+str(SEED)+'.png')
+# fig0.savefig('/home/skleff/data_paper_fadmm/bench_'+names[0]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.png')
 
 
 plt.show()

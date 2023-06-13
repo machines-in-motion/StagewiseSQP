@@ -144,12 +144,13 @@ names = ['Humanoid']
 N_pb = len(names)
 
 # Problems with nominal initial states
-MAXITER   = 250 
-TOL       = 1e-8 #1e-8
+MAXITER   = 100 
+TOL       = 1e-4 #1e-8
 CALLBACKS = False
 # KKT_COND  = True
 solversDDP = []
 solversFDDP = []
+solversFDDP_filter = []
 solversGNMS = []
 humanoid_x0  = np.array([0.4, 0, 1.2])
 print('------')
@@ -171,7 +172,17 @@ for k,name in enumerate(names):
     solverfddp.termination_tolerance = TOL
     if(CALLBACKS): solverfddp.setCallbacks([crocoddyl.CallbackVerbose()])
     solversFDDP.append(solverfddp)
-    
+
+    # Create solver FDDP_filter (MS)
+    solverfddp_filter = crocoddyl.SolverFDDP(pb)
+    solverfddp_filter.xs = [solverfddp_filter.problem.x0] * (solverfddp_filter.problem.T + 1)  
+    solverfddp_filter.us = solverfddp_filter.problem.quasiStatic([solverfddp_filter.problem.x0] * solverfddp_filter.problem.T)
+    solverfddp_filter.termination_tolerance = TOL
+    solverfddp_filter.use_filter_line_search = True
+    solverfddp_filter.filter_size = MAXITER
+    if(CALLBACKS): solverfddp_filter.setCallbacks([crocoddyl.CallbackVerbose()])
+    solversFDDP_filter.append(solverfddp_filter)
+
     # Create solver GNMS (MS)
     solvergnms = crocoddyl.SolverGNMS(pb)
     solvergnms.xs = [solvergnms.problem.x0] * (solvergnms.problem.T + 1)  
@@ -205,7 +216,7 @@ for k,name in enumerate(names):
 # # Solve FDDP (MS)
 # fddp_iter = np.zeros((N_pb, 1))
 # fddp_kkt = np.zeros((N_pb, 1))
-# # for k,solver in enumerate(solversFDDP):
+# for k,solver in enumerate(solversFDDP):
 #     # Solver setting
 #     solver.termination_tolerance = TOL
 #     if(CALLBACKS): solver.setCallbacks([crocoddyl.CallbackVerbose()])
@@ -219,29 +230,49 @@ for k,name in enumerate(names):
 #     fddp_kkt[k, 0] = solver.KKT
 #     print("iter = ", solver.iter)
 
+# print('------')
+# # Solve FDDP filter (MS)
+# fddp_filter_iter = np.zeros((N_pb, 1))
+# fddp_filter_kkt = np.zeros((N_pb, 1))
+# for k,solver in enumerate(solversFDDP_filter):
+#     # Solver setting
+#     solver.termination_tolerance = TOL
+#     if(CALLBACKS): solver.setCallbacks([crocoddyl.CallbackVerbose()])
+#     # solver.use_kkt_criteria = KKT_COND
+#     # Warm start & solve
+#     print("FDDP_filter solve "+names[k])
+#     solver.solve(solver.xs, solver.us, MAXITER, False)
+#     if(solver.iter >= MAXITER-1):
+#         print("fddp_filter hit max")
+#     fddp_filter_iter[k, 0] = solver.iter
+#     fddp_filter_kkt[k, 0] = solver.KKT
+#     print("iter = ", solver.iter)
+    
 # # Solve GNMS (MS)
 # gnms_iter = np.zeros((N_pb, 1))
 # gnms_kkt = np.zeros((N_pb, 1))
 # for k,solver in enumerate(solversGNMS):
-#     solver.termination_tol = TOL
-#     solver.with_callbacks = False #CALLBACKS
-#     # solver.use_kkt_criteria = KKT_COND
-#     solver.use_filter_line_search = True
-#     solver.filter_size = MAXITER
-#     # Warm start & solve
-#     print("GNMS solve "+names[k])
-#     solver.solve(solver.xs, solver.us, MAXITER, False)
-#     if(solver.iter >= MAXITER-1):
-#         print("gnms hit max")
-#     gnms_iter[k, 0] = solver.iter
-#     gnms_kkt[k, 0] = solver.KKT
-#     print("iter = ", solver.iter)
+    # solver.termination_tol = TOL
+    # solver.with_callbacks = False #CALLBACKS
+    # # solver.use_kkt_criteria = KKT_COND
+    # solver.use_filter_line_search = True
+    # solver.filter_size = MAXITER
+    # # Warm start & solve
+    # print("GNMS solve "+names[k])
+    # solver.solve(solver.xs, solver.us, MAXITER, False)
+    # if(solver.iter >= MAXITER-1):
+    #     print("gnms hit max")
+    # gnms_iter[k, 0] = solver.iter
+    # gnms_kkt[k, 0] = solver.KKT
+    # print("iter = ", solver.iter)
 
 # print("Test results\n")
 # for k, name in enumerate(names):
 #     print(name+ "_DDP : "+str(solversDDP[k].iter))
 # for k, name in enumerate(names):
 #     print(name+ "_FDDP : "+str(solversFDDP[k].iter))
+# for k, name in enumerate(names):
+#     print(name+ "_FDDP_filter : "+str(solversFDDP_filter[k].iter))
 # for k, name in enumerate(names):
 #     print(name+ "_GNMS : "+str(solversGNMS[k].iter))
 
@@ -255,7 +286,7 @@ humanoid_x0_samples  = np.zeros((N_samples, 3))
 for i in range(N_samples):
     err = np.zeros(3)
     err[2] = 2*np.random.rand(1) - 1
-    humanoid_x0_samples[i,:]  = np.array([0.4, 0, 1.2]) + 2*err
+    humanoid_x0_samples[i,:]  = np.array([0.4, 0, 1.2]) + 0.5*err
 
 print("Created "+str(N_samples)+" random initial states per model !")
 
@@ -266,6 +297,9 @@ ddp_solved_samples  =  []
 fddp_iter_samples = []  
 fddp_kkt_samples  =  []
 fddp_solved_samples  =  []
+fddp_filter_iter_samples = []  
+fddp_filter_kkt_samples  =  []
+fddp_filter_solved_samples  =  []
 gnms_iter_samples = []  
 gnms_kkt_samples  =  []
 gnms_solved_samples  =  []
@@ -276,6 +310,9 @@ for i in range(N_samples):
     fddp_iter_samples.append([])
     fddp_kkt_samples.append([])
     fddp_solved_samples.append([])
+    fddp_filter_iter_samples.append([])
+    fddp_filter_kkt_samples.append([])
+    fddp_filter_solved_samples.append([])
     gnms_iter_samples.append([])
     gnms_kkt_samples.append([])
     gnms_solved_samples.append([])
@@ -285,30 +322,30 @@ for i in range(N_samples):
         # Initial state
         # if(name == "Humanoid"):  
         x0 = humanoid_x0_samples[i,:].copy()
-        # # DDP (SS)
-        # print("   Problem : "+name+" DDP")
-        # solverddp = solversDDP[k]
-        # models = list(solverddp.problem.runningModels) + [solverddp.problem.terminalModel]
-        # for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference.translation = x0
-        # solverddp.xs = [solverddp.problem.x0] * (solverddp.problem.T + 1) 
-        # solverddp.us = solverddp.problem.quasiStatic([solverddp.problem.x0] * solverddp.problem.T)
-        # solverddp.solve(solverddp.xs, solverddp.us, MAXITER, True)
-        #     # Check convergence
-        # solved = (solverddp.iter < MAXITER) and (solverddp.KKT < TOL)
-        # ddp_solved_samples[i].append( solved )
-        # print("   iter = "+str(solverddp.iter)+"  |  KKT = "+str(solverddp.KKT))
-        # if(not solved): 
-        #     print("      FAILED !!!!")
-        #     ddp_iter_samples[i].append(MAXITER)
-        # else:
-        #     ddp_iter_samples[i].append(solverddp.iter)
-        # ddp_kkt_samples[i].append(solverddp.KKT)
+        # DDP (SS)
+        print("   Problem : "+name+" DDP")
+        solverddp = solversDDP[k]
+        models = list(solverddp.problem.runningModels) + [solverddp.problem.terminalModel]
+        for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), x0.copy())
+        solverddp.xs = [solverddp.problem.x0] * (solverddp.problem.T + 1) 
+        solverddp.us = solverddp.problem.quasiStatic([solverddp.problem.x0] * solverddp.problem.T)
+        solverddp.solve(solverddp.xs, solverddp.us, MAXITER, True)
+            # Check convergence
+        solved = (solverddp.iter < MAXITER) and (solverddp.KKT < TOL)
+        ddp_solved_samples[i].append( solved )
+        print("   iter = "+str(solverddp.iter)+"  |  KKT = "+str(solverddp.KKT))
+        if(not solved): 
+            print("      FAILED !!!!")
+            ddp_iter_samples[i].append(MAXITER)
+        else:
+            ddp_iter_samples[i].append(solverddp.iter)
+        ddp_kkt_samples[i].append(solverddp.KKT)
 
         # FDDP (MS)
         print("   Problem : "+name+" FDDP")
         solverfddp = solversFDDP[k]
         models = list(solverfddp.problem.runningModels) + [solverfddp.problem.terminalModel]
-        for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference.translation = x0
+        for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), x0.copy())
         solverfddp.xs = [solverfddp.problem.x0] * (solverfddp.problem.T + 1) 
         solverfddp.us = solverfddp.problem.quasiStatic([solverfddp.problem.x0] * solverfddp.problem.T)
         solverfddp.solve(solverfddp.xs, solverfddp.us, MAXITER, False)
@@ -323,60 +360,81 @@ for i in range(N_samples):
             fddp_iter_samples[i].append(solverfddp.iter)
         fddp_kkt_samples[i].append(solverfddp.KKT)
 
-        # GNMS        
-        # print("   Problem : "+name+" GNMS")
-        # # pb = create_humanoid_taichi_problem(x0)
-        # solvergnms = solversGNMS[k]
-        # # solvergnms = crocoddyl.SolverGNMS(pb)
-        # # models = list(solvergnms.problem.runningModels) + [solvergnms.problem.terminalModel]
-        # print(x0)
-        # for m in solvergnms.problem.runningModels: 
-        #     m.differential.costs.costs["gripperPose"].cost.residual.reference.translation = x0
-        # solvergnms.problem.terminalModel.differential.costs.costs["gripperPose"].cost.residual.reference.translation = x0
-        # print(solvergnms.problem.runningModels[0].differential.costs.costs["gripperPose"].cost.residual.reference.translation)
-        # solvergnms.xs = [solvergnms.problem.x0] * (solvergnms.problem.T + 1) 
-        # solvergnms.us = solvergnms.problem.quasiStatic([solvergnms.problem.x0] * solvergnms.problem.T)
-        # solvergnms.solve(solvergnms.xs, solvergnms.us, MAXITER, False)
-        #     # Check convergence
-        # solved = (solvergnms.iter < MAXITER) and (solvergnms.KKT < TOL)
-        # gnms_solved_samples[i].append( solved )
-        # print("   iter = "+str(solvergnms.iter)+"  |  KKT = "+str(solvergnms.KKT))
-        # if(not solved): 
-        #     print("      FAILED !!!!")
-        #     gnms_iter_samples[i].append(MAXITER)
-        # else:
-        #     gnms_iter_samples[i].append(solvergnms.iter)
-        # gnms_kkt_samples[i].append(solvergnms.KKT)
+        # FDDP filter (MS)
+        print("   Problem : "+name+" FDDP_filter")
+        solverfddp_filter = solversFDDP_filter[k]
+        models = list(solverfddp_filter.problem.runningModels) + [solverfddp_filter.problem.terminalModel]
+        for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), x0.copy())
+        solverfddp_filter.xs = [solverfddp_filter.problem.x0] * (solverfddp_filter.problem.T + 1) 
+        solverfddp_filter.us = solverfddp_filter.problem.quasiStatic([solverfddp_filter.problem.x0] * solverfddp_filter.problem.T)
+        solverfddp_filter.solve(solverfddp_filter.xs, solverfddp_filter.us, MAXITER, False)
+            # Check convergence
+        solved = (solverfddp_filter.iter < MAXITER) and (solverfddp_filter.KKT < TOL)
+        fddp_filter_solved_samples[i].append( solved )
+        print("   iter = "+str(solverfddp_filter.iter)+"  |  KKT = "+str(solverfddp_filter.KKT))
+        if(not solved): 
+            print("      FAILED !!!!")
+            fddp_filter_iter_samples[i].append(MAXITER)
+        else:
+            fddp_filter_iter_samples[i].append(solverfddp_filter.iter)
+        fddp_filter_kkt_samples[i].append(solverfddp_filter.KKT)
+
+        #  GNMS        
+        print("   Problem : "+name+" GNMS")
+        # pb = create_humanoid_taichi_problem(x0)
+        solvergnms = solversGNMS[k]
+        models = list(solvergnms.problem.runningModels) + [solvergnms.problem.terminalModel]
+        for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), x0.copy())
+        solvergnms.xs = [solvergnms.problem.x0] * (solvergnms.problem.T + 1) 
+        solvergnms.us = solvergnms.problem.quasiStatic([solvergnms.problem.x0] * solvergnms.problem.T)
+        solvergnms.solve(solvergnms.xs, solvergnms.us, MAXITER, False)
+            # Check convergence
+        solved = (solvergnms.iter < MAXITER) and (solvergnms.KKT < TOL)
+        gnms_solved_samples[i].append( solved )
+        print("   iter = "+str(solvergnms.iter)+"  |  KKT = "+str(solvergnms.KKT))
+        if(not solved): 
+            print("      FAILED !!!!")
+            gnms_iter_samples[i].append(MAXITER)
+        else:
+            gnms_iter_samples[i].append(solvergnms.iter)
+        gnms_kkt_samples[i].append(solvergnms.KKT)
 
 
 # Average fddp iters
-gnms_iter_avg = np.zeros(N_pb)
-fddp_iter_avg = np.zeros(N_pb)
-ddp_iter_avg = np.zeros(N_pb)
-gnms_iter_std = np.zeros(N_pb)
-fddp_iter_std = np.zeros(N_pb)
-ddp_iter_std = np.zeros(N_pb)
+# gnms_iter_avg = np.zeros(N_pb)
+# fddp_iter_avg = np.zeros(N_pb)
+# fddp_filter_iter_avg = np.zeros(N_pb)
+# ddp_iter_avg = np.zeros(N_pb)
+# gnms_iter_std = np.zeros(N_pb)
+# fddp_iter_std = np.zeros(N_pb)
+# fddp_filter_iter_std = np.zeros(N_pb)
+# ddp_iter_std = np.zeros(N_pb)
 
 ddp_iter_solved = np.zeros((MAXITER, N_pb))
 fddp_iter_solved = np.zeros((MAXITER, N_pb))
+fddp_filter_iter_solved = np.zeros((MAXITER, N_pb))
 gnms_iter_solved = np.zeros((MAXITER, N_pb))
 
 for k,exp in enumerate(names):
-    fddp_iter_avg[k] = np.mean(np.array(fddp_iter_samples)[:,k])
-    ddp_iter_avg[k] = np.mean(np.array(ddp_iter_samples)[:,k])
-    gnms_iter_avg[k] = np.mean(np.array(gnms_iter_samples)[:,k]) 
-    fddp_iter_std[k] = np.std(np.array(fddp_iter_samples)[:,k])
-    ddp_iter_std[k] = np.std(np.array(ddp_iter_samples)[:,k])
-    gnms_iter_std[k] = np.std(np.array(gnms_iter_samples)[:,k]) 
+    # fddp_iter_avg[k] = np.mean(np.array(fddp_iter_samples)[:,k])
+    # fddp_filter_iter_avg[k] = np.mean(np.array(fddp_filter_iter_samples)[:,k])
+    # ddp_iter_avg[k] = np.mean(np.array(ddp_iter_samples)[:,k])
+    # gnms_iter_avg[k] = np.mean(np.array(gnms_iter_samples)[:,k]) 
+    # fddp_iter_std[k] = np.std(np.array(fddp_iter_samples)[:,k])
+    # fddp_filter_iter_std[k] = np.std(np.array(fddp_filter_iter_samples)[:,k])
+    # ddp_iter_std[k] = np.std(np.array(ddp_iter_samples)[:,k])
+    # gnms_iter_std[k] = np.std(np.array(gnms_iter_samples)[:,k]) 
     # Count number of problems solved for each sample initial state 
     for i in range(N_samples):
         # For sample i of problem k , compare nb iter to max iter
         ddp_iter_ik  = np.array(ddp_iter_samples)[i,k]
         fddp_iter_ik = np.array(fddp_iter_samples)[i,k]
+        fddp_filter_iter_ik = np.array(fddp_filter_iter_samples)[i,k]
         gnms_iter_ik = np.array(gnms_iter_samples)[i,k]
         for j in range(MAXITER):
             if(ddp_iter_ik < j): ddp_iter_solved[j,k] += 1
             if(fddp_iter_ik < j): fddp_iter_solved[j,k] += 1
+            if(fddp_filter_iter_ik < j): fddp_filter_iter_solved[j,k] += 1
             if(gnms_iter_ik < j): gnms_iter_solved[j,k] += 1
 
 # Generate plot of number of iterations for each problem
@@ -388,11 +446,13 @@ xdata     = range(0,MAXITER)
 ydata_ddp = np.zeros(MAXITER)
 for k in range(N_pb):
     ax0.plot(xdata, ddp_iter_solved[:,k], color='r', label='DDP') #, marker='o', markerfacecolor='r', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='DDP')
-    ax0.plot(xdata, fddp_iter_solved[:,k], color='g', label='FDDP') #marker='o', markerfacecolor='g', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='FDDP')
+    ax0.plot(xdata, fddp_iter_solved[:,k], color='y', label='FDDP') #marker='o', markerfacecolor='g', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='FDDP')
+    ax0.plot(xdata, fddp_filter_iter_solved[:,k], color='g', label='FDDP (filter)') #marker='o', markerfacecolor='g', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='FDDP')
     ax0.plot(xdata, gnms_iter_solved[:,k], color='b', label='GNMS') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='GNMS')
 # Set axis and stuff
 ax0.set_ylabel('Number of problem solved', fontsize=26)
 ax0.set_xlabel('Max. number of iterations', fontsize=26)
+ax0.set_ylim(0,100)
 # ax0.set_ylim(-10, MAXITER)
 ax0.tick_params(axis = 'y', labelsize=22)
 ax0.tick_params(axis = 'x', labelsize = 22)
@@ -401,34 +461,34 @@ ax0.grid(True)
 handles0, labels0 = ax0.get_legend_handles_labels()
 fig0.legend(handles0, labels0, loc='upper right', prop={'size': 26}) 
 # Save, show , clean
-fig0.savefig('/tmp/gnms_bench_SEED='+str(SEED)+'_metric.png')
+fig0.savefig('/home/skleff/data_paper_fadmm/bench_taichi_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.png')
 
 
-# Plot CV
-fig1, ax1 = plt.subplots(1, 1, figsize=(19.2,10.8)) 
-# Create bar plot
-X = np.arange(N_pb)
-b1 = ax1.bar(X - 0.13, ddp_iter_avg, yerr=ddp_iter_std, color = 'r', width = 0.22, capsize=10, label='DDP')
-b2 = ax1.bar(X, fddp_iter_avg, yerr=fddp_iter_std, color = 'g', width = 0.22, capsize=10, label='FDDP')
-b3 = ax1.bar(X + 0.13, gnms_iter_avg, yerr=gnms_iter_std, color = 'b', width = 0.22, capsize=10, label='GNMS')
-# b1 = ax1.bar(X - 0.13, fddp_iter_avg, yerr=fddp_iter_std, color = 'r', width = 0.25, capsize=10, label='FDDP')
-# b2 = ax1.bar(X + 0.13, gnms_iter_avg, yerr=gnms_iter_std, color = 'g', width = 0.25, capsize=10, label='GNMS')
-# Set axis and stuff
-ax1.set_ylabel('Number of iterations', fontsize=26)
-ax1.set_ylim(-10, MAXITER)
-# ax1.set_yticks(X)
-ax1.tick_params(axis = 'y', labelsize=22)
-# ax1.set_xlabel('Experiment', fontsize=26)
-ax1.set_xticks(X)
-ax1.set_xticklabels(names, rotation='horizontal', fontsize=18)
-ax1.tick_params(axis = 'x', labelsize = 22)
-# ax1.set_title('Performance of GNMS and FDDP', fontdict={'size': 26})
-ax1.grid(True) 
-# Legend 
-handles1, labels1 = ax1.get_legend_handles_labels()
-fig1.legend(handles1, labels1, loc='upper right', prop={'size': 26}) #, ncols=2)
-# Save, show , clean
-fig1.savefig('/tmp/gnms_fddp_bench_SEED='+str(SEED)+'.png')
+# # Plot CV
+# fig1, ax1 = plt.subplots(1, 1, figsize=(19.2,10.8)) 
+# # Create bar plot
+# X = np.arange(N_pb)
+# b1 = ax1.bar(X - 0.13, ddp_iter_avg, yerr=ddp_iter_std, color = 'r', width = 0.22, capsize=10, label='DDP')
+# b2 = ax1.bar(X, fddp_iter_avg, yerr=fddp_iter_std, color = 'g', width = 0.22, capsize=10, label='FDDP')
+# b3 = ax1.bar(X + 0.13, gnms_iter_avg, yerr=gnms_iter_std, color = 'b', width = 0.22, capsize=10, label='GNMS')
+# # b1 = ax1.bar(X - 0.13, fddp_iter_avg, yerr=fddp_iter_std, color = 'r', width = 0.25, capsize=10, label='FDDP')
+# # b2 = ax1.bar(X + 0.13, gnms_iter_avg, yerr=gnms_iter_std, color = 'g', width = 0.25, capsize=10, label='GNMS')
+# # Set axis and stuff
+# ax1.set_ylabel('Number of iterations', fontsize=26)
+# ax1.set_ylim(-10, MAXITER)
+# # ax1.set_yticks(X)
+# ax1.tick_params(axis = 'y', labelsize=22)
+# # ax1.set_xlabel('Experiment', fontsize=26)
+# ax1.set_xticks(X)
+# ax1.set_xticklabels(names, rotation='horizontal', fontsize=18)
+# ax1.tick_params(axis = 'x', labelsize = 22)
+# # ax1.set_title('Performance of GNMS and FDDP', fontdict={'size': 26})
+# ax1.grid(True) 
+# # Legend 
+# handles1, labels1 = ax1.get_legend_handles_labels()
+# fig1.legend(handles1, labels1, loc='upper right', prop={'size': 26}) #, ncols=2)
+# # Save, show , clean
+# fig1.savefig('/tmp/gnms_fddp_bench_SEED='+str(SEED)+'.png')
 
 
 plt.show()
