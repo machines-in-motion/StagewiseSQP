@@ -1,3 +1,13 @@
+'''
+Compare linear (GNMS) vs nonlinear (FDDP) rollouts
+For this purpose, filter line-search is used in both solvers
+Also compare with FDDP (original LS) and DDP 
+
+- humanoid taichi
+
+Randomizing over end-effector goal position
+'''
+
 import sys
 import numpy as np
 import crocoddyl
@@ -138,21 +148,29 @@ def create_humanoid_taichi_problem(target):
     pb = crocoddyl.ShootingProblem(x0, [runningModel1] * T + [runningModel2] * T + [runningModel3] * T, terminalModel)
     return pb
 
-# Problem names
+
+
+
+# Solver params
+MAXITER     = 300 
+TOL         = 1e-4 
+CALLBACKS   = False
+FILTER_SIZE = MAXITER
+
+# Benchmark params
+SEED = 1 ; np.random.seed(SEED)
+N_samples = 100
 names = ['Humanoid']
 
 N_pb = len(names)
 
-# Problems with nominal initial states
-MAXITER   = 100 
-TOL       = 1e-4 #1e-8
-CALLBACKS = False
-# KKT_COND  = True
-solversDDP = []
-solversFDDP = []
+# Solvers
+solversDDP         = []
+solversFDDP        = []
 solversFDDP_filter = []
-solversGNMS = []
+solversGNMS        = []
 humanoid_x0  = np.array([0.4, 0, 1.2])
+
 print('------')
 for k,name in enumerate(names):
     pb = create_humanoid_taichi_problem(humanoid_x0) 
@@ -189,98 +207,11 @@ for k,name in enumerate(names):
     solvergnms.us = solvergnms.problem.quasiStatic([solvergnms.problem.x0] * solvergnms.problem.T)
     solvergnms.termination_tol = TOL
     solvergnms.with_callbacks = CALLBACKS
-    # solver.use_kkt_criteria = KKT_COND
     solvergnms.use_filter_line_search = True
     solvergnms.filter_size = MAXITER
     solversGNMS.append(solvergnms)
 
-# print('------')
-# # Solve DDP (SS)
-# ddp_iter = np.zeros((N_pb, 1))
-# ddp_kkt = np.zeros((N_pb, 1))
-# for k,solver in enumerate(solversDDP):
-#     # Solver setting
-#     solver.termination_tolerance = TOL
-#     if(CALLBACKS): solver.setCallbacks([crocoddyl.CallbackVerbose()])
-#     # solver.use_kkt_criteria = KKT_COND
-#     # Warm start & solve
-#     print("DDP solve "+names[k])
-#     solver.solve(solver.xs, solver.us, MAXITER, True)
-#     if(solver.iter >= MAXITER-1):
-#         print("ddp hit max")
-#     ddp_iter[k, 0] = solver.iter
-#     ddp_kkt[k, 0] = solver.KKT
-#     print("iter = ", solver.iter)
 
-# print('------')
-# # Solve FDDP (MS)
-# fddp_iter = np.zeros((N_pb, 1))
-# fddp_kkt = np.zeros((N_pb, 1))
-# for k,solver in enumerate(solversFDDP):
-#     # Solver setting
-#     solver.termination_tolerance = TOL
-#     if(CALLBACKS): solver.setCallbacks([crocoddyl.CallbackVerbose()])
-#     # solver.use_kkt_criteria = KKT_COND
-#     # Warm start & solve
-#     print("FDDP solve "+names[k])
-#     solver.solve(solver.xs, solver.us, MAXITER, False)
-#     if(solver.iter >= MAXITER-1):
-#         print("fddp hit max")
-#     fddp_iter[k, 0] = solver.iter
-#     fddp_kkt[k, 0] = solver.KKT
-#     print("iter = ", solver.iter)
-
-# print('------')
-# # Solve FDDP filter (MS)
-# fddp_filter_iter = np.zeros((N_pb, 1))
-# fddp_filter_kkt = np.zeros((N_pb, 1))
-# for k,solver in enumerate(solversFDDP_filter):
-#     # Solver setting
-#     solver.termination_tolerance = TOL
-#     if(CALLBACKS): solver.setCallbacks([crocoddyl.CallbackVerbose()])
-#     # solver.use_kkt_criteria = KKT_COND
-#     # Warm start & solve
-#     print("FDDP_filter solve "+names[k])
-#     solver.solve(solver.xs, solver.us, MAXITER, False)
-#     if(solver.iter >= MAXITER-1):
-#         print("fddp_filter hit max")
-#     fddp_filter_iter[k, 0] = solver.iter
-#     fddp_filter_kkt[k, 0] = solver.KKT
-#     print("iter = ", solver.iter)
-    
-# # Solve GNMS (MS)
-# gnms_iter = np.zeros((N_pb, 1))
-# gnms_kkt = np.zeros((N_pb, 1))
-# for k,solver in enumerate(solversGNMS):
-    # solver.termination_tol = TOL
-    # solver.with_callbacks = False #CALLBACKS
-    # # solver.use_kkt_criteria = KKT_COND
-    # solver.use_filter_line_search = True
-    # solver.filter_size = MAXITER
-    # # Warm start & solve
-    # print("GNMS solve "+names[k])
-    # solver.solve(solver.xs, solver.us, MAXITER, False)
-    # if(solver.iter >= MAXITER-1):
-    #     print("gnms hit max")
-    # gnms_iter[k, 0] = solver.iter
-    # gnms_kkt[k, 0] = solver.KKT
-    # print("iter = ", solver.iter)
-
-# print("Test results\n")
-# for k, name in enumerate(names):
-#     print(name+ "_DDP : "+str(solversDDP[k].iter))
-# for k, name in enumerate(names):
-#     print(name+ "_FDDP : "+str(solversFDDP[k].iter))
-# for k, name in enumerate(names):
-#     print(name+ "_FDDP_filter : "+str(solversFDDP_filter[k].iter))
-# for k, name in enumerate(names):
-#     print(name+ "_GNMS : "+str(solversGNMS[k].iter))
-
-
-# Randomize the tests over initial states
-SEED = 1
-np.random.seed(SEED)
-N_samples = 100
 # Initial state samples
 humanoid_x0_samples  = np.zeros((N_samples, 3))
 for i in range(N_samples):
@@ -333,7 +264,7 @@ for i in range(N_samples):
         for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), x0.copy())
         solverddp.xs = [solverddp.problem.x0] * (solverddp.problem.T + 1) 
         solverddp.us = solverddp.problem.quasiStatic([solverddp.problem.x0] * solverddp.problem.T)
-        solverddp.solve(solverddp.xs, solverddp.us, MAXITER, True)
+        solverddp.solve(solverddp.xs, solverddp.us, MAXITER, False)
             # Check convergence
         solved = (solverddp.iter < MAXITER) and (solverddp.KKT < TOL)
         ddp_solved_samples[i].append( solved )
@@ -433,27 +364,27 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.rcParams["pdf.fonttype"] = 42
 matplotlib.rcParams["ps.fonttype"] = 42
-fig0, ax0 = plt.subplots(1, 1, figsize=(19.2,10.8)) 
+ 
 # x-axis : max number of iterations
 xdata     = range(0,MAXITER)
-ydata_ddp = np.zeros(MAXITER)
 for k in range(N_pb):
-    ax0.plot(xdata, ddp_iter_solved[:,k], color='r', label='DDP') #, marker='o', markerfacecolor='r', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='DDP')
-    ax0.plot(xdata, fddp_iter_solved[:,k], color='y', label='FDDP') #marker='o', markerfacecolor='g', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='FDDP')
-    ax0.plot(xdata, fddp_filter_iter_solved[:,k], color='g', label='FDDP (filter)') #marker='o', markerfacecolor='g', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='FDDP')
-    ax0.plot(xdata, gnms_iter_solved[:,k], color='b', label='GNMS') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='GNMS')
-# Set axis and stuff
-ax0.set_ylabel('Number of problem solved', fontsize=26)
-ax0.set_xlabel('Max. number of iterations', fontsize=26)
-ax0.set_ylim(-10, MAXITER)
-ax0.tick_params(axis = 'y', labelsize=22)
-ax0.tick_params(axis = 'x', labelsize = 22)
-ax0.grid(True) 
-# Legend 
-handles0, labels0 = ax0.get_legend_handles_labels()
-fig0.legend(handles0, labels0, loc='upper right', prop={'size': 26}) 
-# Save, show , clean
-fig0.savefig('/home/skleff/data_paper_fadmm/bench_taichi_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.png')
+    fig0, ax0 = plt.subplots(1, 1, figsize=(19.2,10.8))
+    ax0.plot(xdata, ddp_iter_solved[:,k]/N_samples, color='r', linewidth=4, label='DDP') 
+    ax0.plot(xdata, fddp_iter_solved[:,k]/N_samples, color='y', linewidth=4, label='FDDP (default LS)') 
+    ax0.plot(xdata, fddp_filter_iter_solved[:,k]/N_samples, color='g', linewidth=4, label='FDDP (filter LS)') 
+    ax0.plot(xdata, gnms_iter_solved[:,k]/N_samples, color='b', linewidth=4, label='SQP') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='GNMS')
+    # Set axis and stuff
+    ax0.set_ylabel('Percentage of problems solved', fontsize=26)
+    ax0.set_xlabel('Max. number of iterations', fontsize=26)
+    ax0.set_ylim(-0.02, 1.02)
+    ax0.tick_params(axis = 'y', labelsize=22)
+    ax0.tick_params(axis = 'x', labelsize=22)
+    ax0.grid(True) 
+    # Legend 
+    handles0, labels0 = ax0.get_legend_handles_labels()
+    fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
+    # Save, show , clean
+fig0.savefig('/home/skleff/data_paper_fadmm/bench_taichi_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+'.pdf', bbox_inches="tight")
 
 plt.show()
 plt.close('all')

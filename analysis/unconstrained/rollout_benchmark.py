@@ -1,6 +1,13 @@
 '''
 Compare linear (GNMS) vs nonlinear (FDDP) rollouts
 For this purpose, filter line-search is used in both solvers
+Also compare with FDDP (original LS) and DDP 
+
+- kuka
+- quadrotor
+- double pendulum
+
+Randomizing over initial states
 '''
 import sys
 import numpy as np
