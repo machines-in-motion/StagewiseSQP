@@ -23,14 +23,14 @@ def create_solo_climb_problem(x0):
 
 
 # Solver params
-MAXITER     = 1000 
-TOL         = 1e-4 
+MAXITER     = 500 
+TOL         = 1e-3 
 CALLBACKS   = False
 FILTER_SIZE = MAXITER
 
 # Benchmark params
 SEED = 1 ; np.random.seed(SEED)
-N_samples = 1
+N_samples = 10
 names = ['Solo']      # maxiter = 500
 
 N_pb = len(names)
@@ -89,8 +89,16 @@ for k,name in enumerate(names):
 
 # Initial state samples
 solo_x0_samples = np.zeros((N_samples, len(solo_model.x0)))
+solo_fl_samples = np.zeros((N_samples, 3))
+# solo_x0_samples_FR = np.zeros((N_samples, len(solo_model.x0)))
+# solo_x0_samples_HL = np.zeros((N_samples, len(solo_model.x0)))
+# solo_x0_samples_HR = np.zeros((N_samples, len(solo_model.x0)))
 for i in range(N_samples):
-    solo_x0_samples[i,:] = solo_x0.copy() #np.concatenate([pin.randomConfiguration(conf.rmodel), np.zeros(conf.rmodel.nv)])
+    solo_x0_samples[i,:] = solo_x0.copy() 
+    solo_fl_samples[i,:] = 0.005*(2*np.random.rand(3)-1)
+    # solo_x0_samples_FR[i,:] = solo_x0.copy() 
+    # solo_x0_samples_HL[i,:] = solo_x0.copy() 
+    # solo_x0_samples_HR[i,:] = solo_x0.copy() 
 
 print("Created "+str(N_samples)+" random initial states per model !")
 
@@ -140,6 +148,12 @@ for i in range(N_samples):
         solverddp.problem.x0 = x0
         solverddp.xs = [x0] * (solverddp.problem.T + 1) 
         solverddp.us = solverddp.problem.quasiStatic([x0] * solverddp.problem.T)
+        for m in solverddp.problem.runningModels:
+            # print(str(m.differential.costs.active.tolist()))
+            if('FL_FOOT_footPosTrack' in str(m.differential.costs.active.tolist())):
+                # print("dfzefe")
+                fl_ref = m.differential.costs.costs['FL_FOOT_footPosTrack'].cost.residual.reference.copy()
+                m.differential.costs.costs['FL_FOOT_footPosTrack'].cost.residual.reference = fl_ref + solo_fl_samples[i,:]
         solverddp.solve(solverddp.xs, solverddp.us, MAXITER, False)
         solved = (solverddp.iter < MAXITER) and (solverddp.KKT < TOL)
         ddp_solved_samples[i].append( solved )
@@ -157,6 +171,11 @@ for i in range(N_samples):
         solverfddp.problem.x0 = x0
         solverfddp.xs = [x0] * (solverfddp.problem.T + 1) 
         solverfddp.us = solverfddp.problem.quasiStatic([x0] * solverfddp.problem.T)
+        for m in solverddp.problem.runningModels:
+            # print(str(m.differential.costs.active.tolist()))
+            if('FL_FOOT_footPosTrack' in str(m.differential.costs.active.tolist())):
+                fl_ref = m.differential.costs.costs['FL_FOOT_footPosTrack'].cost.residual.reference.copy()
+                m.differential.costs.costs['FL_FOOT_footPosTrack'].cost.residual.reference = fl_ref + solo_fl_samples[i,:]
         solverfddp.solve(solverfddp.xs, solverfddp.us, MAXITER, False)
         solved = (solverfddp.iter < MAXITER) and (solverfddp.KKT < TOL)
         fddp_solved_samples[i].append( solved )
@@ -174,6 +193,11 @@ for i in range(N_samples):
         solverfddp_filter.problem.x0 = x0
         solverfddp_filter.xs = [x0] * (solverfddp_filter.problem.T + 1) 
         solverfddp_filter.us = solverfddp_filter.problem.quasiStatic([x0] * solverfddp_filter.problem.T)
+        for m in solverddp.problem.runningModels:
+            # print(str(m.differential.costs.active.tolist()))
+            if('FL_FOOT_footPosTrack' in str(m.differential.costs.active.tolist())):
+                fl_ref = m.differential.costs.costs['FL_FOOT_footPosTrack'].cost.residual.reference.copy()
+                m.differential.costs.costs['FL_FOOT_footPosTrack'].cost.residual.reference = fl_ref + solo_fl_samples[i,:]
         solverfddp_filter.solve(solverfddp_filter.xs, solverfddp_filter.us, MAXITER, False)
         solved = (solverfddp_filter.iter < MAXITER) and (solverfddp_filter.KKT < TOL)
         fddp_filter_solved_samples[i].append( solved )
@@ -191,6 +215,11 @@ for i in range(N_samples):
         solvergnms.problem.x0 = x0
         solvergnms.xs = [x0] * (solvergnms.problem.T + 1) 
         solvergnms.us = solvergnms.problem.quasiStatic([x0] * solvergnms.problem.T)
+        for m in solverddp.problem.runningModels:
+            # print(str(m.differential.costs.active.tolist()))
+            if('FL_FOOT_footPosTrack' in str(m.differential.costs.active.tolist())):
+                fl_ref = m.differential.costs.costs['FL_FOOT_footPosTrack'].cost.residual.reference.copy()
+                m.differential.costs.costs['FL_FOOT_footPosTrack'].cost.residual.reference = fl_ref + solo_fl_samples[i,:]
         solvergnms.solve(solvergnms.xs, solvergnms.us, MAXITER, False)
             # Check convergence
         solved = (solvergnms.iter < MAXITER) and (solvergnms.KKT < TOL)

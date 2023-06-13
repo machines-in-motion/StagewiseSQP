@@ -371,11 +371,11 @@ def create_climbing_contact_sequence(dt, gait, ee_frame_names, rmodel, rdata, q0
 dt = 0.01
 dt_ctrl = 0.001
 gait ={'type': 'TROT',
-      'stepLength' : 0.1, 
-      'stepHeight' : 0.05,
+      'stepLength' : 0.11, #0.1, 
+      'stepHeight' : 0.06, #0.05
       'stepKnots' : 15,
       'supportKnots' : 10,
-      'nbSteps': 3}
+      'nbSteps': 1}
 mu = 0.5 # linear friction coefficient
 
 # robot model and parameters
