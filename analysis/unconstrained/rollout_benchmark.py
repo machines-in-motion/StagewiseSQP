@@ -169,18 +169,18 @@ def create_quadrotor_problem(x0):
 
 
 # Solver params
-MAXITER     = 100 
+MAXITER     = 300 
 TOL         = 1e-4 
 CALLBACKS   = False
 FILTER_SIZE = MAXITER
 
 # Benchmark params
 SEED = 1 ; np.random.seed(SEED)
-N_samples = 100
+N_samples = 10
 names = [
-       'Pendulum'] # maxiter = 500
+    #    'Pendulum'] # maxiter = 500
         #  'Kuka'] # maxiter = 100
-        #  'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
+         'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
         #  'Quadrotor'] # maxiter = 200
 
 N_pb = len(names)
@@ -258,7 +258,7 @@ humanoid             = example_robot_data.load('talos')
 quadrotor_x0_samples = np.zeros((N_samples, quadrotor.model.nq + quadrotor.model.nv))
 for i in range(N_samples):
     pendulum_x0_samples[i,:]  = np.array([np.pi*(2*np.random.rand()-1), 0., 0., 0.])
-    cartpole_x0_samples[i,:]  = np.array([0., np.pi*(2*np.random.rand()-1), 0., 0.])
+    cartpole_x0_samples[i,:]  = np.array([0., np.pi/2, 0., 0.])
     kuka_x0_samples[i,:]      = np.concatenate([pin.randomConfiguration(kuka.model), np.zeros(kuka.model.nv)])
     quadrotor_x0_samples[i,:] = np.concatenate([pin.randomConfiguration(quadrotor.model), np.zeros(quadrotor.model.nv)])
 
