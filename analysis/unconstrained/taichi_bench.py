@@ -3,158 +3,9 @@ import numpy as np
 import crocoddyl
 import pinocchio as pin
 
-from robot_properties_kuka.config import IiwaConfig
 import example_robot_data
-from cartpole_swingup import DifferentialActionModelCartpole
-from crocoddyl.utils.pendulum import CostModelDoublePendulum, ActuationModelDoublePendulum
 
-def create_double_pendulum_problem(x0):
-    '''
-    Create shooting problem for the double pendulum model
-    '''
-    print("Created double pendulum problem ...")
-    # Loading the double pendulum model
-    pendulum = example_robot_data.load('double_pendulum')
-    model = pendulum.model
-    state = crocoddyl.StateMultibody(model)
-    actuation = ActuationModelDoublePendulum(state, actLink=1)
-    nu = actuation.nu
-    runningCostModel = crocoddyl.CostModelSum(state, nu)
-    terminalCostModel = crocoddyl.CostModelSum(state, nu)
-    xResidual = crocoddyl.ResidualModelState(state, state.zero(), nu)
-    xActivation = crocoddyl.ActivationModelQuad(state.ndx)
-    uResidual = crocoddyl.ResidualModelControl(state, nu)
-    xRegCost = crocoddyl.CostModelResidual(state, xActivation, xResidual)
-    uRegCost = crocoddyl.CostModelResidual(state, uResidual)
-    xPendCost = CostModelDoublePendulum(state, crocoddyl.ActivationModelWeightedQuad(np.array([1.] * 4 + [0.1] * 2)), nu)
-    dt = 1e-2
-    runningCostModel.addCost("uReg", uRegCost, 1e-4 / dt)
-    runningCostModel.addCost("xGoal", xPendCost, 1e-5 / dt)
-    terminalCostModel.addCost("xGoal", xPendCost, 100.)
-    runningModel = crocoddyl.IntegratedActionModelEuler(
-        crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, runningCostModel), dt)
-    terminalModel = crocoddyl.IntegratedActionModelEuler(
-        crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, terminalCostModel), dt)
-    T = 100
-    pb = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
-    return pb
-
-def create_cartpole_problem(x0):
-    '''
-    Create shooting problem for Cartpole
-    '''
-    print("Create cartpole problem ...")
-    # Creating the DAM for the cartpole
-    cartpoleDAM = DifferentialActionModelCartpole()
-    # Using NumDiff for computing the derivatives. We specify the
-    # withGaussApprox=True to have approximation of the Hessian based on the
-    # Jacobian of the cost residuals.
-    cartpoleND = crocoddyl.DifferentialActionModelNumDiff(cartpoleDAM, True)
-    # Getting the IAM using the simpletic Euler rule
-    timeStep = 5e-2
-    cartpoleIAM = crocoddyl.IntegratedActionModelEuler(cartpoleND, timeStep)
-    # Creating the shooting problem
-    T = 50
-    terminalCartpole = DifferentialActionModelCartpole()
-    terminalCartpoleDAM = crocoddyl.DifferentialActionModelNumDiff(terminalCartpole, True)
-    terminalCartpoleIAM = crocoddyl.IntegratedActionModelEuler(terminalCartpoleDAM, 0.)
-    terminalCartpole.costWeights[0] = 200
-    terminalCartpole.costWeights[1] = 200
-    terminalCartpole.costWeights[2] = 1.
-    terminalCartpole.costWeights[3] = 0.1
-    terminalCartpole.costWeights[4] = 0.01
-    terminalCartpole.costWeights[5] = 0.0001
-    pb = crocoddyl.ShootingProblem(x0, [cartpoleIAM] * T, terminalCartpoleIAM)
-    return pb 
-
-def create_kuka_problem(x0):
-    '''
-    Create shooting problem for kuka reaching task
-    '''
-    print("Create kuka problem ...")
-    robot = IiwaConfig.buildRobotWrapper()
-    model = robot.model
-    nq = model.nq; nv = model.nv
-    # State and actuation model
-    state = crocoddyl.StateMultibody(model)
-    actuation = crocoddyl.ActuationModelFull(state)
-    # Running and terminal cost models
-    runningCostModel = crocoddyl.CostModelSum(state)
-    terminalCostModel = crocoddyl.CostModelSum(state)
-    # Create cost terms 
-    # Control regularization cost
-    uResidual = crocoddyl.ResidualModelControlGrav(state)
-    uRegCost = crocoddyl.CostModelResidual(state, uResidual)
-    # State regularization cost
-    xResidual = crocoddyl.ResidualModelState(state, x0)
-    xRegCost = crocoddyl.CostModelResidual(state, xResidual)
-    # endeff frame translation cost
-    endeff_frame_id = model.getFrameId("contact")
-    # endeff_translation = robot.data.oMf[endeff_frame_id].translation.copy()
-    endeff_translation = np.array([0.7, 0, 1.1]) # move endeff +30 cm along x in WORLD frame
-    frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(state, endeff_frame_id, endeff_translation)
-    frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
-    # Add costs
-    runningCostModel.addCost("stateReg", xRegCost, 1e-1)
-    runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
-    runningCostModel.addCost("translation", frameTranslationCost, 1)
-    terminalCostModel.addCost("stateReg", xRegCost, 1e-1)
-    terminalCostModel.addCost("translation", frameTranslationCost, 1)
-    # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
-    running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, runningCostModel)
-    terminal_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, terminalCostModel)
-    # Create Integrated Action Model (IAM), i.e. Euler integration of continuous dynamics and cost
-    dt = 1e-2
-    runningModel = crocoddyl.IntegratedActionModelEuler(running_DAM, dt)
-    terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
-    # Create the shooting problem
-    T = 50
-    pb = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
-    return pb
-
-def create_quadrotor_problem(x0):
-    '''
-    Create shooting problem for quadrotor task
-    '''
-    print("Create quadrotor problem ...")
-    hector = example_robot_data.load('hector')
-    robot_model = hector.model
-    target_pos = np.array([1., 0., 1.])
-    target_quat = pin.Quaternion(1., 0., 0., 0.)
-    state = crocoddyl.StateMultibody(robot_model)
-    d_cog, cf, cm, u_lim, l_lim = 0.1525, 6.6e-5, 1e-6, 5., 0.1
-    tau_f = np.array([[0., 0., 0., 0.], [0., 0., 0., 0.], [1., 1., 1., 1.], [0., d_cog, 0., -d_cog],
-                    [-d_cog, 0., d_cog, 0.], [-cm / cf, cm / cf, -cm / cf, cm / cf]])
-    actuation = crocoddyl.ActuationModelMultiCopterBase(state, tau_f)
-
-    nu = actuation.nu
-    runningCostModel = crocoddyl.CostModelSum(state, nu)
-    terminalCostModel = crocoddyl.CostModelSum(state, nu)
-    # Costs
-    xResidual = crocoddyl.ResidualModelState(state, state.zero(), nu)
-    xActivation = crocoddyl.ActivationModelWeightedQuad(np.array([0.1] * 3 + [1000.] * 3 + [1000.] * robot_model.nv))
-    uResidual = crocoddyl.ResidualModelControl(state, nu)
-    xRegCost = crocoddyl.CostModelResidual(state, xActivation, xResidual)
-    uRegCost = crocoddyl.CostModelResidual(state, uResidual)
-    goalTrackingResidual = crocoddyl.ResidualModelFramePlacement(state, robot_model.getFrameId("base_link"),
-                                                                pin.SE3(target_quat.matrix(), target_pos), nu)
-    goalTrackingCost = crocoddyl.CostModelResidual(state, goalTrackingResidual)
-    runningCostModel.addCost("xReg", xRegCost, 1e-6)
-    runningCostModel.addCost("uReg", uRegCost, 1e-6)
-    runningCostModel.addCost("trackPose", goalTrackingCost, 1e-2)
-    terminalCostModel.addCost("goalPose", goalTrackingCost, 3.)
-    dt = 3e-2
-    runningModel = crocoddyl.IntegratedActionModelEuler(
-        crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, runningCostModel), dt)
-    terminalModel = crocoddyl.IntegratedActionModelEuler(
-        crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, terminalCostModel), dt)
-
-    # Creating the shooting problem and the FDDP solver
-    T = 33
-    pb = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
-    return pb 
-
-def create_humanoid_taichi_problem(x0):
+def create_humanoid_taichi_problem(target):
     '''
     Create shooting problem for Talos taichi task
     '''
@@ -169,7 +20,7 @@ def create_humanoid_taichi_problem(x0):
     # Set integration time
     DT = 5e-2
     T = 40
-    target = np.array([0.4, 0, 1.2])
+    # target = np.array([0.4, 0, 1.2])
     # Initialize reference state, target and reference CoM
     rightFoot = 'right_sole_link'
     leftFoot = 'left_sole_link'
@@ -283,46 +134,28 @@ def create_humanoid_taichi_problem(x0):
     terminalModel = crocoddyl.IntegratedActionModelEuler(dmodelTerminal, 0)
 
     # Problem definition
+    x0 = np.concatenate([q0, pin.utils.zero(state.nv)])
     pb = crocoddyl.ShootingProblem(x0, [runningModel1] * T + [runningModel2] * T + [runningModel3] * T, terminalModel)
     return pb
 
 # Problem names
-names = [
-    #    'Pendulum']
-        #  'Kuka']
-        #  'Cartpole',  #--> need to explain why it doesn't converge otherwise leave it out 
-         'Quadrotor']
-        #  'Humanoid']
+names = ['Humanoid']
 
 N_pb = len(names)
 
 # Problems with nominal initial states
-MAXITER   = 3000 
+MAXITER   = 250 
 TOL       = 1e-8 #1e-8
 CALLBACKS = False
 # KKT_COND  = True
 solversDDP = []
 solversFDDP = []
 solversGNMS = []
-pendulum_x0  = np.array([3.14, 0., 0., 0.])
-cartpole_x0  = np.array([0., 3.14, 0., 0.])
-kuka_x0      = np.array([0.1, 0.7, 0., 0.7, -0.5, 1.5, 0.] + [0.]*7)
-quadrotor    = example_robot_data.load('hector') 
-quadrotor_x0 = np.array(list(quadrotor.q0) + [0.]*quadrotor.model.nv) 
-humanoid     = example_robot_data.load('talos')
-humanoid_x0  = np.concatenate([humanoid.model.referenceConfigurations["half_sitting"], pin.utils.zero(humanoid.model.nv)])
+humanoid_x0  = np.array([0.4, 0, 1.2])
 print('------')
 for k,name in enumerate(names):
-    if(name == "Pendulum"):  
-        pb = create_double_pendulum_problem(pendulum_x0)
-    if(name == "Cartpole"):  
-        pb = create_cartpole_problem(cartpole_x0) 
-    if(name == "Kuka"):      
-        pb = create_kuka_problem(kuka_x0) 
-    if(name == "Quadrotor"): 
-        pb = create_quadrotor_problem(quadrotor_x0) 
-    if(name == "Humanoid"):  
-        pb = create_humanoid_taichi_problem(humanoid_x0) 
+    pb = create_humanoid_taichi_problem(humanoid_x0) 
+    
     # Create solver DDP (SS)
     solverddp = crocoddyl.SolverDDP(pb)
     solverddp.xs = [solverddp.problem.x0] * (solverddp.problem.T + 1)  
@@ -330,15 +163,15 @@ for k,name in enumerate(names):
     solverddp.termination_tolerance = TOL
     if(CALLBACKS): solverddp.setCallbacks([crocoddyl.CallbackVerbose()])
     solversDDP.append(solverddp)
+    
     # Create solver FDDP (MS)
     solverfddp = crocoddyl.SolverFDDP(pb)
     solverfddp.xs = [solverfddp.problem.x0] * (solverfddp.problem.T + 1)  
     solverfddp.us = solverfddp.problem.quasiStatic([solverfddp.problem.x0] * solverfddp.problem.T)
     solverfddp.termination_tolerance = TOL
-    solverfddp.use_filter_line_search = True
-    solverfddp.filter_size = MAXITER
     if(CALLBACKS): solverfddp.setCallbacks([crocoddyl.CallbackVerbose()])
     solversFDDP.append(solverfddp)
+    
     # Create solver GNMS (MS)
     solvergnms = crocoddyl.SolverGNMS(pb)
     solvergnms.xs = [solvergnms.problem.x0] * (solvergnms.problem.T + 1)  
@@ -350,90 +183,79 @@ for k,name in enumerate(names):
     solvergnms.filter_size = MAXITER
     solversGNMS.append(solvergnms)
 
-print('------')
-# Solve DDP (SS)
-ddp_iter = np.zeros((N_pb, 1))
-ddp_kkt = np.zeros((N_pb, 1))
-for k,solver in enumerate(solversDDP):
-    # Solver setting
-    solver.termination_tolerance = TOL
-    if(CALLBACKS): solver.setCallbacks([crocoddyl.CallbackVerbose()])
-    # solver.use_kkt_criteria = KKT_COND
-    # Warm start & solve
-    print("DDP solve "+names[k])
-    solver.solve(solver.xs, solver.us, MAXITER, True)
-    if(solver.iter >= MAXITER-1):
-        print("ddp hit max")
-    ddp_iter[k, 0] = solver.iter
-    ddp_kkt[k, 0] = solver.KKT
-    print("iter = ", solver.iter)
+# print('------')
+# # Solve DDP (SS)
+# ddp_iter = np.zeros((N_pb, 1))
+# ddp_kkt = np.zeros((N_pb, 1))
+# for k,solver in enumerate(solversDDP):
+#     # Solver setting
+#     solver.termination_tolerance = TOL
+#     if(CALLBACKS): solver.setCallbacks([crocoddyl.CallbackVerbose()])
+#     # solver.use_kkt_criteria = KKT_COND
+#     # Warm start & solve
+#     print("DDP solve "+names[k])
+#     solver.solve(solver.xs, solver.us, MAXITER, True)
+#     if(solver.iter >= MAXITER-1):
+#         print("ddp hit max")
+#     ddp_iter[k, 0] = solver.iter
+#     ddp_kkt[k, 0] = solver.KKT
+#     print("iter = ", solver.iter)
 
-print('------')
-# Solve FDDP (MS)
-fddp_iter = np.zeros((N_pb, 1))
-fddp_kkt = np.zeros((N_pb, 1))
-for k,solver in enumerate(solversFDDP):
-    # Solver setting
-    solver.termination_tolerance = TOL
-    if(CALLBACKS): solver.setCallbacks([crocoddyl.CallbackVerbose()])
-    # solver.use_kkt_criteria = KKT_COND
-    solver.use_filter_line_search = True
-    solver.filter_size = MAXITER
-    # Warm start & solve
-    print("FDDP solve "+names[k])
-    solver.solve(solver.xs, solver.us, MAXITER, False)
-    if(solver.iter >= MAXITER-1):
-        print("fddp hit max")
-    fddp_iter[k, 0] = solver.iter
-    fddp_kkt[k, 0] = solver.KKT
-    print("iter = ", solver.iter)
+# print('------')
+# # Solve FDDP (MS)
+# fddp_iter = np.zeros((N_pb, 1))
+# fddp_kkt = np.zeros((N_pb, 1))
+# # for k,solver in enumerate(solversFDDP):
+#     # Solver setting
+#     solver.termination_tolerance = TOL
+#     if(CALLBACKS): solver.setCallbacks([crocoddyl.CallbackVerbose()])
+#     # solver.use_kkt_criteria = KKT_COND
+#     # Warm start & solve
+#     print("FDDP solve "+names[k])
+#     solver.solve(solver.xs, solver.us, MAXITER, False)
+#     if(solver.iter >= MAXITER-1):
+#         print("fddp hit max")
+#     fddp_iter[k, 0] = solver.iter
+#     fddp_kkt[k, 0] = solver.KKT
+#     print("iter = ", solver.iter)
 
-# Solve GNMS (MS)
-gnms_iter = np.zeros((N_pb, 1))
-gnms_kkt = np.zeros((N_pb, 1))
-for k,solver in enumerate(solversGNMS):
-    solver.termination_tol = TOL
-    solver.with_callbacks = False #CALLBACKS
-    # solver.use_kkt_criteria = KKT_COND
-    solver.use_filter_line_search = True
-    solver.filter_size = MAXITER
-    # Warm start & solve
-    print("GNMS solve "+names[k])
-    solver.solve(solver.xs, solver.us, MAXITER, False)
-    if(solver.iter >= MAXITER-1):
-        print("gnms hit max")
-    gnms_iter[k, 0] = solver.iter
-    gnms_kkt[k, 0] = solver.KKT
-    print("iter = ", solver.iter)
+# # Solve GNMS (MS)
+# gnms_iter = np.zeros((N_pb, 1))
+# gnms_kkt = np.zeros((N_pb, 1))
+# for k,solver in enumerate(solversGNMS):
+#     solver.termination_tol = TOL
+#     solver.with_callbacks = False #CALLBACKS
+#     # solver.use_kkt_criteria = KKT_COND
+#     solver.use_filter_line_search = True
+#     solver.filter_size = MAXITER
+#     # Warm start & solve
+#     print("GNMS solve "+names[k])
+#     solver.solve(solver.xs, solver.us, MAXITER, False)
+#     if(solver.iter >= MAXITER-1):
+#         print("gnms hit max")
+#     gnms_iter[k, 0] = solver.iter
+#     gnms_kkt[k, 0] = solver.KKT
+#     print("iter = ", solver.iter)
 
-print("Test results\n")
-for k, name in enumerate(names):
-    print(name+ "_DDP : "+str(solversDDP[k].iter))
-for k, name in enumerate(names):
-    print(name+ "_FDDP : "+str(solversFDDP[k].iter))
-for k, name in enumerate(names):
-    print(name+ "_GNMS : "+str(solversGNMS[k].iter))
+# print("Test results\n")
+# for k, name in enumerate(names):
+#     print(name+ "_DDP : "+str(solversDDP[k].iter))
+# for k, name in enumerate(names):
+#     print(name+ "_FDDP : "+str(solversFDDP[k].iter))
+# for k, name in enumerate(names):
+#     print(name+ "_GNMS : "+str(solversGNMS[k].iter))
 
 
 # Randomize the tests over initial states
 SEED = 1
 np.random.seed(SEED)
-N_samples = 100
+N_samples = 10
 # Initial state samples
-pendulum_x0_samples  = np.zeros((N_samples, 4))
-cartpole_x0_samples  = np.zeros((N_samples, 4))
-kuka                 = IiwaConfig.buildRobotWrapper()
-kuka_x0_samples      = np.zeros((N_samples, kuka.model.nq + kuka.model.nv))
-quadrotor            = example_robot_data.load('hector') 
-humanoid             = example_robot_data.load('talos')
-quadrotor_x0_samples = np.zeros((N_samples, quadrotor.model.nq + quadrotor.model.nv))
-humanoid_x0_samples  = np.zeros((N_samples, humanoid.model.nq + humanoid.model.nv))
+humanoid_x0_samples  = np.zeros((N_samples, 3))
 for i in range(N_samples):
-    pendulum_x0_samples[i,:]  = np.array([np.pi*(2*np.random.rand()-1), 0., 0., 0.])
-    cartpole_x0_samples[i,:]  = np.array([0., np.pi*(2*np.random.rand()-1), 0., 0.])
-    kuka_x0_samples[i,:]      = np.concatenate([pin.randomConfiguration(kuka.model), np.zeros(kuka.model.nv)])
-    quadrotor_x0_samples[i,:] = np.concatenate([pin.randomConfiguration(quadrotor.model), np.zeros(quadrotor.model.nv)])
-    humanoid_x0_samples[i,:]  = np.concatenate([pin.randomConfiguration(humanoid.model), np.zeros(humanoid.model.nv)])
+    err = np.zeros(3)
+    err[2] = 2*np.random.rand(1) - 1
+    humanoid_x0_samples[i,:]  = np.array([0.4, 0, 1.2]) + 2*err
 
 print("Created "+str(N_samples)+" random initial states per model !")
 
@@ -461,34 +283,34 @@ for i in range(N_samples):
     print("Sample "+str(i+1)+'/'+str(N_samples))
     for k,name in enumerate(names):
         # Initial state
-        if(name == "Pendulum"):  x0 = pendulum_x0_samples[i,:]
-        if(name == "Cartpole"):  x0 = cartpole_x0_samples[i,:]
-        if(name == "Kuka"):      x0 = kuka_x0_samples[i,:]
-        if(name == "Quadrotor"): x0 = quadrotor_x0_samples[i,:]
-        if(name == "Humanoid"):  x0 = humanoid_x0_samples[i,:]
-        # DDP (SS)
-        print("   Problem : "+name+" DDP")
-        solverddp = solversDDP[k]
-        solverddp.problem.x0 = x0
-        solverddp.xs = [x0] * (solverddp.problem.T + 1) 
-        solverddp.us = solverddp.problem.quasiStatic([x0] * solverddp.problem.T)
-        solverddp.solve(solverddp.xs, solverddp.us, MAXITER, False)
-            # Check convergence
-        solved = (solverddp.iter < MAXITER) and (solverddp.KKT < TOL)
-        ddp_solved_samples[i].append( solved )
-        print("   iter = "+str(solverddp.iter)+"  |  KKT = "+str(solverddp.KKT))
-        if(not solved): 
-            print("      FAILED !!!!")
-            ddp_iter_samples[i].append(MAXITER)
-        else:
-            ddp_iter_samples[i].append(solverddp.iter)
-        ddp_kkt_samples[i].append(solverddp.KKT)
+        # if(name == "Humanoid"):  
+        x0 = humanoid_x0_samples[i,:].copy()
+        # # DDP (SS)
+        # print("   Problem : "+name+" DDP")
+        # solverddp = solversDDP[k]
+        # models = list(solverddp.problem.runningModels) + [solverddp.problem.terminalModel]
+        # for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference.translation = x0
+        # solverddp.xs = [solverddp.problem.x0] * (solverddp.problem.T + 1) 
+        # solverddp.us = solverddp.problem.quasiStatic([solverddp.problem.x0] * solverddp.problem.T)
+        # solverddp.solve(solverddp.xs, solverddp.us, MAXITER, True)
+        #     # Check convergence
+        # solved = (solverddp.iter < MAXITER) and (solverddp.KKT < TOL)
+        # ddp_solved_samples[i].append( solved )
+        # print("   iter = "+str(solverddp.iter)+"  |  KKT = "+str(solverddp.KKT))
+        # if(not solved): 
+        #     print("      FAILED !!!!")
+        #     ddp_iter_samples[i].append(MAXITER)
+        # else:
+        #     ddp_iter_samples[i].append(solverddp.iter)
+        # ddp_kkt_samples[i].append(solverddp.KKT)
+
         # FDDP (MS)
         print("   Problem : "+name+" FDDP")
         solverfddp = solversFDDP[k]
-        solverfddp.problem.x0 = x0
-        solverfddp.xs = [x0] * (solverfddp.problem.T + 1) 
-        solverfddp.us = solverfddp.problem.quasiStatic([x0] * solverfddp.problem.T)
+        models = list(solverfddp.problem.runningModels) + [solverfddp.problem.terminalModel]
+        for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference.translation = x0
+        solverfddp.xs = [solverfddp.problem.x0] * (solverfddp.problem.T + 1) 
+        solverfddp.us = solverfddp.problem.quasiStatic([solverfddp.problem.x0] * solverfddp.problem.T)
         solverfddp.solve(solverfddp.xs, solverfddp.us, MAXITER, False)
             # Check convergence
         solved = (solverfddp.iter < MAXITER) and (solverfddp.KKT < TOL)
@@ -500,23 +322,31 @@ for i in range(N_samples):
         else:
             fddp_iter_samples[i].append(solverfddp.iter)
         fddp_kkt_samples[i].append(solverfddp.KKT)
+
         # GNMS        
-        print("   Problem : "+name+" GNMS")
-        solvergnms = solversGNMS[k]
-        solvergnms.problem.x0 = x0
-        solvergnms.xs = [x0] * (solvergnms.problem.T + 1) 
-        solvergnms.us = solvergnms.problem.quasiStatic([x0] * solvergnms.problem.T)
-        solvergnms.solve(solvergnms.xs, solvergnms.us, MAXITER, False)
-            # Check convergence
-        solved = (solvergnms.iter < MAXITER) and (solvergnms.KKT < TOL)
-        gnms_solved_samples[i].append( solved )
-        print("   iter = "+str(solvergnms.iter)+"  |  KKT = "+str(solvergnms.KKT))
-        if(not solved): 
-            print("      FAILED !!!!")
-            gnms_iter_samples[i].append(MAXITER)
-        else:
-            gnms_iter_samples[i].append(solvergnms.iter)
-        gnms_kkt_samples[i].append(solvergnms.KKT)
+        # print("   Problem : "+name+" GNMS")
+        # # pb = create_humanoid_taichi_problem(x0)
+        # solvergnms = solversGNMS[k]
+        # # solvergnms = crocoddyl.SolverGNMS(pb)
+        # # models = list(solvergnms.problem.runningModels) + [solvergnms.problem.terminalModel]
+        # print(x0)
+        # for m in solvergnms.problem.runningModels: 
+        #     m.differential.costs.costs["gripperPose"].cost.residual.reference.translation = x0
+        # solvergnms.problem.terminalModel.differential.costs.costs["gripperPose"].cost.residual.reference.translation = x0
+        # print(solvergnms.problem.runningModels[0].differential.costs.costs["gripperPose"].cost.residual.reference.translation)
+        # solvergnms.xs = [solvergnms.problem.x0] * (solvergnms.problem.T + 1) 
+        # solvergnms.us = solvergnms.problem.quasiStatic([solvergnms.problem.x0] * solvergnms.problem.T)
+        # solvergnms.solve(solvergnms.xs, solvergnms.us, MAXITER, False)
+        #     # Check convergence
+        # solved = (solvergnms.iter < MAXITER) and (solvergnms.KKT < TOL)
+        # gnms_solved_samples[i].append( solved )
+        # print("   iter = "+str(solvergnms.iter)+"  |  KKT = "+str(solvergnms.KKT))
+        # if(not solved): 
+        #     print("      FAILED !!!!")
+        #     gnms_iter_samples[i].append(MAXITER)
+        # else:
+        #     gnms_iter_samples[i].append(solvergnms.iter)
+        # gnms_kkt_samples[i].append(solvergnms.KKT)
 
 
 # Average fddp iters
