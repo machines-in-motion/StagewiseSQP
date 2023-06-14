@@ -1,15 +1,13 @@
+# from gnms.demos.plot_utils import SimpleDataPlotter
 from mim_data_utils import DataReader
 from core_mpc.pin_utils import *
 import numpy as np
+import pinocchio as pin
+# import matplotlib.pyplot as plt 
 from core_mpc import path_utils
 
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.rcParams["pdf.fonttype"] = 42
-matplotlib.rcParams["ps.fonttype"] = 42
 
 from robot_properties_kuka.config import IiwaConfig
-
 pinrobot = IiwaConfig.buildRobotWrapper()
 model = pinrobot.model
 data = model.createData()
@@ -22,60 +20,12 @@ model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
 CONFIG_NAME = 'kuka_circle_fadmm'
 CONFIG_PATH = "/home/skleff/misc_repos/gnms/demos/"+CONFIG_NAME+".yml"
 config      = path_utils.load_yaml_file(CONFIG_PATH)
-N_start     = config["T_CIRCLE"]*1000.
 
 # Load experimental data
 
-def plot_exp_circle_no_constraint(name):
-    print("Extract data...")
-    r = DataReader('/home/skleff/data_paper_fadmm/circle_no_cstr/no_constraint_1683299184.3249779.mds') 
-    N = r.data['tau'].shape[0]
-    p_mea = get_p_(r.data['joint_positions'][N_start:N], pinrobot.model, pinrobot.model.getFrameId('contact'))
-    target_position = np.zeros((N, 3)) 
-    target_position[:,0] = r.data['target_position_x'][N_start:N,0]
-    target_position[:,1] = r.data['target_position_y'][N_start:N,0]
-    target_position[:,2] = r.data['target_position_z'][N_start:N,0]
-    
-    # Plot end-effector trajectory (y,z) plane for ee constraints D and square, and line 
-    xdata = np.linspace(0, (N-N_start)*0.001, (N-N_start)+1) 
-    
-    # Y,Z view of ee
-    fig, ax = plt.subplots(1, 1, figsize=(19.2,10.8))
-    ax.plot(target_position[:,1], target_position[:,2], color='y', linewidth=4, linestyle='--', label='Reference', alpha=1.) 
-    ax.plot(p_mea[:,1], p_mea[:,2], color='b', linewidth=4, label=name, alpha=0.5) 
-    ax.axvline(0, color='k', linewidth=4, linestyle='--', label='Constraint')
-    # Set axis and stuff
-    ax.set_xlim(-0.33, +0.33) ; ax.set_ylim(0.15, 0.8)
-    ax.set_ylabel('Z (m)', fontsize=26) ; ax.set_xlabel('Y (m)', fontsize=26)
-    ax.tick_params(axis = 'y', labelsize=22) ; ax.tick_params(axis = 'x', labelsize=22)
-    ax.grid(True) 
-    # Legend 
-    handles, labels = ax.get_legend_handles_labels()
-    # fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
-    fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-    # Save, show , clean
-    fig.savefig('/home/skleff/data_paper_fadmm/'+name+'_yz_view.pdf', bbox_inches="tight")
-
-    # X,Y,Z position of ee
-    fig, ax = plt.subplots(3, 1, figsize=(19.2,10.8))
-    ax[0].plot(xdata, target_position[:,0], color='y', linewidth=4, linestyle='--', label='Reference', alpha=1.) 
-    ax[0].plot(xdata, p_mea[:,0], color='b', linewidth=4, label=name, alpha=0.5, label='Measured') 
-    ax[0].plot(xdata, plb[:,0], color='k', linewidth=4, linestyle='--', label='Constraint')
-    ax[0].plot(xdata, pub[:,0], color='k', linewidth=4, linestyle='--')
-    # Set axis and stuff
-    ax.set_xlim(-0.33, +0.33) ; ax.set_ylim(0.15, 0.8)
-    ax.set_ylabel('Z (m)', fontsize=26) ; ax.set_xlabel('Y (m)', fontsize=26)
-    ax.tick_params(axis = 'y', labelsize=22) ; ax.tick_params(axis = 'x', labelsize=22)
-    ax.grid(True) 
-    # Legend 
-    handles, labels = ax.get_legend_handles_labels()
-    # fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
-    fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-    # Save, show , clean
-    fig.savefig('/home/skleff/data_paper_fadmm/'+name+'_yz_view.pdf', bbox_inches="tight")
-
-    return fig, ax
-
+#     # Circle without constraint
+# print("Extract data...")
+# r1 = DataReader('/home/skleff/data_paper_fadmm/circle_no_cstr/no_constraint_1683299184.3249779.mds') 
 
 #     # Cicle with joint 1 position constraint
 # print("Extract data...")
@@ -164,41 +114,6 @@ def plot_endeff_yz(pmea, name, plb=None, pub=None):
     fig0.savefig('/home/skleff/data_paper_fadmm/'+name+'_plot.pdf', bbox_inches="tight")
     return fig0, ax0
 
-
-def plot_endeff(pmea, name, plb=None, pub=None):
-    fig0, ax0 = plt.subplots(3, 1, figsize=(19.2,10.8))
-    # Target 
-    # ax0.plot(p_mea1[N_start:N,1], p_mea1[N_start:N,2], color='r', linewidth=4, label='No constraint', alpha=0.5)
-    ax0[0].plot(xdata, target_position[N_start:N,0], color='y', linewidth=4, linestyle='--', label='Reference', alpha=1.) 
-    ax0[1].plot(xdata, target_position[N_start:N,1], color='y', linewidth=4, linestyle='--', label='Reference', alpha=1.) 
-    ax0[2].plot(xdata, target_position[N_start:N,2], color='y', linewidth=4, linestyle='--', label='Reference', alpha=1.) 
-    # Measured
-    ax0[0].plot(xdata, pmea[N_start:N,0], color='b', linewidth=4, label=name, alpha=0.5) 
-    ax0[1].plot(xdata, pmea[N_start:N,1], color='b', linewidth=4, label=name, alpha=0.5) 
-    ax0[2].plot(xdata, pmea[N_start:N,2], color='b', linewidth=4, label=name, alpha=0.5) 
-    # Constrai,
-    ax0[0].plot(xdata, plb[N_start:N,0], color='k', linewidth=4, linestyle='--', label='Constraint')
-    ax0[1].plot(xdata, plb[N_start:N,1], color='k', linewidth=4, linestyle='--') 
-    ax0[2].plot(xdata, plb[N_start:N,2], color='k', linewidth=4, linestyle='--') 
-    ax0[0].plot(xdata, pub[N_start:N,0], color='k', linewidth=4, linestyle='--') 
-    ax0[1].plot(xdata, pub[N_start:N,1], color='k', linewidth=4, linestyle='--') 
-    ax0[2].plot(xdata, pub[N_start:N,2], color='k', linewidth=4, linestyle='--')
-    # Set axis and stuff
-    ax0.set_xlim(-0.33, +0.33)
-    ax0.set_ylim(0.15, 0.8)
-    ax0.set_ylabel('Z (m)', fontsize=26)
-    ax0.set_xlabel('Y (m)', fontsize=26)
-    # ax0.set_ylim(-0.02, 1.02)
-    ax0.tick_params(axis = 'y', labelsize=22)
-    ax0.tick_params(axis = 'x', labelsize=22)
-    ax0.grid(True) 
-    # Legend 
-    handles0, labels0 = ax0.get_legend_handles_labels()
-    # fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
-    fig0.legend(handles0, labels0, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-    # Save, show , clean
-    fig0.savefig('/home/skleff/data_paper_fadmm/'+name+'_plot.pdf', bbox_inches="tight")
-    return fig0, ax0
 
 # fig1, ax1 = plot_endeff_yz(p_mea1, 'No constraint') 
 # fig2, ax2 = plot_endeff_yz(p_mea2, 'Joint pos. constraint')
