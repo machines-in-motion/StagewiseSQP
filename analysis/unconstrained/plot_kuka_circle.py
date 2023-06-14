@@ -21,52 +21,23 @@ CONFIG_NAME = 'kuka_circle_gnms'
 CONFIG_PATH = "/home/skleff/misc_repos/gnms/demos/"+CONFIG_NAME+".yml"
 config      = path_utils.load_yaml_file(CONFIG_PATH)
 
-# Create data Plottger
-# s = SimpleDataPlotter()
-
+# Load experimental data
 r1 = DataReader('/home/skleff/data_paper_fadmm/circle_GNMS.mds')
 r2 = DataReader('/home/skleff/data_paper_fadmm/circle_FDDP.mds')
-
 N = min(r1.data['tau'].shape[0], r1.data['tau'].shape[0])
-
-
-# s.plot_joint_pos( [r.data['joint_positions'], r2.data['joint_positions']], 
-#                    ['fddp', 'gnms'], 
-#                    ['r', 'b'], 
-#                    ylims=[model.lowerPositionLimit, model.upperPositionLimit] )
-# s.plot_joint_vel( [r.data['joint_velocities'], r2.data['joint_velocities']], 
-#                   ['fddp', 'gnms'], 
-#                   ['r', 'b'], 
-#                   ylims=[-model.velocityLimit, +model.velocityLimit] )
-# # s.plot_joint_vel( [r.data['joint_accelerations']], ['mea'], ['r'],)
-
-# # For SIM robot only
-# if(SIM):
-#     s.plot_joint_tau( [r.data['tau'], r.data['tau_ff'], r.data['tau_riccati'], r.data['tau_gravity']], 
-#                       ['total', 'ff', 'riccati', 'gravity'], 
-#                       ['r', 'g', 'b', [0.2, 0.2, 0.2, 0.5]],
-#                       ylims=[-model.effortLimit, +model.effortLimit] )
-# # For REAL robot only !! DEFINITIVE FORMULA !!
-# else:
-#     # Our self.tau was subtracted gravity, so we add it again
-#     # joint_torques_measured DOES include the gravity torque from KUKA
-#     # There is a sign mismatch in the axis so we use a minus sign
-#     s.plot_joint_tau( [-r.data['joint_cmd_torques'], r.data['joint_torques_measured'], r.data['tau'] + r.data['tau_gravity']], 
-#                   ['-cmd (FRI)', 'Measured', 'Desired (+g(q))', 'Measured - EXT'], 
-#                   [[0.,0.,0.,0.], 'g', 'b', 'y'],
-#                   ylims=[-model.effortLimit, +model.effortLimit] )
-
-
 p_mea1 = get_p_(r1.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
 p_mea2 = get_p_(r2.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
-# p_des1 = get_p_(r1.data['x_des'][:,:nq], pinrobot.model, pinrobot.model.getFrameId('contact'))
-target_position = np.zeros((N, 3)) #r.data['target_position'] #
+target_position = np.zeros((N, 3)) 
 target_position[:,0] = r1.data['target_position_x'][:,0]
 target_position[:,1] = r1.data['target_position_y'][:,0]
 target_position[:,2] = r1.data['target_position_z'][:,0]
-
-v_mea1 = get_v_(r1.data['joint_positions'], r1.data['joint_velocities'], pinrobot.model, pinrobot.model.getFrameId('contact'))
-v_mea2 = get_v_(r2.data['joint_positions'], r2.data['x_des'][:,nq:nq+nv], pinrobot.model, pinrobot.model.getFrameId('contact'))
+# v_mea1 = get_v_(r1.data['joint_positions'], r1.data['joint_velocities'], pinrobot.model, pinrobot.model.getFrameId('contact'))
+# v_mea2 = get_v_(r2.data['joint_positions'], r2.data['x_des'][:,nq:nq+nv], pinrobot.model, pinrobot.model.getFrameId('contact'))
+# Compute MSE ||y - yd||^2 + ||z - zd||^2
+err1 = np.sum(np.abs(p_mea1 - target_position)[2000:,1:]**2, axis=1)
+err2 = np.sum(np.abs(p_mea2 - target_position)[2000:,1:]**2, axis=1)
+print("MSE GNMS = ", np.average(err1))
+print("MSE FDDP = ", np.average(err2))
 
 # Generate plot of number of iterations for each problem
 import matplotlib.pyplot as plt
@@ -78,8 +49,9 @@ matplotlib.rcParams["ps.fonttype"] = 42
 xdata = np.linspace(0, N*0.001, N+1) 
 N_start = 2000
 fig0, ax0 = plt.subplots(1, 1, figsize=(19.2,10.8))
-ax0.plot(p_mea1[N_start:N,0], p_mea1[N_start:N,1], color='r', linewidth=4, label='FDDP') 
-ax0.plot(p_mea2[N_start:N,0], p_mea2[N_start:N,1], color='b', linewidth=4, label='SQP') 
+ax0.plot(p_mea1[N_start:N,1], p_mea1[N_start:N,2], color='r', linewidth=4, label='FDDP', alpha=0.5) 
+ax0.plot(p_mea2[N_start:N,1], p_mea2[N_start:N,2], color='b', linewidth=4, label='SQP', alpha=0.5) 
+ax0.plot(target_position[N_start:N,1], target_position[N_start:N,2], color='k', linewidth=2, linestyle='--', label='Reference') #, alpha=0.5) 
 # ax0.plot(target_position[N_start:N,0], target_position[N_start:N,1], color='y', linestyle='-.', linewidth=4, label='Reference') 
 #     # Set axis and stuff
 #     ax0.set_ylabel('Percentage of problems solved', fontsize=26)
