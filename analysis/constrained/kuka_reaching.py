@@ -2,20 +2,23 @@
 
 import pathlib
 import os
-python_path = pathlib.Path('.').absolute().parent.parent/'python'
+python_path = pathlib.Path('.').absolute().parent/'python'
 os.sys.path.insert(1, str(python_path))
-import time
+
 import crocoddyl
 import numpy as np
 import pinocchio as pin
 np.set_printoptions(precision=4, linewidth=180)
+import ocp_utils
+from sqp_ocp.constraint_model import StateConstraintModel, ControlConstraintModel, EndEffConstraintModel, NoConstraintModel, ConstraintModelStack
+from sqp_ocp.solvers import SQPOCP
 
 
-# # # # # # # # # # # # #
-### LOAD ROBOT MODEL  ###
-# # # # # # # # # # # # #
+# # # # # # # # # # # # #
+### LOAD ROBOT MODEL  ###
+# # # # # # # # # # # # #
 
-# Or use robot_properties_kuka 
+# Or use robot_properties_kuka 
 from robot_properties_kuka.config import IiwaConfig
 robot = IiwaConfig.buildRobotWrapper()
 
@@ -26,11 +29,11 @@ v0 = np.zeros(nv)
 x0 = np.concatenate([q0, v0]).copy()
 robot.framesForwardKinematics(q0)
 robot.computeJointJacobians(q0)
+fid = model.getFrameId("contact")
 
-
-# # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # #
 ###  SETUP CROCODDYL OCP  ###
-# # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # #
 
 # State and actuation model
 state = crocoddyl.StateMultibody(model)
@@ -41,31 +44,31 @@ runningCostModel = crocoddyl.CostModelSum(state)
 terminalCostModel = crocoddyl.CostModelSum(state)
 
 
-# Create cost terms 
+# Create cost terms 
   # Control regularization cost
-uResidual = crocoddyl.ResidualModelControlGrav(state)
+uResidual = crocoddyl.ResidualModelContactControlGrav(state)
 uRegCost = crocoddyl.CostModelResidual(state, uResidual)
-  # State regularization cost
+  # State regularization cost
 xResidual = crocoddyl.ResidualModelState(state, x0)
 xRegCost = crocoddyl.CostModelResidual(state, xResidual)
   # endeff frame translation cost
 endeff_frame_id = model.getFrameId("contact")
 # endeff_translation = robot.data.oMf[endeff_frame_id].translation.copy()
-endeff_translation = np.array([0.7, 0, 1.1]) # move endeff +30 cm along x in WORLD frame
+endeff_translation = np.array([0.7, 0, 1.1]) # move endeff +30 cm along x in WORLD frame
 frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(state, endeff_frame_id, endeff_translation)
 frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
 
 
-# Add costs
+# Add costs
 runningCostModel.addCost("stateReg", xRegCost, 1e-1)
 runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
 runningCostModel.addCost("translation", frameTranslationCost, 1)
 terminalCostModel.addCost("stateReg", xRegCost, 1e-1)
 terminalCostModel.addCost("translation", frameTranslationCost, 1)
 
-# Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
-running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, runningCostModel)
-terminal_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, terminalCostModel)
+# Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
+running_DAM = crocoddyl.DifferentialActionModelContactFwdDynamics(state, actuation, crocoddyl.ContactModelMultiple(state, actuation.nu), runningCostModel)
+terminal_DAM = crocoddyl.DifferentialActionModelContactFwdDynamics(state, actuation, crocoddyl.ContactModelMultiple(state, actuation.nu), terminalCostModel)
 
 # Create Integrated Action Model (IAM), i.e. Euler integration of continuous dynamics and cost
 dt = 1e-2
@@ -76,79 +79,121 @@ terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
 # runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
 # terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
 
-# Create the shooting problem
+# Create the shooting problem
 T = 10
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
-# Set up solvers
-MAXITER   = 1
-TOL       = 1e-8
-CALLBACKS = False
-KKT_COND  = True
+
+# choose scenario: 0 or 1 or 2 or 3
+option = 0
+
+if option == 0:    
+  clip_state_max = np.array([np.inf]*14)
+  clip_state_min = -np.array([np.inf]*7 + [0.5]*7)
+  clip_ctrl = np.array([np.inf, 40 , np.inf, np.inf, np.inf, np.inf , np.inf] )
+
+
+  statemodel = crocoddyl.StateConstraintModel(state, 7, clip_state_min, clip_state_max, 'stateConstraint')
+  controlmodel = crocoddyl.ControlConstraintModel(state, 7,  -clip_ctrl, clip_ctrl, 'ctrlConstraint')
+
+  nc = statemodel.nc + controlmodel.nc
+  ConstraintModel = crocoddyl.ConstraintStack([statemodel, controlmodel], state, nc, 7, 'runningConstraint')
+  clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.01]*7)
+  terminal = crocoddyl.StateConstraintModel(state, 7, clip_state_min, clip_state_max, 'stateConstraint')
+  TerminalConstraintModel = crocoddyl.ConstraintStack([terminal], state, 14, 7, 'terminalConstraint')
+
+  constraintModels =[controlmodel] * (T) + [terminal]
+elif option == 1:    
+  clip_state_max = np.array([np.inf]*14)
+  clip_state_min = -np.array([np.inf]*7 + [0.5]*7)
+  statemodel = StateConstraintModel(state, 7, clip_state_min, clip_state_max)
+  clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.00]*7)
+  TerminalConstraintModel = StateConstraintModel(state, 7, -clip_state_end, clip_state_end)
+  constraintModels =  [NoConstraintModel(state, 7)] + [statemodel] * (T-1) + [TerminalConstraintModel]
+
+elif option == 2:
+  endeff_translation = np.array([0.7, 0, 1.1]) # move endeff +30 cm along x in WORLD frame
+
+  lmin = np.array([-np.inf, endeff_translation[1], endeff_translation[2]])
+  lmax =  np.array([np.inf, endeff_translation[1], endeff_translation[2]])
+  constraintModels = [NoConstraintModel(state, 7)] + [EndEffConstraintModel(state, 7, fid, lmin, lmax)] * T
+
+
+elif option == 3:
+  constraintModels = [NoConstraintModel(state, 7)] * (T+1)
+
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
-solverGNMS = crocoddyl.SolverGNMS(problem)
-solverGNMS.termination_tolerance = TOL
-solverGNMS.VERBOSE = CALLBACKS
-# solverGNMS.use_heuristic_line_search = True
-# solverGNMS.termination_tolerance = TOL
-solverGNMS.with_callbacks = CALLBACKS
-solverGNMS.use_kkt_condition = KKT_COND
-solverGNMS.computeDirection(True)
-t1 = time.time()
-solverGNMS.computeDirection(False)
 
-# tmp = solverGNMS.solve(xs, us, MAXITER, False)
+
+
+ddp = crocoddyl.SolverFADMM(problem, constraintModels)
+
+
+# ddp = crocoddyl.SolverPROXQP(problem, constraintModels)
+
+# ddp = crocoddyl.SolverGNMS(problem)
+
+# ddp = SQPOCP(problem, constraintModels, "ProxQP")
+# ddp = SQPOCP(problem, constraintModels, "OSQP")
+qp_iters = 1000
+sqp_ites = 100
+ddp.with_callbacks = True
+ddp.use_filter_ls = True
+ddp.filter_size = 10
+ddp.termination_tol = 1e-3
+ddp.warm_start = True
+ddp.max_qp_iters = qp_iters
+
+# ddp.calc()
+import time
+t1 = time.time()
+ddp.solve(xs, us, sqp_ites)
 t2 = time.time()
 print(t2 - t1)
 
-from sqp_ocp.constraint_model import StateConstraintModel, ControlConstraintModel, EndEffConstraintModel, NoConstraint, ConstraintModelStack
-from sqp_ocp.solvers import SQPOCP
+print("after warm start")
+ddp.solve(ddp.xs, ddp.us, sqp_ites)
 
-constraintModels = [NoConstraint(len(x0), actuation.nu)] * (T+1)
 
-problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
+# xs = [x0] * (T+1)
+# us = [np.zeros(nu)] * T 
 
-solver = SQPOCP(problem, constraintModels, "ProxQP")
-solver.verbose = True
-tmp = solver.solve(xs, us, MAXITER, CALLBACKS)
-print(solver.time)
-# mu_values      = [1e-6, 1e-2, 1e-3]
-# converged_gnms = []
-# iter_gnms      = []
-# for mu in mu_values:
-#     solverGNMS.mu = mu
-#     print('------------------')
-#     print("mu = ", solverGNMS.mu)
-#     t1 = time.time()
-#     tmp = solverGNMS.solve(xs, us, MAXITER, False)
-#     t2 = time.time()
-#     converged_gnms.append(tmp)
-#     print("GNMS", 1e3*(t2 - t1))
-#     print("nb iter = ", solverGNMS.iter)
 
-#     iter_gnms.append(solverGNMS.iter)
-#     print('------------------')
-    
+# problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
-# # SOLVE FDDP
-# solverFDDP = crocoddyl.SolverFDDP(problem)
-# solverFDDP.termination_tolerance = TOL
-# if(CALLBACKS): 
-#     solverFDDP.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
+# ddppy = SQPOCP(problem, constraintModels, "FADMM")
+# # ddppy = crocoddyl.SolverGNMS(problem)
 
-# t1 = time.time()
-# converged_fddp = solverFDDP.solve(xs, us, MAXITER, False)
-# t2 = time.time()
-# print("FDDP", 1e3*(t2 - t1))
+# ddppy.verbose = True
+# ddppy.verboseQP = False
+# ddppy.max_iters = qp_iters
 
-# iter_fddp      = solverFDDP.iter
+# ddppy.solve(xs, us, sqp_ites)
 
-# # Print
-# print("GNMS mu \n", mu_values)
-# print("GNMS iter \n", iter_gnms)
-# print("GNMS converged \n", converged_gnms)
-# print("FDDP iter \n", iter_fddp)
-# print("FDDP converged \n", converged_fddp)
+# # print(np.array(ddp.dx_tilde)[1], ddppy.dx_tilde[1])
+# # print(np.linalg.norm(np.array(ddp.dx_tilde) - ddppy.dx_tilde))
+# # print(np.linalg.norm(np.array(ddp.du_tilde) - ddppy.du_tilde))
+# # print("_____________________________________________")
+# # for i in range(T+1):
+# #   print(np.linalg.norm(ddp.Vx[i] - ddppy.s[i]))
+# #   print(np.linalg.norm(ddp.Vxx[i] - ddppy.S[i]))
+
+# # for i in range(len(ddppy.lag_mul)):
+# #   print(np.linalg.norm((ddp.lag_mul)[i] - ddppy.lag_mul[i]))
+# #   # print(np.linalg.norm((ddp.y)[i] - ddppy.y[i]))
+# #   # print(np.linalg.norm((ddp.get_rho_vec)[i] - ddppy.rho_vec[i]))
+# #   # print(np.linalg.norm((ddp.z)[i] - ddppy.z[i]))
+# #   print("________________________________________")
+# print(np.linalg.norm(np.array(ddp.xs) - ddppy.xs)/(T+1))
+# print(np.linalg.norm(np.array(ddp.us) - ddppy.us)/T)
+
+
+
+# # Extract DDP data and plot
+# # ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
+
+# # ocp_utils.plot_ocp_results(ddp_data, which_plots="all", labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
+
