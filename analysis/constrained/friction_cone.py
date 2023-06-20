@@ -41,27 +41,17 @@ class FrictionConeConstraint(crocoddyl.ConstraintModelAbstract):
         assert nc == 1 
 
     def calc(self, cdata, data, x, u=None): 
-        # constraint residual in LOCAL
+        # constraint residual (expressed in constraint ref frame already)
         F = data.differential.pinocchio.lambda_c[:3]
         cdata.c = np.array([- self.mu * F[2] - np.sqrt(F[0]**2 + F[1]**2)])
-        if(self.pinRefFrame != pin.LOCAL):
-           cdata.c = data.differential.pinocchio.oMf[self.frameId].rotation[2] @ cdata.c
 
     def calcDiff(self, cdata, data, x, u=None):
         F = data.differential.pinocchio.lambda_c[:3]
-        # Fx = data.differential.df_dx[:3]
-        # Fu = data.differential.df_du[:3]
-
         self.dcone_df[0, 0] = - F[0] / np.sqrt(F[0]**2 + F[1]**2)
         self.dcone_df[0, 1] = - F[1] / np.sqrt(F[0]**2 + F[1]**2)
         self.dcone_df[0, 2] = - self.mu
-
-        if(self.pinRefFrame != pin.LOCAL):
-           self.dcone_df = self.data.differential.pinocchio.oMf[self.frameId].rotation @ self.dcone_df
-        print(data.differential.df_dx)
-        cdata.Cx = self.dcone_df @ data.differential.df_dx[:3]
+        cdata.Cx = self.dcone_df @ data.differential.df_dx[:3] 
         cdata.Cu = self.dcone_df @ data.differential.df_du[:3]
-
 
 # Load robot : works with talos arm, not with kinova
 robot_name = 'talos_arm'# 'kinova'  #'talos_arm'
@@ -98,15 +88,14 @@ uRegCost = crocoddyl.CostModelResidual(state, uResidual)
 xResidual = crocoddyl.ResidualModelState(state, x0 )
 xRegCost = crocoddyl.CostModelResidual(state, xResidual)
 desired_wrench = np.array([0., 0., -100., 0., 0., 0.])
-frameForceResidual = sobec.ResidualModelContactForce(state, contact_frame_id, pin.Force(desired_wrench), nc, actuation.nu)
+frameForceResidual = sobec.ResidualModelContactForce(state, contact_frame_id, pin.Force(desired_wrench), 3, actuation.nu)
 contactForceCost = crocoddyl.CostModelResidual(state, frameForceResidual)
-# runningCostModel.addCost("stateReg", xRegCost, 1e-2)
-# runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
-# runningCostModel.addCost("force", contactForceCost, 10.)
-# terminalCostModel.addCost("stateReg", xRegCost, 1e-2)
-DAM = sobec.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel, runningCostModel, contact_frame_id)
-DAD = DAM.createData()
-jMf = robot.model.frames[contact_frame_id].placement
+runningCostModel.addCost("stateReg", xRegCost, 1e-2)
+runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
+runningCostModel.addCost("force", contactForceCost, 10.)
+terminalCostModel.addCost("stateReg", xRegCost, 1e-2)
+DAM = sobec.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel, runningCostModel, inv_damping=0., enable_force=True) #, contact_frame_id)
+# jMf = robot.model.frames[contact_frame_id].placement
 IAM = crocoddyl.IntegratedActionModelEuler(DAM, 1e-2)
 IAD = IAM.createData()
 
@@ -126,6 +115,8 @@ def iam_calc(iam, iad, q, v, u):
 # relation between LOCAL and LWA derivatives
 CM = frictionmodel
 CD = CM.createData()
+IAM.differential.calc(IAD.differential, x0, tau0)
+IAM.differential.calcDiff(IAD.differential, x0, tau0)
 
 IAM.calc(IAD, x0, tau0)
 IAM.calcDiff(IAD, x0, tau0)
