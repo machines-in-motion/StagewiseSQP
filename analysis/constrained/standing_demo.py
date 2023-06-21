@@ -8,6 +8,7 @@ import standing_utils
 import sobec
 
 from friction_cone import FrictionConeConstraint, Force3DConstraintModel
+import sys
 
 pinRef        = pin.LOCAL_WORLD_ALIGNED
 FORCE_CSTR    = True
@@ -266,40 +267,63 @@ if(PLOT):
     plt.show()
 
 
+    # create robot
+    robot = Solo12Config.buildRobotWrapper()
+    # load robot in meshcat viewer
+    viz = pin.visualize.MeshcatVisualizer(
+    robot.model, robot.collision_model, robot.visual_model)
+    try:
+        viz.initViewer(open=True)
+    except ImportError as err:
+        print(err)
+        sys.exit(0)
+    viz.loadViewerModel()
+    viz.camera_zoom = 0.2  # zoom in
+    # add contact surfaces
+    step_adjustment_bound = 0.07                         
+    s = 0.5*step_adjustment_bound
 
-    # # create robot
-    # robot = Solo12Config.buildRobotWrapper()
-    # # load robot in meshcat viewer
-    # viz = pin.visualize.MeshcatVisualizer(
-    # robot.model, robot.collision_model, robot.visual_model)
-    # try:
-    #     viz.initViewer(open=True)
-    # except ImportError as err:
-    #     print(err)
-    #     sys.exit(0)
-    # viz.loadViewerModel()
-    # # add contact surfaces
-    # step_adjustment_bound = 0.07                         
-    # s = 0.5*step_adjustment_bound
+    for contact_idx, contactLoc in enumerate(supportFeePos):
+        t = contactLoc
+        # debris box
+        standing_utils.addViewerBox(
+            viz, 'world/debris'+str(contact_idx), 
+            2*s, 2*s, 0., [1., .2, .2, .5]
+            )
+        standing_utils.applyViewerConfiguration(
+            viz, 'world/debris'+str(contact_idx), 
+            [t[0], t[1], t[2]-0.017, 1, 0, 0, 0]
+            )
+        standing_utils.applyViewerConfiguration(
+            viz, 'world/debris_center'+str(contact_idx), 
+            [t[0], t[1], t[2]-0.017, 1, 0, 0, 0]
+            ) 
 
-    # for contact_idx, contactLoc in enumerate(supportFeePos):
-    #     t = contactLoc
-    #     # debris box
-    #     standing_utils.addViewerBox(
-    #         viz, 'world/debris'+str(contact_idx), 
-    #         2*s, 2*s, 0., [1., .2, .2, .5]
-    #         )
-    #     standing_utils.applyViewerConfiguration(
-    #         viz, 'world/debris'+str(contact_idx), 
-    #         [t[0], t[1], t[2]-0.017, 1, 0, 0, 0]
-    #         )
-    #     standing_utils.applyViewerConfiguration(
-    #         viz, 'world/debris_center'+str(contact_idx), 
-    #         [t[0], t[1], t[2]-0.017, 1, 0, 0, 0]
-    #         ) 
-    # import time
-    # # visualize DDP warm-start
-    # for q_sol_k in q_sol:
-    #     time.sleep(dt*10)
-    #     viz.display(q_sol_k)
-    
+
+    arrow1 = standing_utils.Arrow(viz.viewer, "force_1", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+    arrow2 = standing_utils.Arrow(viz.viewer, "force_2", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+    arrow3 = standing_utils.Arrow(viz.viewer, "force_3", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+    arrow4 = standing_utils.Arrow(viz.viewer, "force_4", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+
+    cone1 = standing_utils.Cone(viz.viewer, "friction_cone_1", location=supportFeePos[0], mu=0.5)
+    cone2 = standing_utils.Cone(viz.viewer, "friction_cone_2", location=supportFeePos[1], mu=0.5)
+    cone3 = standing_utils.Cone(viz.viewer, "friction_cone_3", location=supportFeePos[2], mu=0.5)
+    cone4 = standing_utils.Cone(viz.viewer, "friction_cone_4", location=supportFeePos[3], mu=0.5)
+
+    arrows = [arrow1, arrow2, arrow3, arrow4]
+    forces = []
+
+    for i, contactLoc in enumerate(supportFeePos):
+        ct_frame_name = rmodel.frames[supportFeetIds[i]].name + "_contact"
+        forces.append(np.array(solution[ct_frame_name])[:, :3])
+        arrows[i].set_location(contactLoc)
+
+    import time
+    # visualize DDP warm-start
+    for t in range(N_ocp):
+        time.sleep(dt*10)
+        viz.display(q_sol[t])
+
+        for i in range(len(supportFeePos)):
+            arrows[i].anchor_as_vector(supportFeePos[i], forces[i][t])
+        
