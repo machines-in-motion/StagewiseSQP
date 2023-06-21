@@ -132,6 +132,7 @@ for t in range(N_ocp+1):
     for frame_idx in supportFeetIds:
         if(FORCE_CSTR):
             # force_cstr = crocoddyl.ContactForceConstraintModel3D(state, actuation.nu, frame_idx, clip_force_min, clip_force_max, rmodel.frames[frame_idx].name+"_forceConstraint", pinRef)
+            # force_cstr.contact_dynamics_ref = pinRef   
             force_cstr = Force3DConstraintModel(state, clip_force_min, clip_force_max, 3, state.nx, actuation.nu) 
             forceConstraintModels.append(force_cstr)
             n_cstr += force_cstr.nc

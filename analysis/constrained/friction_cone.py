@@ -83,7 +83,7 @@ gains = np.zeros(2)
 nq = robot.model.nq
 nv = robot.model.nv
 nc = 1
-pinRefFrame = pin.LOCAL#_WORLD_ALIGNED
+pinRefFrame = pin.LOCAL_WORLD_ALIGNED
 contact_frame_id = robot.model.getFrameId(contactFrameName)
 pin.forwardKinematics(robot.model, robot.data, q0, v0, a0)
 pin.updateFramePlacements(robot.model, robot.data)
@@ -117,28 +117,78 @@ IAD = IAM.createData()
 # TEST FORCE CONSTRAINT IN CPP AND PYTHON
 clip_force_min = np.array([-np.inf, -np.inf, 5])
 clip_force_max = np.array([np.inf, np.inf, np.inf]) 
+
+# CPP model
 forcemodel_cpp = crocoddyl.ContactForceConstraintModel3D(state, actuation.nu, contact_frame_id, clip_force_min, clip_force_max, "forceConstraint", pinRefFrame)
-forcemodel_py = Force3DConstraintModel(state, clip_force_min, clip_force_max, 3, state.nx, actuation.nu) 
+forcemodel_cpp.contact_dynamics_ref = pinRefFrame
 CM_CPP = forcemodel_cpp
-CM_PY  = forcemodel_py
 CD_CPP = CM_CPP.createData()
+IAD_CPP = IAM.createData()
+    # Action models calc & calcDiff
+IAM.differential.calc(IAD_CPP.differential, x0, tau0)
+IAM.differential.calcDiff(IAD_CPP.differential, x0, tau0)
+IAM.calc(IAD_CPP, x0, tau0)
+IAM.calcDiff(IAD_CPP, x0, tau0)
+    # Constraint model calc & calcDiff
+CM_CPP.calc(CD_CPP, IAD_CPP, x0, tau0)
+CM_CPP.calcDiff(CD_CPP, IAD_CPP, x0, tau0)
+
+# Python model
+forcemodel_py = Force3DConstraintModel(state, clip_force_min, clip_force_max, 3, state.nx, actuation.nu) 
+CM_PY  = forcemodel_py
 CD_PY  = CM_PY.createData()
-IAM.differential.calc(IAD.differential, x0, tau0)
-IAM.differential.calcDiff(IAD.differential, x0, tau0)
-IAM.calc(IAD, x0, tau0)
-IAM.calcDiff(IAD, x0, tau0)
-CM_CPP.calc(CD_CPP, IAD, x0, tau0)
-CM_CPP.calcDiff(CD_CPP, IAD, x0, tau0)
-CM_PY.calc(CD_PY, IAD, x0, tau0)
-CM_PY.calcDiff(CD_PY, IAD, x0, tau0)
+    # Action models calc & calcDiff
+IAD_PY = IAM.createData()
+IAM.differential.calc(IAD_PY.differential, x0, tau0)
+IAM.differential.calcDiff(IAD_PY.differential, x0, tau0)
+IAM.calc(IAD_PY, x0, tau0)
+IAM.calcDiff(IAD_PY, x0, tau0)
+    # Constraint model calc & calcDiff
+CM_PY.calc(CD_PY, IAD_PY, x0, tau0)
+CM_PY.calcDiff(CD_PY, IAD_PY, x0, tau0)
 
+# # Test that CPP matches Python
 assert(np.linalg.norm(CD_CPP.c - CD_PY.c) <= TOL)
-assert(np.linalg.norm(dC_dq - dC_dq_ND) <= TOL)
-assert(np.linalg.norm(dC_dq - dC_dq_ND) <= TOL)
-assert(np.linalg.norm(dC_dq - dC_dq_ND) <= TOL)
+assert(np.linalg.norm(CD_CPP.Cx - CD_PY.Cx) <= TOL)
+assert(np.linalg.norm(CD_CPP.Cu - CD_PY.Cu) <= TOL)
+# Check IAM 
+assert(np.linalg.norm(IAD_CPP.xnext - IAD_PY.xnext) <= TOL)
+assert(np.linalg.norm(IAD_CPP.Fx - IAD_PY.Fx) <= TOL)
+assert(np.linalg.norm(IAD_CPP.Fu - IAD_PY.Fu) <= TOL)
 
-zpreogr
+# Test derivatives vs numdiff
+def cm_calc(cm, cd, iam, iad, q, v, u):
+    iam.calc(iad, np.concatenate([q,v]), u)
+    cm.calc(cd, iad, np.concatenate([q,v]), u)
+    return cd.c
+def iam_calc(iam, iad, q, v, u):
+    iam.calc(iad, np.concatenate([q,v]), u)
+    return iad.xnext
+#  Numdiff IAM CPP
+dF_dq_ND_CPP = numdiff(lambda q_:iam_calc(IAM, IAD_CPP, q_, v0, tau0), q0)
+dF_dv_ND_CPP = numdiff(lambda v_:iam_calc(IAM, IAD_CPP, q0, v_, tau0), v0)
+dF_dtau_ND_CPP = numdiff(lambda tau_:iam_calc(IAM, IAD_CPP, q0, v0, tau_), tau0)
+assert(np.linalg.norm(dF_dq_ND_CPP - IAD_CPP.Fx[:,:nq]) <= TOL)
+assert(np.linalg.norm(dF_dv_ND_CPP - IAD_CPP.Fx[:,nq:]) <= TOL)
+assert(np.linalg.norm(dF_dtau_ND_CPP - IAD_CPP.Fu) <= TOL)
+# Numdiff IAM PY
+#TODO
 
+# Numdiff constraint PY
+dC_dq_ND_PY   = numdiff(lambda q_:cm_calc(CM_PY, CD_PY, IAM, IAD_PY, q_, v0, tau0), q0)
+dC_dv_ND_PY   = numdiff(lambda v_:cm_calc(CM_PY, CD_PY, IAM, IAD_PY, q0, v_, tau0), v0)
+dC_dtau_ND_PY = numdiff(lambda tau_:cm_calc(CM_PY, CD_PY, IAM, IAD_PY, q0, v0, tau_), tau0)
+assert(np.linalg.norm(dC_dq_ND_PY - CD_PY.Cx[:,:nq]) <= TOL)
+assert(np.linalg.norm(dC_dv_ND_PY - CD_PY.Cx[:,nq:]) <= TOL)
+assert(np.linalg.norm(dC_dtau_ND_PY - CD_PY.Cu) <= TOL)
+
+# Numdiff constraint CPP
+dC_dq_ND_CPP   = numdiff(lambda q_:cm_calc(CM_CPP, CD_CPP, IAM, IAD_CPP, q_, v0, tau0), q0)
+dC_dv_ND_CPP   = numdiff(lambda v_:cm_calc(CM_CPP, CD_CPP, IAM, IAD_CPP, q0, v_, tau0), v0)
+dC_dtau_ND_CPP = numdiff(lambda tau_:cm_calc(CM_CPP, CD_CPP, IAM, IAD_CPP, q0, v0, tau_), tau0)
+assert(np.linalg.norm(dC_dq_ND_CPP - CD_CPP.Cx[:,:nq]) <= TOL)
+assert(np.linalg.norm(dC_dv_ND_CPP - CD_CPP.Cx[:,nq:]) <= TOL)
+assert(np.linalg.norm(dC_dtau_ND_CPP - CD_CPP.Cu) <= TOL)
 
 
 
