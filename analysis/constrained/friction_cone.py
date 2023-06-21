@@ -26,6 +26,20 @@ def numdiff(f,inX,h=1e-6):
     return np.array(Fx).T
 
 
+class Force3DConstraintModel(crocoddyl.ConstraintModelAbstract):
+    def __init__(self, state, Fmin, Fmax, nc, nx, nu):
+        crocoddyl.ConstraintModelAbstract.__init__(self, state, nc, nu, Fmin, Fmax, 'force')
+        self.lmin = Fmin
+        self.lmax = Fmax
+        
+    def calc(self, cdata, data, x, u=None): 
+        cdata.c = data.differential.pinocchio.lambda_c[:3]
+
+    def calcDiff(self, cdata, data, x, u=None):
+        cdata.Cx = data.differential.df_dx[:3]
+        cdata.Cu = data.differential.df_du[:3]
+
+
 
 # Cone constraint
 class FrictionConeConstraint(crocoddyl.ConstraintModelAbstract):

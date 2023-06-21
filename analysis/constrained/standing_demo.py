@@ -7,7 +7,7 @@ import pinocchio as pin
 import standing_utils
 import sobec
 
-from friction_cone import FrictionConeConstraint
+from friction_cone import FrictionConeConstraint, Force3DConstraintModel
 
 pinRef        = pin.LOCAL_WORLD_ALIGNED
 FORCE_CSTR    = True
@@ -55,13 +55,13 @@ nu = actuation.nu
 
 comDes = []
 
-N_ocp = 20 #100
+N_ocp = 100 #100
 dt = 0.01
 T = N_ocp * dt
 radius = 0.01
 for t in range(N_ocp+1):
     comDes_t = comRef.copy()
-    w = 0.1*(2 * np.pi) / T
+    w = (2 * np.pi) / T
     comDes_t[0] += radius * np.sin(w * t * dt) 
     comDes_t[1] += radius * (np.cos(w * t * dt) - 1)
     comDes += [comDes_t]
@@ -123,14 +123,15 @@ for t in range(N_ocp+1):
 
 
     # Add contact force constraint >= 0 & friction cone 
-    clip_force_min = np.array([-np.inf, -np.inf, 2.])#, -np.inf, -np.inf, -np.inf])
+    clip_force_min = np.array([-np.inf, -np.inf, 5])#, -np.inf, -np.inf, -np.inf])
     clip_force_max = np.array([np.inf, np.inf, np.inf]) # np.inf, np.inf, np.inf])
     forceConstraintModels = []
     frictionConstraintModels = []
     n_cstr = 0
     for frame_idx in supportFeetIds:
         if(FORCE_CSTR):
-            force_cstr = crocoddyl.ContactForceConstraintModel3D(state, actuation.nu, frame_idx, clip_force_min, clip_force_max, rmodel.frames[frame_idx].name+"_forceConstraint", pinRef)
+            # force_cstr = crocoddyl.ContactForceConstraintModel3D(state, actuation.nu, frame_idx, clip_force_min, clip_force_max, rmodel.frames[frame_idx].name+"_forceConstraint", pinRef)
+            force_cstr = Force3DConstraintModel(state, clip_force_min, clip_force_max, 3, state.nx, actuation.nu) 
             forceConstraintModels.append(force_cstr)
             n_cstr += force_cstr.nc
         # if(FRICTION_CSTR):
@@ -148,7 +149,7 @@ for t in range(N_ocp+1):
     # runningConstraintModel = crocoddyl.ConstraintStack([statemodel], state, statemodel.nc, actuation.nu, 'runningConstraintModel')
 
     # Append the constraint model stack to the list of constraint models
-    if( t == N_ocp):
+    if( t == 0 or t == N_ocp):
         constraintModels += [crocoddyl.NoConstraintModel(state, actuation.nu, "noCstr")]
     else:
         constraintModels += [runningConstraintModel] 
