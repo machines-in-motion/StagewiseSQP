@@ -59,7 +59,7 @@ comDes = []
 N_ocp = 100 #100
 dt = 0.01
 T = N_ocp * dt
-radius = 0.01
+radius = 0.1
 for t in range(N_ocp+1):
     comDes_t = comRef.copy()
     w = (2 * np.pi) / T
@@ -266,72 +266,109 @@ if(PLOT):
 
     # plt.show()
 
-    import meshcat.transformations as tf    
-    # create robot
-    robot = Solo12Config.buildRobotWrapper()
-    # load robot in meshcat viewer
-    viz = pin.visualize.MeshcatVisualizer(
-    robot.model, robot.collision_model, robot.visual_model)
-    try:
-        viz.initViewer(open=True)
-    except ImportError as err:
-        print(err)
-        sys.exit(0)
-    viz.loadViewerModel()
+
+from meshcat.animation import Animation
+import meshcat.transformations as tf    
+# create robot
+robot = Solo12Config.buildRobotWrapper()
+# load robot in meshcat viewer
+viz = pin.visualize.MeshcatVisualizer(
+robot.model, robot.collision_model, robot.visual_model)
+try:
+    viz.initViewer(open=True)
+except ImportError as err:
+    print(err)
+    sys.exit(0)
+viz.loadViewerModel()
+
+
+# angle = 0.0  # Initial angle
+# rotation_speed = 0.05  # Speed of rotation (adjust as needed)
+
+cam_pose = tf.translation_matrix([-3.5, 0, 0.])  # Example camera position
+cam_pose[:3, :3] = tf.euler_matrix(0.0, 0.0, np.pi/6)[:3, :3]  # Example camera orientation
+viz.viewer["/Cameras"].set_transform(cam_pose)
 
 
 
-    cam_pose = tf.translation_matrix([-2, 0, 0.])  # Example camera position
-    cam_pose[:3, :3] = tf.euler_matrix(0.0, 0.0, np.pi/6)[:3, :3]  # Example camera orientation
-    viz.viewer["/Cameras"].set_transform(cam_pose)
+# add contact surfaces
+step_adjustment_bound = 0.07                         
+s = 0.5*step_adjustment_bound
+
+for contact_idx, contactLoc in enumerate(supportFeePos):
+    t = contactLoc
+    # debris box
+    standing_utils.addViewerBox(
+        viz, 'world/debris'+str(contact_idx), 
+        2*s, 2*s, 0., [1., .2, .2, .5]
+        )
+    standing_utils.applyViewerConfiguration(
+        viz, 'world/debris'+str(contact_idx), 
+        [t[0], t[1], t[2]-0.017, 1, 0, 0, 0]
+        )
+    standing_utils.applyViewerConfiguration(
+        viz, 'world/debris_center'+str(contact_idx), 
+        [t[0], t[1], t[2]-0.017, 1, 0, 0, 0]
+        ) 
+
+
+arrow1 = standing_utils.Arrow(viz.viewer, "force_1", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+arrow2 = standing_utils.Arrow(viz.viewer, "force_2", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+arrow3 = standing_utils.Arrow(viz.viewer, "force_3", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+arrow4 = standing_utils.Arrow(viz.viewer, "force_4", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+
+cone1 = standing_utils.Cone(viz.viewer, "friction_cone_1", location=supportFeePos[0], mu=0.5)
+cone2 = standing_utils.Cone(viz.viewer, "friction_cone_2", location=supportFeePos[1], mu=0.5)
+cone3 = standing_utils.Cone(viz.viewer, "friction_cone_3", location=supportFeePos[2], mu=0.5)
+cone4 = standing_utils.Cone(viz.viewer, "friction_cone_4", location=supportFeePos[3], mu=0.5)
+
+arrows = [arrow1, arrow2, arrow3, arrow4]
+forces = []
+
+for i, contactLoc in enumerate(supportFeePos):
+    ct_frame_name = rmodel.frames[supportFeetIds[i]].name + "_contact"
+    forces.append(np.array(solution[ct_frame_name])[:, :3])
+    arrows[i].set_location(contactLoc)
+
+
+import imageio
+
+def create_video_from_rgba(images, output_path, fps=5):
+    """
+    Create an MP4 video from an RGBA image array.
+
+    Args:
+        images (list): List of RGBA image arrays.
+        output_path (str): Path to save the resulting MP4 video.
+        fps (int): Frames per second for the video (default: 200).
+    """
+    writer = imageio.get_writer(output_path, format='ffmpeg', fps=fps)
+
+    for img in images:
+        writer.append_data(img)
+
+    writer.close()
+
+
+image_array_list = []
+
+
+import time
+# visualize DDP warm-start
+for t in range(N_ocp):
+    # time.sleep(dt)
+    viz.display(q_sol[t])
+
+    for i in range(len(supportFeePos)):
+        arrows[i].anchor_as_vector(supportFeePos[i], forces[i][t])
+    
+    # cam_pose[:3, :3] = tf.euler_matrix(0.0, 0.0, angle)[:3, :3]
+    # viz.viewer["/Cameras"].set_transform(cam_pose)
+    # angle += rotation_speed
+
+    image_array_list.append(viz.captureImage())
 
 
 
-    # add contact surfaces
-    step_adjustment_bound = 0.07                         
-    s = 0.5*step_adjustment_bound
-
-    for contact_idx, contactLoc in enumerate(supportFeePos):
-        t = contactLoc
-        # debris box
-        standing_utils.addViewerBox(
-            viz, 'world/debris'+str(contact_idx), 
-            2*s, 2*s, 0., [1., .2, .2, .5]
-            )
-        standing_utils.applyViewerConfiguration(
-            viz, 'world/debris'+str(contact_idx), 
-            [t[0], t[1], t[2]-0.017, 1, 0, 0, 0]
-            )
-        standing_utils.applyViewerConfiguration(
-            viz, 'world/debris_center'+str(contact_idx), 
-            [t[0], t[1], t[2]-0.017, 1, 0, 0, 0]
-            ) 
-
-
-    arrow1 = standing_utils.Arrow(viz.viewer, "force_1", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
-    arrow2 = standing_utils.Arrow(viz.viewer, "force_2", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
-    arrow3 = standing_utils.Arrow(viz.viewer, "force_3", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
-    arrow4 = standing_utils.Arrow(viz.viewer, "force_4", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
-
-    cone1 = standing_utils.Cone(viz.viewer, "friction_cone_1", location=supportFeePos[0], mu=0.5)
-    cone2 = standing_utils.Cone(viz.viewer, "friction_cone_2", location=supportFeePos[1], mu=0.5)
-    cone3 = standing_utils.Cone(viz.viewer, "friction_cone_3", location=supportFeePos[2], mu=0.5)
-    cone4 = standing_utils.Cone(viz.viewer, "friction_cone_4", location=supportFeePos[3], mu=0.5)
-
-    arrows = [arrow1, arrow2, arrow3, arrow4]
-    forces = []
-
-    for i, contactLoc in enumerate(supportFeePos):
-        ct_frame_name = rmodel.frames[supportFeetIds[i]].name + "_contact"
-        forces.append(np.array(solution[ct_frame_name])[:, :3])
-        arrows[i].set_location(contactLoc)
-
-    import time
-    # visualize DDP warm-start
-    for t in range(N_ocp):
-        time.sleep(dt)
-        viz.display(q_sol[t])
-
-        for i in range(len(supportFeePos)):
-            arrows[i].anchor_as_vector(supportFeePos[i], forces[i][t])
-        
+output_path = 'output.mp4'
+create_video_from_rgba(image_array_list, output_path)
