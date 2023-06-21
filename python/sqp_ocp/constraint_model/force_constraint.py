@@ -7,12 +7,8 @@ from . abstract_model import ConstraintModelAbstract
 
 
 class Force6DConstraintModel(ConstraintModelAbstract):
-    def __init__(self, Fmin, Fmax, nc, nx, nu):
-        ConstraintModelAbstract.__init__(self, nc, nx, nu)
-        self.lmin = Fmin
-        self.lmax = Fmax
-
-        self.nc = 6
+    def __init__(self, state, nu, Fmin, Fmax):
+        ConstraintModelAbstract.__init__(self, state, 6, nu, Fmin, Fmax)
 
     def calc(self, cdata, data, x, u=None): 
         cdata.c = data.differential.pinocchio.lambda_c
@@ -22,15 +18,11 @@ class Force6DConstraintModel(ConstraintModelAbstract):
         cdata.Cu = data.differential.df_du
 
 class LocalCone(ConstraintModelAbstract):
-    def __init__(self, mu, nc, nx, nu):
-        ConstraintModelAbstract.__init__(self, nc, nx, nu)
-        self.lmin = np.array([0.])
-        self.lmax = np.array([np.inf])
+    def __init__(self, state, nu, mu):
+        ConstraintModelAbstract.__init__(self, state, 1, nu, np.array([0.]), np.array([np.inf]))
         self.mu = mu
         self.dcone_df = np.zeros((1, 3))
 
-        self.nc = nc 
-        assert nc == 1 
 
     def calc(self, cdata, data, x, u=None): 
         F = data.differential.pinocchio.lambda_c[:3]

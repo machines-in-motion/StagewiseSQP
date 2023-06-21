@@ -10,7 +10,7 @@ import pinocchio
 import numpy as np
 np.set_printoptions(precision=4, linewidth=180)
 import pin_utils, ocp_utils
-from sqp_ocp.constraint_model import NoConstraint, LocalCone
+from sqp_ocp.constraint_model import NoConstraintModel, LocalCone, Force6DConstraintModel
 from sqp_ocp.solvers import SQPOCP
 
 # # # # # # # # # # # # #
@@ -94,12 +94,12 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 # Constraint model
 
 
-Fmin = np.array([-np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
-Fmax =  np.array([0, np.inf, 0, np.inf, np.inf, np.inf])
-# constraintModels = [Force6DConstraintModel(Fmin, Fmax, 6, 14, 7)] * T + [NoConstraint(14, 7)]
-mu = 0.19
-constraintModels = [LocalCone(mu, 1, 14, 7)] * T + [NoConstraint(14, 7)]
-# constraintModels = [NoConstraint(14, 7)] * (T+1)
+Fmin = np.array([0, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
+Fmax =  np.array([0, np.inf, np.inf, np.inf, np.inf, np.inf])
+constraintModels = [Force6DConstraintModel(state, nu, Fmin, Fmax)] * T + [NoConstraintModel(state, nu)]
+mu = 0.05
+# constraintModels = [LocalCone(state, nu, mu)] * T + [NoConstraintModel(state, nu)]
+# constraintModels = [NoConstraintModel(state, nu)] * (T+1)
 
 
 

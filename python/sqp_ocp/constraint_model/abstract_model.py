@@ -9,16 +9,15 @@ import pinocchio as pin
 try:
     from crocoddyl import ConstraintModelAbstract, NoConstraintModel
 except:
-    from crocoddyl import ConstraintModelAbstract
     print("USING PYTHON ABSTRACT")
 
     class ConstraintModelAbstract():
         def __init__(self, state, nc, nu, lb, ub):
-            self.state_ = state
-            self.nc_ = nc
-            self.nu_ = nu
-            self.lb_ = lb
-            self.ub_ = ub
+            self.state = state
+            self.nc = nc
+            self.nu = nu
+            self.lb = lb
+            self.ub = ub
 
         def createData(self):
             data = ConstraintData(self)
@@ -33,7 +32,7 @@ except:
 
     class NoConstraintModel(ConstraintModelAbstract):
         def __init__(self, state, nu):
-            ConstraintModelAbstract.__init__(self, state, 0, nu, np.zeros(state.nx), np.zeros(state.nx))
+            ConstraintModelAbstract.__init__(self, state, 0, nu, np.zeros(0), np.zeros(0))
 
         def calc(self, cdata, data, x, u=None): 
             pass
