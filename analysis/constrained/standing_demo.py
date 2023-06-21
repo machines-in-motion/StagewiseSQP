@@ -7,12 +7,12 @@ import pinocchio as pin
 import standing_utils
 import sobec
 
-from friction_cone import FrictionConeConstraint, Force3DConstraintModel
+# from friction_cone import FrictionConeConstraint, Force3DConstraintModel
 import sys
 
 pinRef        = pin.LOCAL_WORLD_ALIGNED
-FORCE_CSTR    = True
-FRICTION_CSTR = True
+FORCE_CSTR    = False
+FRICTION_CSTR = False
 PLOT = True
 
 robot_name = 'solo12'
@@ -142,7 +142,7 @@ for t in range(N_ocp+1):
     
     # Create constraint model stack for the current node
     # runningConstraintModel = crocoddyl.ConstraintStack([fc for fc in forceConstraintModels]+[fc for fc in frictionConstraintModels], state, n_cstr, actuation.nu, 'runningConstraintModel')
-    runningConstraintModel = crocoddyl.ConstraintStack([fc for fc in forceConstraintModels], state, n_cstr, actuation.nu, 'runningConstraintModel')
+    # runningConstraintModel = crocoddyl.ConstraintStack([fc for fc in forceConstraintModels], state, n_cstr, actuation.nu, 'runningConstraintModel')
 
     # clip_state_max = np.array([np.inf]*(state.nx))
     # clip_state_min = -np.array([np.inf]*(state.nx))
@@ -150,10 +150,10 @@ for t in range(N_ocp+1):
     # runningConstraintModel = crocoddyl.ConstraintStack([statemodel], state, statemodel.nc, actuation.nu, 'runningConstraintModel')
 
     # Append the constraint model stack to the list of constraint models
-    if( t == 0 or t == N_ocp):
-        constraintModels += [crocoddyl.NoConstraintModel(state, actuation.nu, "noCstr")]
-    else:
-        constraintModels += [runningConstraintModel] 
+    # if( t == 0 or t == N_ocp):
+    #     constraintModels += [crocoddyl.NoConstraintModel(state, actuation.nu, "noCstr")]
+    # else:
+    #     constraintModels += [runningConstraintModel] 
 
     dmodel = sobec.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel, costModel, 0., True)
     model = crocoddyl.IntegratedActionModelEuler(dmodel, dt)
@@ -164,17 +164,17 @@ for t in range(N_ocp+1):
 ocp = crocoddyl.ShootingProblem(x0, running_models[:-1], running_models[-1])
 
 # Create solver , warm-start and solve
-# solver = crocoddyl.SolverFDDP(ocp)
-solver = crocoddyl.SolverFADMM(ocp, constraintModels)
+solver = crocoddyl.SolverFDDP(ocp)
+# solver = crocoddyl.SolverFADMM(ocp, constraintModels)
 # solver = crocoddyl.SolverPROXQP(ocp, constraintModels)
-solver.with_callbacks = True
-solver.use_filter_ls = True
-solver.filter_size = 200
-solver.termination_tolerance = 1e-3
-solver.eps_abs = 1e-9
-solver.eps_rel = 0.
-solver.max_qp_iters = 1000
-solver.KKT = True
+# solver.with_callbacks = True
+# solver.use_filter_ls = True
+# solver.filter_size = 200
+# solver.termination_tolerance = 1e-3
+# solver.eps_abs = 1e-9
+# solver.eps_rel = 0.
+# solver.max_qp_iters = 1000
+# solver.KKT = True
   
 # solver.setCallbacks([crocoddyl.CallbackLogger(),
 #                      crocoddyl.CallbackVerbose()])    
@@ -264,9 +264,9 @@ if(PLOT):
 
     plt.title("COM trajectory")
 
-    plt.show()
+    # plt.show()
 
-
+    import meshcat.transformations as tf    
     # create robot
     robot = Solo12Config.buildRobotWrapper()
     # load robot in meshcat viewer
@@ -278,7 +278,15 @@ if(PLOT):
         print(err)
         sys.exit(0)
     viz.loadViewerModel()
-    viz.camera_zoom = 0.2  # zoom in
+
+
+
+    cam_pose = tf.translation_matrix([-2, 0, 0.])  # Example camera position
+    cam_pose[:3, :3] = tf.euler_matrix(0.0, 0.0, np.pi/6)[:3, :3]  # Example camera orientation
+    viz.viewer["/Cameras"].set_transform(cam_pose)
+
+
+
     # add contact surfaces
     step_adjustment_bound = 0.07                         
     s = 0.5*step_adjustment_bound
@@ -321,7 +329,7 @@ if(PLOT):
     import time
     # visualize DDP warm-start
     for t in range(N_ocp):
-        time.sleep(dt*10)
+        time.sleep(dt)
         viz.display(q_sol[t])
 
         for i in range(len(supportFeePos)):
