@@ -50,7 +50,8 @@ else:
 
     # r1 = DataReader('/tmp/kuka_circle_real_=FADMM_NO_CONSTRAINT.mds')  # baseline
     # r1 = DataReader('/tmp/kuka_circle_real_FADMM_no_constraint.mds')  
-    r1 = DataReader('/home/skleff/Desktop/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_square_1683311293.0681663.mds')  
+    # r1 = DataReader('/home/skleff/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_square_1683311293.0681663.mds')  
+    r1 = DataReader('/home/skleff/data_paper_fadmm/circle_no_cstr/no_constraint_1683299184.3249779.mds')  
     # r1 = DataReader('/tmp/kuka_circle_real_PROXQP_warm_start_y=False_reset_rho=False_allJoints.mds')  # current best
     r2 = r1
     r3 = r1
@@ -149,8 +150,8 @@ p_mea2 = get_p_(r2.data['joint_positions'], pinrobot.model, pinrobot.model.getFr
 p_mea3 = get_p_(r3.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
 p_des = get_p_(r1.data['x_des'][:,:nq], pinrobot.model, pinrobot.model.getFrameId('contact'))
 
-plb = r1.data['lb_square']
-pub = r1.data['ub_square']
+plb = 0.*p_mea1 #r1.data['lb_square']
+pub = 0.*p_mea1 #r1.data['ub_square']
 print()
 # pub = np.array([np.inf, r1.data['center_y'] + r1.data['radius2'], r1.data['center_z'] + r1.data['radius2']]) 
 target_position = np.zeros((N, 3)) #r.data['target_position'] #

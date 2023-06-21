@@ -113,31 +113,54 @@ DAM = sobec.DifferentialActionModelContactFwdDynamics(state, actuation, contactM
 IAM = crocoddyl.IntegratedActionModelEuler(DAM, 1e-2)
 IAD = IAM.createData()
 
-# Constraints
-frictionmodel = FrictionConeConstraint(state, 0., 1, actuation.nu, contact_frame_id, pinRefFrame)
-# ConstraintModel = crocoddyl.ConstraintStack([frictionmodel], state, frictionmodel.nc, 7, 'runningConstraint')
 
+# TEST FORCE CONSTRAINT IN CPP AND PYTHON
+clip_force_min = np.array([-np.inf, -np.inf, 5])
+clip_force_max = np.array([np.inf, np.inf, np.inf]) 
+forcemodel_cpp = crocoddyl.ContactForceConstraintModel3D(state, actuation.nu, contact_frame_id, clip_force_min, clip_force_max, "forceConstraint", pinRefFrame)
+forcemodel_py = Force3DConstraintModel(state, clip_force_min, clip_force_max, 3, state.nx, actuation.nu) 
+CM_CPP = forcemodel_cpp
+CM_PY  = forcemodel_py
+CD_CPP = CM_CPP.createData()
+CD_PY  = CM_PY.createData()
+IAM.differential.calc(IAD.differential, x0, tau0)
+IAM.differential.calcDiff(IAD.differential, x0, tau0)
+IAM.calc(IAD, x0, tau0)
+IAM.calcDiff(IAD, x0, tau0)
+CM_CPP.calc(CD_CPP, IAD, x0, tau0)
+CM_CPP.calcDiff(CD_CPP, IAD, x0, tau0)
+CM_PY.calc(CD_PY, IAD, x0, tau0)
+CM_PY.calcDiff(CD_PY, IAD, x0, tau0)
+
+assert(np.linalg.norm(CD_CPP.c - CD_PY.c) <= TOL)
+assert(np.linalg.norm(dC_dq - dC_dq_ND) <= TOL)
+assert(np.linalg.norm(dC_dq - dC_dq_ND) <= TOL)
+assert(np.linalg.norm(dC_dq - dC_dq_ND) <= TOL)
+
+zpreogr
+
+
+
+
+
+
+# TEST FRICTION CONE CONSTRAINT DERIVATIVES
+frictionmodel = FrictionConeConstraint(state, 0., 1, actuation.nu, contact_frame_id, pinRefFrame)
 def cm_calc(cm, cd, iam, iad, q, v, u):
     iam.calc(iad, np.concatenate([q,v]), u)
     cm.calc(cd, iad, np.concatenate([q,v]), u)
     return cd.c
-
 def iam_calc(iam, iad, q, v, u):
     iam.calc(iad, np.concatenate([q,v]), u)
     return iad.xnext
-
-# relation between LOCAL and LWA derivatives
 CM = frictionmodel
 CD = CM.createData()
 IAM.differential.calc(IAD.differential, x0, tau0)
 IAM.differential.calcDiff(IAD.differential, x0, tau0)
-
 IAM.calc(IAD, x0, tau0)
 IAM.calcDiff(IAD, x0, tau0)
-
 CM.calc(CD, IAD, x0, tau0)
 CM.calcDiff(CD, IAD, x0, tau0)
-
 # Dynamics derivatives
 dF_dq = IAD.Fx[:,:nq]
 dF_dv = IAD.Fx[:,nq:]
@@ -150,12 +173,9 @@ dC_dtau = CD.Cu
 dF_dq_ND = numdiff(lambda q_:iam_calc(IAM, IAD, q_, v0, tau0), q0)
 dF_dv_ND = numdiff(lambda v_:iam_calc(IAM, IAD, q0, v_, tau0), v0)
 dF_dtau_ND = numdiff(lambda tau_:iam_calc(IAM, IAD, q0, v0, tau_), tau0)
-
 dC_dq_ND = numdiff(lambda q_:cm_calc(CM, CD, IAM, IAD, q_, v0, tau0), q0)
 dC_dv_ND = numdiff(lambda v_:cm_calc(CM, CD, IAM, IAD, q0, v_, tau0), v0)
 dC_dtau_ND = numdiff(lambda tau_:cm_calc(CM, CD, IAM, IAD, q0, v0, tau_), tau0)
-
-
 assert(np.linalg.norm(dF_dq - dF_dq_ND) <= TOL)
 assert(np.linalg.norm(dF_dv - dF_dv_ND) <= TOL)
 assert(np.linalg.norm(dF_dtau - dF_dtau_ND) <= TOL)
