@@ -362,9 +362,6 @@ for t in range(N_ocp):
     for i in range(len(supportFeePos)):
         arrows[i].anchor_as_vector(supportFeePos[i], forces[i][t])
     
-    # cam_pose[:3, :3] = tf.euler_matrix(0.0, 0.0, angle)[:3, :3]
-    # viz.viewer["/Cameras"].set_transform(cam_pose)
-    # angle += rotation_speed
 
     image_array_list.append(viz.captureImage())
 
