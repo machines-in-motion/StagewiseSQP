@@ -7,12 +7,12 @@ import pinocchio as pin
 import standing_utils
 import sobec
 
-from friction_cone import FrictionConeConstraint, Force3DConstraintModel
+# from friction_cone import FrictionConeConstraint, Force3DConstraintModel
 import sys
 
 pinRef        = pin.LOCAL_WORLD_ALIGNED
-FORCE_CSTR    = True
-FRICTION_CSTR = True
+FORCE_CSTR    = False
+FRICTION_CSTR = False
 PLOT = True
 
 robot_name = 'solo12'
@@ -59,7 +59,7 @@ comDes = []
 N_ocp = 100 #100
 dt = 0.01
 T = N_ocp * dt
-radius = 0.01
+radius = 0.1
 for t in range(N_ocp+1):
     comDes_t = comRef.copy()
     w = (2 * np.pi) / T
@@ -143,7 +143,7 @@ for t in range(N_ocp+1):
     
     # Create constraint model stack for the current node
     # runningConstraintModel = crocoddyl.ConstraintStack([fc for fc in forceConstraintModels]+[fc for fc in frictionConstraintModels], state, n_cstr, actuation.nu, 'runningConstraintModel')
-    runningConstraintModel = crocoddyl.ConstraintStack([fc for fc in forceConstraintModels], state, n_cstr, actuation.nu, 'runningConstraintModel')
+    # runningConstraintModel = crocoddyl.ConstraintStack([fc for fc in forceConstraintModels], state, n_cstr, actuation.nu, 'runningConstraintModel')
 
     # clip_state_max = np.array([np.inf]*(state.nx))
     # clip_state_min = -np.array([np.inf]*(state.nx))
@@ -151,10 +151,10 @@ for t in range(N_ocp+1):
     # runningConstraintModel = crocoddyl.ConstraintStack([statemodel], state, statemodel.nc, actuation.nu, 'runningConstraintModel')
 
     # Append the constraint model stack to the list of constraint models
-    if( t == 0 or t == N_ocp):
-        constraintModels += [crocoddyl.NoConstraintModel(state, actuation.nu, "noCstr")]
-    else:
-        constraintModels += [runningConstraintModel] 
+    # if( t == 0 or t == N_ocp):
+    #     constraintModels += [crocoddyl.NoConstraintModel(state, actuation.nu, "noCstr")]
+    # else:
+    #     constraintModels += [runningConstraintModel] 
 
     dmodel = sobec.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel, costModel, 0., True)
     model = crocoddyl.IntegratedActionModelEuler(dmodel, dt)
@@ -165,17 +165,17 @@ for t in range(N_ocp+1):
 ocp = crocoddyl.ShootingProblem(x0, running_models[:-1], running_models[-1])
 
 # Create solver , warm-start and solve
-# solver = crocoddyl.SolverFDDP(ocp)
-solver = crocoddyl.SolverFADMM(ocp, constraintModels)
+solver = crocoddyl.SolverFDDP(ocp)
+# solver = crocoddyl.SolverFADMM(ocp, constraintModels)
 # solver = crocoddyl.SolverPROXQP(ocp, constraintModels)
-solver.with_callbacks = True
-solver.use_filter_ls = True
-solver.filter_size = 200
-solver.termination_tolerance = 1e-3
-solver.eps_abs = 1e-9
-solver.eps_rel = 0.
-solver.max_qp_iters = 1000
-solver.KKT = True
+# solver.with_callbacks = True
+# solver.use_filter_ls = True
+# solver.filter_size = 200
+# solver.termination_tolerance = 1e-3
+# solver.eps_abs = 1e-9
+# solver.eps_rel = 0.
+# solver.max_qp_iters = 1000
+# solver.KKT = True
   
 # solver.setCallbacks([crocoddyl.CallbackLogger(),
 #                      crocoddyl.CallbackVerbose()])    
@@ -265,66 +265,108 @@ if(PLOT):
 
     plt.title("COM trajectory")
 
-    plt.show()
+    # plt.show()
 
 
-    # create robot
-    robot = Solo12Config.buildRobotWrapper()
-    # load robot in meshcat viewer
-    viz = pin.visualize.MeshcatVisualizer(
-    robot.model, robot.collision_model, robot.visual_model)
-    try:
-        viz.initViewer(open=True)
-    except ImportError as err:
-        print(err)
-        sys.exit(0)
-    viz.loadViewerModel()
-    viz.camera_zoom = 0.2  # zoom in
-    # add contact surfaces
-    step_adjustment_bound = 0.07                         
-    s = 0.5*step_adjustment_bound
-
-    for contact_idx, contactLoc in enumerate(supportFeePos):
-        t = contactLoc
-        # debris box
-        standing_utils.addViewerBox(
-            viz, 'world/debris'+str(contact_idx), 
-            2*s, 2*s, 0., [1., .2, .2, .5]
-            )
-        standing_utils.applyViewerConfiguration(
-            viz, 'world/debris'+str(contact_idx), 
-            [t[0], t[1], t[2]-0.017, 1, 0, 0, 0]
-            )
-        standing_utils.applyViewerConfiguration(
-            viz, 'world/debris_center'+str(contact_idx), 
-            [t[0], t[1], t[2]-0.017, 1, 0, 0, 0]
-            ) 
+from meshcat.animation import Animation
+import meshcat.transformations as tf    
+# create robot
+robot = Solo12Config.buildRobotWrapper()
+# load robot in meshcat viewer
+viz = pin.visualize.MeshcatVisualizer(
+robot.model, robot.collision_model, robot.visual_model)
+try:
+    viz.initViewer(open=True)
+except ImportError as err:
+    print(err)
+    sys.exit(0)
+viz.loadViewerModel()
 
 
-    arrow1 = standing_utils.Arrow(viz.viewer, "force_1", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
-    arrow2 = standing_utils.Arrow(viz.viewer, "force_2", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
-    arrow3 = standing_utils.Arrow(viz.viewer, "force_3", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
-    arrow4 = standing_utils.Arrow(viz.viewer, "force_4", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+# angle = 0.0  # Initial angle
+# rotation_speed = 0.05  # Speed of rotation (adjust as needed)
 
-    cone1 = standing_utils.Cone(viz.viewer, "friction_cone_1", location=supportFeePos[0], mu=0.5)
-    cone2 = standing_utils.Cone(viz.viewer, "friction_cone_2", location=supportFeePos[1], mu=0.5)
-    cone3 = standing_utils.Cone(viz.viewer, "friction_cone_3", location=supportFeePos[2], mu=0.5)
-    cone4 = standing_utils.Cone(viz.viewer, "friction_cone_4", location=supportFeePos[3], mu=0.5)
+cam_pose = tf.translation_matrix([-3.5, 0, 0.])  # Example camera position
+cam_pose[:3, :3] = tf.euler_matrix(0.0, 0.0, np.pi/6)[:3, :3]  # Example camera orientation
+viz.viewer["/Cameras"].set_transform(cam_pose)
 
-    arrows = [arrow1, arrow2, arrow3, arrow4]
-    forces = []
 
-    for i, contactLoc in enumerate(supportFeePos):
-        ct_frame_name = rmodel.frames[supportFeetIds[i]].name + "_contact"
-        forces.append(np.array(solution[ct_frame_name])[:, :3])
-        arrows[i].set_location(contactLoc)
 
-    import time
-    # visualize DDP warm-start
-    for t in range(N_ocp):
-        time.sleep(dt*10)
-        viz.display(q_sol[t])
+# add contact surfaces
+step_adjustment_bound = 0.07                         
+s = 0.5*step_adjustment_bound
 
-        for i in range(len(supportFeePos)):
-            arrows[i].anchor_as_vector(supportFeePos[i], forces[i][t])
-        
+for contact_idx, contactLoc in enumerate(supportFeePos):
+    t = contactLoc
+    # debris box
+    standing_utils.addViewerBox(
+        viz, 'world/debris'+str(contact_idx), 
+        2*s, 2*s, 0., [1., .2, .2, .5]
+        )
+    standing_utils.applyViewerConfiguration(
+        viz, 'world/debris'+str(contact_idx), 
+        [t[0], t[1], t[2]-0.017, 1, 0, 0, 0]
+        )
+    standing_utils.applyViewerConfiguration(
+        viz, 'world/debris_center'+str(contact_idx), 
+        [t[0], t[1], t[2]-0.017, 1, 0, 0, 0]
+        ) 
+
+
+arrow1 = standing_utils.Arrow(viz.viewer, "force_1", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+arrow2 = standing_utils.Arrow(viz.viewer, "force_2", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+arrow3 = standing_utils.Arrow(viz.viewer, "force_3", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+arrow4 = standing_utils.Arrow(viz.viewer, "force_4", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+
+cone1 = standing_utils.Cone(viz.viewer, "friction_cone_1", location=supportFeePos[0], mu=0.5)
+cone2 = standing_utils.Cone(viz.viewer, "friction_cone_2", location=supportFeePos[1], mu=0.5)
+cone3 = standing_utils.Cone(viz.viewer, "friction_cone_3", location=supportFeePos[2], mu=0.5)
+cone4 = standing_utils.Cone(viz.viewer, "friction_cone_4", location=supportFeePos[3], mu=0.5)
+
+arrows = [arrow1, arrow2, arrow3, arrow4]
+forces = []
+
+for i, contactLoc in enumerate(supportFeePos):
+    ct_frame_name = rmodel.frames[supportFeetIds[i]].name + "_contact"
+    forces.append(np.array(solution[ct_frame_name])[:, :3])
+    arrows[i].set_location(contactLoc)
+
+
+import imageio
+
+def create_video_from_rgba(images, output_path, fps=5):
+    """
+    Create an MP4 video from an RGBA image array.
+
+    Args:
+        images (list): List of RGBA image arrays.
+        output_path (str): Path to save the resulting MP4 video.
+        fps (int): Frames per second for the video (default: 200).
+    """
+    writer = imageio.get_writer(output_path, format='ffmpeg', fps=fps)
+
+    for img in images:
+        writer.append_data(img)
+
+    writer.close()
+
+
+image_array_list = []
+
+
+import time
+# visualize DDP warm-start
+for t in range(N_ocp):
+    # time.sleep(dt)
+    viz.display(q_sol[t])
+
+    for i in range(len(supportFeePos)):
+        arrows[i].anchor_as_vector(supportFeePos[i], forces[i][t])
+    
+
+    image_array_list.append(viz.captureImage())
+
+
+
+output_path = 'output.mp4'
+create_video_from_rgba(image_array_list, output_path)
