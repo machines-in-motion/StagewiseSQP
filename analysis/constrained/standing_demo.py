@@ -123,9 +123,9 @@ for t in range(N_ocp+1):
     n_cstr = 0
 
     force_cstr = standing_utils.Force3DConstraintModelSoloStanding(state, actuation.nu, clip_force_min, clip_force_max, "feet_cstr")
-    mu = 2.
+    mu = 0.8
     friction_cstr = standing_utils.FrictionConstraintModelSoloStanding(state, mu, nu)
-    n_cstr = 12 +4
+    n_cstr = 12+4
        
     # Create constraint model stack for the current node
     # runningConstraintModel = crocoddyl.ConstraintStack([force_cstr], state, n_cstr, actuation.nu, 'runningConstraintModel')

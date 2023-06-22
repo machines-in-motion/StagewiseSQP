@@ -23,10 +23,8 @@ class Force3DConstraintModelSoloStanding(crocoddyl.ConstraintModelAbstract):
 
 class FrictionConstraintModelSoloStanding(crocoddyl.ConstraintModelAbstract):
     def __init__(self, state, mu, nu):
-        crocoddyl.ConstraintModelAbstract.__init__(self, state, 4, nu, np.array([-np.inf]*4), np.array([0.]*4), 'friction')
-        # self.lmin = np.array([0.]*4)
-        # self.lmax = np.array([np.inf]*4)
-        self.mu = 1./mu
+        crocoddyl.ConstraintModelAbstract.__init__(self, state, 4, nu, np.array([0.]*4), np.array([np.inf]*4), 'friction')
+        self.mu = mu
         self.dcone_df = np.zeros((4, 12))
 
     def calc(self, cdata, data, x, u=None): 
