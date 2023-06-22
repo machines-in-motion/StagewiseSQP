@@ -7,12 +7,11 @@ import pinocchio as pin
 import standing_utils
 import sobec
 
-from friction_cone import FrictionConeConstraint, Force3DConstraintModel
 import sys
 
 pinRef        = pin.LOCAL_WORLD_ALIGNED
-FORCE_CSTR    = True
-FRICTION_CSTR = False
+FORCE_CSTR    = False
+FRICTION_CSTR = True
 PLOT = True
 PLAY = True
 SAVE = False
@@ -58,13 +57,13 @@ nu = actuation.nu
 
 comDes = []
 
-N_ocp = 100 #100
-dt = 0.01
+N_ocp = 250 #100
+dt = 0.02
 T = N_ocp * dt
-radius = 0.1
+radius = 0.06
 for t in range(N_ocp+1):
     comDes_t = comRef.copy()
-    w = (2 * np.pi) * 0.3 # / T
+    w = (2 * np.pi) * 0.2 # / T
     comDes_t[0] += radius * np.sin(w * t * dt) 
     comDes_t[1] += radius * (np.cos(w * t * dt) - 1)
     comDes += [comDes_t]
@@ -116,22 +115,21 @@ for t in range(N_ocp+1):
         costModel.addCost("comTrack", com_track, 1e5)
 
     # Add contact force constraint >= 0 & friction cone 
-    clip_force_min = np.array([-np.inf, -np.inf, 0.]*4)
-    clip_force_max = np.array([np.inf, np.inf, np.inf]*4)
-    forceConstraintModels = []
-    frictionConstraintModels = []
+    cstr_list = []
     n_cstr = 0
-
-    force_cstr = standing_utils.Force3DConstraintModelSoloStanding(state, actuation.nu, clip_force_min, clip_force_max, "feet_cstr")
-    mu = 0.8
-    friction_cstr = standing_utils.FrictionConstraintModelSoloStanding(state, mu, nu)
-    n_cstr = 12+4
-       
+    if(FORCE_CSTR):
+        clip_force_min = np.array([-np.inf, -np.inf, 0.]*4)
+        clip_force_max = np.array([np.inf, np.inf, np.inf]*4)
+        cstr_list.append(standing_utils.Force3DConstraintModelSoloStanding(state, actuation.nu, clip_force_min, clip_force_max, "feet_cstr"))
+        n_cstr += 12
+    if(FRICTION_CSTR):
+        mu = 0.8
+        cstr_list.append(standing_utils.FrictionConstraintModelSoloStanding(state, mu, nu))
+        n_cstr += 4
+    if(not FRICTION_CSTR and not FORCE_CSTR):
+        cstr_list = [crocoddyl.NoConstraintModel(state, actuation.nu, "noCstr")]
     # Create constraint model stack for the current node
-    # runningConstraintModel = crocoddyl.ConstraintStack([force_cstr], state, n_cstr, actuation.nu, 'runningConstraintModel')
-    runningConstraintModel = crocoddyl.ConstraintStack([force_cstr, friction_cstr], state, n_cstr, actuation.nu, 'runningConstraintModel')
-    # runningConstraintModel = crocoddyl.NoConstraintModel(state, actuation.nu, "noCstr")
-    # runningConstraintModel = crocoddyl.ConstraintStack([friction_cstr], state, n_cstr, actuation.nu, 'runningConstraintModel')
+    runningConstraintModel = crocoddyl.ConstraintStack(cstr_list, state, n_cstr, actuation.nu, 'runningConstraintModel')
 
     # Append the constraint model stack to the list of constraint models
     if( t == N_ocp):
@@ -150,21 +148,20 @@ ocp = crocoddyl.ShootingProblem(x0, running_models[:-1], running_models[-1])
 # Create solver , warm-start and solve
 # solver = crocoddyl.SolverFDDP(ocp)
 solver = crocoddyl.SolverFADMM(ocp, constraintModels)
+max_iter = 500
 # solver = crocoddyl.SolverPROXQP(ocp, constraintModels)
 solver.with_callbacks = True
 solver.use_filter_ls = True
-solver.filter_size = 200
+solver.filter_size = max_iter
 solver.termination_tolerance = 1e-2
-solver.eps_abs = 1e-4
-solver.eps_rel = 1e-4
+solver.eps_abs = 1e-6
+solver.eps_rel = 1e-6
 solver.max_qp_iters = 10000
 solver.KKT = True
-  
 # solver.setCallbacks([crocoddyl.CallbackLogger(),
 #                      crocoddyl.CallbackVerbose()])    
 xs = [x0]*(solver.problem.T + 1)
 us = solver.problem.quasiStatic([x0]*solver.problem.T) #[np.zeros(actuation.nu)]*solver.problem.T #solver.us #solver.problem.quasiStatic([x0]*solver.problem.T)
-max_iter = 50
 solver.solve(xs, us, max_iter)   
 
 
@@ -188,10 +185,10 @@ if(PLOT):
         axs[i, 1].plot(time_lin, forces[:, 1], label="Fy")
         axs[i, 2].plot(time_lin, forces[:, 2], label="Fz")
         # Add friction cone constraints 
-        Fz_ub = mu*np.sqrt(forces[:, 0]**2 + forces[:, 1]**2)
-        Fz_lb = np.zeros(time_lin.shape)
-        axs[i, 2].plot(time_lin, Fz_ub, 'k-.', label='ub')
-        axs[i, 2].plot(time_lin, Fz_lb, 'g-.', label='lb')
+        Fz_lb = (1./mu)*np.sqrt(forces[:, 0]**2 + forces[:, 1]**2)
+        # Fz_ub = np.zeros(time_lin.shape)
+        # axs[i, 2].plot(time_lin, Fz_ub, 'k-.', label='ub')
+        axs[i, 2].plot(time_lin, Fz_lb, 'k-.', label='lb')
         axs[i, 0].grid()
         axs[i, 1].grid()
         axs[i, 2].grid()
