@@ -21,6 +21,43 @@ class Force3DConstraintModelSoloStanding(crocoddyl.ConstraintModelAbstract):
 
 
 
+class FrictionConstraintModelSoloStanding(crocoddyl.ConstraintModelAbstract):
+    def __init__(self, state, mu, nu):
+        crocoddyl.ConstraintModelAbstract.__init__(self, state, 4, nu, np.array([-np.inf]*4), np.array([0.]*4), 'friction')
+        # self.lmin = np.array([0.]*4)
+        # self.lmax = np.array([np.inf]*4)
+        self.mu = 1./mu
+        self.dcone_df = np.zeros((4, 12))
+
+    def calc(self, cdata, data, x, u=None): 
+        # constraint residual (expressed in constraint ref frame already)
+        F = data.differential.pinocchio.lambda_c
+        cdata.c[0] = np.array([self.mu * F[2] - np.sqrt(F[0]**2 + F[1]**2)])
+        cdata.c[1] = np.array([self.mu * F[5] - np.sqrt(F[3]**2 + F[4]**2)])
+        cdata.c[2] = np.array([self.mu * F[8] - np.sqrt(F[6]**2 + F[7]**2)])
+        cdata.c[3] = np.array([self.mu * F[11] - np.sqrt(F[9]**2 + F[10]**2)])
+
+    def calcDiff(self, cdata, data, x, u=None):
+        F = data.differential.pinocchio.lambda_c
+        self.dcone_df[0, 0] = -F[0] / np.sqrt(F[0]**2 + F[1]**2)
+        self.dcone_df[0, 1] = -F[1] / np.sqrt(F[0]**2 + F[1]**2)
+        self.dcone_df[0, 2] = self.mu
+
+        self.dcone_df[1, 3] = -F[3] / np.sqrt(F[3]**2 + F[4]**2)
+        self.dcone_df[1, 4] = -F[4] / np.sqrt(F[3]**2 + F[4]**2)
+        self.dcone_df[1, 5] = self.mu
+
+        self.dcone_df[2, 6] = -F[6] / np.sqrt(F[6]**2 + F[7]**2)
+        self.dcone_df[2, 7] = -F[7] / np.sqrt(F[6]**2 + F[7]**2)
+        self.dcone_df[2, 8] = self.mu
+
+        self.dcone_df[3, 9] = -F[9] / np.sqrt(F[9]**2 + F[10]**2)
+        self.dcone_df[3, 10] = -F[10] / np.sqrt(F[9]**2 + F[10]**2)
+        self.dcone_df[3, 11] = self.mu
+
+        cdata.Cx = self.dcone_df @ data.differential.df_dx 
+        cdata.Cu = self.dcone_df @ data.differential.df_du
+
 
 def meshcat_material(r, g, b, a):
         material = meshcat.geometry.MeshPhongMaterial()

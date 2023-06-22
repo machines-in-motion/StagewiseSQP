@@ -14,7 +14,8 @@ pinRef        = pin.LOCAL_WORLD_ALIGNED
 FORCE_CSTR    = True
 FRICTION_CSTR = False
 PLOT = True
-PLAY = False
+PLAY = True
+SAVE = False
 
 robot_name = 'solo12'
 ee_frame_names = ['FL_FOOT', 'FR_FOOT', 'HL_FOOT', 'HR_FOOT']
@@ -63,7 +64,7 @@ T = N_ocp * dt
 radius = 0.1
 for t in range(N_ocp+1):
     comDes_t = comRef.copy()
-    w = (2 * np.pi) / T
+    w = (2 * np.pi) * 0.3 # / T
     comDes_t[0] += radius * np.sin(w * t * dt) 
     comDes_t[1] += radius * (np.cos(w * t * dt) - 1)
     comDes += [comDes_t]
@@ -115,36 +116,22 @@ for t in range(N_ocp+1):
         costModel.addCost("comTrack", com_track, 1e5)
 
     # Add contact force constraint >= 0 & friction cone 
-    clip_force_min = np.array([-np.inf, -np.inf, 0]*4)
+    clip_force_min = np.array([-np.inf, -np.inf, 0.]*4)
     clip_force_max = np.array([np.inf, np.inf, np.inf]*4)
     forceConstraintModels = []
     frictionConstraintModels = []
     n_cstr = 0
 
-    # force_cstr_1 = crocoddyl.ContactForceConstraintModel3D(state, actuation.nu, supportFeetIds[0], clip_force_min, clip_force_max, rmodel.frames[supportFeetIds[0]].name+"_forceConstraint", pinRef)
-    # force_cstr_2 = crocoddyl.ContactForceConstraintModel3D(state, actuation.nu, supportFeetIds[1], clip_force_min, clip_force_max, rmodel.frames[supportFeetIds[1]].name+"_forceConstraint", pinRef)
-    force_cstr_2 = standing_utils.Force3DConstraintModelSoloStanding(state, actuation.nu, clip_force_min, clip_force_max, "feet_cstr")
-    
-    # force_cstr_3 = crocoddyl.ContactForceConstraintModel3D(state, actuation.nu, supportFeetIds[2], clip_force_min, clip_force_max, rmodel.frames[supportFeetIds[2]].name+"_forceConstraint", pinRef)
-    # force_cstr_4 = crocoddyl.ContactForceConstraintModel3D(state, actuation.nu, supportFeetIds[3], clip_force_min, clip_force_max, rmodel.frames[supportFeetIds[3]].name+"_forceConstraint", pinRef)
-    n_cstr = 12
-    
-    # for frame_idx in supportFeetIds[0:2]:
-    #     # print("frame id = ", frame_idx)
-    #     # if(FORCE_CSTR):
-    #     force_cstr = crocoddyl.ContactForceConstraintModel3D(state, actuation.nu, frame_idx, clip_force_min, clip_force_max, rmodel.frames[frame_idx].name+"_forceConstraint", pinRef)
-    #     # print("ctreated constraint ", force_cstr.name, " with lb=", force_cstr.lb, "ub = ", force_cstr.ub)
-    #     # force_cstr = Force3DConstraintModel(state, clip_force_min, clip_force_max, 3, state.nx, actuation.nu) 
-    #     forceConstraintModels.append(force_cstr)
-    #     n_cstr += force_cstr.nc
-    #     # if(FRICTION_CSTR):
-    #     #     friction_cstr = FrictionConeConstraint(state, 0.8, 1, actuation.nu, frame_idx, pinRef)
-    #     #     frictionConstraintModels.append(friction_cstr)
-    #     #     n_cstr += friction_cstr.nc
-    
+    force_cstr = standing_utils.Force3DConstraintModelSoloStanding(state, actuation.nu, clip_force_min, clip_force_max, "feet_cstr")
+    mu = 2.
+    friction_cstr = standing_utils.FrictionConstraintModelSoloStanding(state, mu, nu)
+    n_cstr = 12 +4
+       
     # Create constraint model stack for the current node
-    # runningConstraintModel = crocoddyl.ConstraintStack([fc for fc in forceConstraintModels]+[fc for fc in frictionConstraintModels], state, n_cstr, actuation.nu, 'runningConstraintModel')
-    runningConstraintModel = crocoddyl.ConstraintStack([force_cstr_2], state, n_cstr, actuation.nu, 'runningConstraintModel')
+    # runningConstraintModel = crocoddyl.ConstraintStack([force_cstr], state, n_cstr, actuation.nu, 'runningConstraintModel')
+    runningConstraintModel = crocoddyl.ConstraintStack([force_cstr, friction_cstr], state, n_cstr, actuation.nu, 'runningConstraintModel')
+    # runningConstraintModel = crocoddyl.NoConstraintModel(state, actuation.nu, "noCstr")
+    # runningConstraintModel = crocoddyl.ConstraintStack([friction_cstr], state, n_cstr, actuation.nu, 'runningConstraintModel')
 
     # Append the constraint model stack to the list of constraint models
     if( t == N_ocp):
@@ -167,7 +154,7 @@ solver = crocoddyl.SolverFADMM(ocp, constraintModels)
 solver.with_callbacks = True
 solver.use_filter_ls = True
 solver.filter_size = 200
-solver.termination_tolerance = 2e-3
+solver.termination_tolerance = 1e-2
 solver.eps_abs = 1e-4
 solver.eps_rel = 1e-4
 solver.max_qp_iters = 10000
@@ -176,8 +163,8 @@ solver.KKT = True
 # solver.setCallbacks([crocoddyl.CallbackLogger(),
 #                      crocoddyl.CallbackVerbose()])    
 xs = [x0]*(solver.problem.T + 1)
-us = [np.zeros(actuation.nu)]*solver.problem.T #solver.us #solver.problem.quasiStatic([x0]*solver.problem.T)
-max_iter = 200
+us = solver.problem.quasiStatic([x0]*solver.problem.T) #[np.zeros(actuation.nu)]*solver.problem.T #solver.us #solver.problem.quasiStatic([x0]*solver.problem.T)
+max_iter = 50
 solver.solve(xs, us, max_iter)   
 
 
@@ -190,15 +177,6 @@ centroidal_sol = solution['centroidal']
 import matplotlib.pyplot as plt
 if(PLOT):
 
-    # comDes = np.array(comDes)
-    # centroidal_sol = np.array(centroidal_sol)
-    # plt.figure()
-    # plt.plot(comDes[:, 0], comDes[:, 1], "--", label="reference")
-    # plt.plot(centroidal_sol[:, 0], centroidal_sol[:, 1], label="solution")
-    # plt.legend()
-    # plt.xlabel("x")
-    # plt.ylabel("y")
-    # plt.title("COM trajectory")
 
 
     time_lin = np.linspace(0, T, solver.problem.T)
@@ -209,6 +187,11 @@ if(PLOT):
         axs[i, 0].plot(time_lin, forces[:, 0], label="Fx")
         axs[i, 1].plot(time_lin, forces[:, 1], label="Fy")
         axs[i, 2].plot(time_lin, forces[:, 2], label="Fz")
+        # Add friction cone constraints 
+        Fz_ub = mu*np.sqrt(forces[:, 0]**2 + forces[:, 1]**2)
+        Fz_lb = np.zeros(time_lin.shape)
+        axs[i, 2].plot(time_lin, Fz_ub, 'k-.', label='ub')
+        axs[i, 2].plot(time_lin, Fz_lb, 'g-.', label='lb')
         axs[i, 0].grid()
         axs[i, 1].grid()
         axs[i, 2].grid()
@@ -223,6 +206,15 @@ if(PLOT):
     fig.suptitle('Force', fontsize=16)
 
 
+    comDes = np.array(comDes)
+    centroidal_sol = np.array(centroidal_sol)
+    plt.figure()
+    plt.plot(comDes[:, 0], comDes[:, 1], "--", label="reference")
+    plt.plot(centroidal_sol[:, 0], centroidal_sol[:, 1], label="solution")
+    plt.legend()
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.title("COM trajectory")
 
     # fig, axs = plt.subplots(actuation.nu ,1)
     # torques = np.array(solution["jointTorques"])
@@ -277,9 +269,9 @@ if(PLAY):
     # angle = 0.0  # Initial angle
     # rotation_speed = 0.05  # Speed of rotation (adjust as needed)
 
-    cam_pose = tf.translation_matrix([-3.5, 0, 0.])  # Example camera position
-    cam_pose[:3, :3] = tf.euler_matrix(0.0, 0.0, np.pi/6)[:3, :3]  # Example camera orientation
-    viz.viewer["/Cameras"].set_transform(cam_pose)
+    # cam_pose = tf.translation_matrix([-3.5, 0, 0.])  # Example camera position
+    # cam_pose[:3, :3] = tf.euler_matrix(0.0, 0.0, np.pi/6)[:3, :3]  # Example camera orientation
+    # viz.viewer["/Cameras"].set_transform(cam_pose)
 
 
 
@@ -309,10 +301,10 @@ if(PLAY):
     arrow3 = standing_utils.Arrow(viz.viewer, "force_3", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
     arrow4 = standing_utils.Arrow(viz.viewer, "force_4", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
 
-    cone1 = standing_utils.Cone(viz.viewer, "friction_cone_1", location=supportFeePos[0], mu=0.5)
-    cone2 = standing_utils.Cone(viz.viewer, "friction_cone_2", location=supportFeePos[1], mu=0.5)
-    cone3 = standing_utils.Cone(viz.viewer, "friction_cone_3", location=supportFeePos[2], mu=0.5)
-    cone4 = standing_utils.Cone(viz.viewer, "friction_cone_4", location=supportFeePos[3], mu=0.5)
+    cone1 = standing_utils.Cone(viz.viewer, "friction_cone_1", location=supportFeePos[0], mu=mu)
+    cone2 = standing_utils.Cone(viz.viewer, "friction_cone_2", location=supportFeePos[1], mu=mu)
+    cone3 = standing_utils.Cone(viz.viewer, "friction_cone_3", location=supportFeePos[2], mu=mu)
+    cone4 = standing_utils.Cone(viz.viewer, "friction_cone_4", location=supportFeePos[3], mu=mu)
 
     arrows = [arrow1, arrow2, arrow3, arrow4]
     forces = []
@@ -321,25 +313,6 @@ if(PLAY):
         ct_frame_name = rmodel.frames[supportFeetIds[i]].name + "_contact"
         forces.append(np.array(solution[ct_frame_name])[:, :3])
         arrows[i].set_location(contactLoc)
-
-
-    import imageio
-
-    def create_video_from_rgba(images, output_path, fps=5):
-        """
-        Create an MP4 video from an RGBA image array.
-
-        Args:
-            images (list): List of RGBA image arrays.
-            output_path (str): Path to save the resulting MP4 video.
-            fps (int): Frames per second for the video (default: 200).
-        """
-        writer = imageio.get_writer(output_path, format='ffmpeg', fps=fps)
-
-        for img in images:
-            writer.append_data(img)
-
-        writer.close()
 
 
     image_array_list = []
@@ -357,7 +330,24 @@ if(PLAY):
 
         image_array_list.append(viz.captureImage())
 
+    if(SAVE):
+        import imageio
 
+        def create_video_from_rgba(images, output_path, fps=5):
+            """
+            Create an MP4 video from an RGBA image array.
 
-    output_path = 'output.mp4'
-    create_video_from_rgba(image_array_list, output_path)
+            Args:
+                images (list): List of RGBA image arrays.
+                output_path (str): Path to save the resulting MP4 video.
+                fps (int): Frames per second for the video (default: 200).
+            """
+            writer = imageio.get_writer(output_path, format='ffmpeg', fps=fps)
+
+            for img in images:
+                writer.append_data(img)
+
+            writer.close()
+
+        output_path = 'output.mp4'
+        create_video_from_rgba(image_array_list, output_path)
