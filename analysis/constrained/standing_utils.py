@@ -1,6 +1,25 @@
 import pinocchio as pin
 import numpy as np
 import meshcat
+import crocoddyl
+
+
+
+class Force3DConstraintModelSoloStanding(crocoddyl.ConstraintModelAbstract):
+    def __init__(self, state, nu, Fmin, Fmax, name):
+        crocoddyl.ConstraintModelAbstract.__init__(self, state, 12, nu, Fmin, Fmax, name)
+        self.lmin = Fmin
+        self.lmax = Fmax
+
+    def calc(self, cdata, data, x, u=None):        
+        cdata.c = data.differential.pinocchio.lambda_c 
+
+    def calcDiff(self, cdata, data, x, u=None):
+        cdata.Cx = data.differential.df_dx
+        cdata.Cu = data.differential.df_du
+
+
+
 
 
 def meshcat_material(r, g, b, a):
@@ -37,7 +56,7 @@ def applyViewerConfiguration(viz, name, xyzquat):
     if isinstance(viz, pin.visualize.MeshcatVisualizer):
         viz.viewer[name].set_transform(meshcat_transform(*xyzquat))
 
-def get_solution_trajectories(solver, rmodel, rdata, supportFeetIds):
+def get_solution_trajectories(solver, rmodel, rdata, supportFeetIds, pinRefFrame=pin.LOCAL):
     xs, us = solver.xs, solver.us
     nq, nv, N = rmodel.nq, rmodel.nv, len(xs) 
     jointPos_sol = []
@@ -72,13 +91,15 @@ def get_solution_trajectories(solver, rmodel, rdata, supportFeetIds):
     
 
     for frame_idx in supportFeetIds:
-        force_list = []
+        # print('extract foot id ', frame_idx, "_name = ", rmodel.frames[frame_idx].name)
         ct_frame_name = rmodel.frames[frame_idx].name + "_contact"
         datas = [solver.problem.runningDatas[i].differential.multibody.contacts.contacts[ct_frame_name] for i in range(N-1)]
-        lwaMf = [solver.problem.runningDatas[i].differential.pinocchio.oMf[frame_idx].copy() for i in range(N-1)]
-        for m in lwaMf:
-            m.translation = np.zeros(3)
-        ee_forces = [lwaMf[k].act(datas[k].jMf.actInv(datas[k].f)).vector for k in range(N-1)] 
+        if(pinRefFrame == pin.LOCAL):
+            ee_forces = [datas[k].jMf.actInv(datas[k].f).vector for k in range(N-1)] 
+        else:
+            lwaMf = [solver.problem.runningDatas[i].differential.pinocchio.oMf[frame_idx].copy() for i in range(N-1)]
+            for m in lwaMf: m.translation = np.zeros(3)
+            ee_forces = [lwaMf[k].act(datas[k].jMf.actInv(datas[k].f)).vector for k in range(N-1)] 
         sol[ct_frame_name] = [ee_forces[i] for i in range(N-1)]     
     
     return sol    
