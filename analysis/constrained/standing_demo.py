@@ -12,11 +12,17 @@ import sys
 pinRef        = pin.LOCAL_WORLD_ALIGNED
 FORCE_CSTR    = False
 FRICTION_CSTR = False
+MU = 0.8
 PLOT = True
 PLAY = True
 SAVE = False
 
 SOLVE_OCP = False
+
+
+PLOT_1 = False
+PLOT_2 = False 
+PLOT_3 = True
 
 robot_name = 'solo12'
 ee_frame_names = ['FL_FOOT', 'FR_FOOT', 'HL_FOOT', 'HR_FOOT']
@@ -119,14 +125,13 @@ for t in range(N_ocp+1):
     # Add contact force constraint >= 0 & friction cone 
     cstr_list = []
     n_cstr = 0
-    mu = 0.8
     if(FORCE_CSTR):
         clip_force_min = np.array([-np.inf, -np.inf, -np.inf]*4)
         clip_force_max = np.array([np.inf, np.inf, np.inf]*4)
         cstr_list.append(standing_utils.Force3DConstraintModelSoloStanding(state, actuation.nu, clip_force_min, clip_force_max, "feet_cstr"))
         n_cstr += 12
     if(FRICTION_CSTR):
-        cstr_list.append(standing_utils.FrictionConstraintModelSoloStanding(state, mu, nu))
+        cstr_list.append(standing_utils.FrictionConstraintModelSoloStanding(state, MU, nu))
         n_cstr += 4
     if(not FRICTION_CSTR and not FORCE_CSTR):
         cstr_list = [crocoddyl.NoConstraintModel(state, actuation.nu, "noCstr")]
@@ -148,16 +153,25 @@ for t in range(N_ocp+1):
 ocp = crocoddyl.ShootingProblem(x0, running_models[:-1], running_models[-1])
 
 # Create solver , warm-start and solve
-solver = crocoddyl.SolverFADMM(ocp, constraintModels)
-max_iter = 500
-solver.with_callbacks = True
-solver.use_filter_ls = True
-solver.filter_size = max_iter
-solver.termination_tolerance = 1e-4
-solver.eps_abs = 1e-6
-solver.eps_rel = 1e-6
-solver.max_qp_iters = 100
+if(FRICTION_CSTR):
+    solver = crocoddyl.SolverFADMM(ocp, constraintModels)
+    solver.max_qp_iters = 1000
+    max_iter = 500
+    solver.with_callbacks = True
+    solver.use_filter_ls = True
+    solver.filter_size = max_iter
+    solver.termination_tolerance = 1e-4
+    solver.eps_abs = 1e-6
+    solver.eps_rel = 1e-6
+else:
+    solver = crocoddyl.SolverGNMS(ocp)
+    max_iter = 500
+    solver.termination_tol = 1e-4
+    solver.with_callbacks = True
+    solver.use_filter_ls = True
+    solver.filter_size = max_iter
 solver.KKT = True
+
 if(SOLVE_OCP):   
     xs = [x0]*(solver.problem.T + 1)
     us = solver.problem.quasiStatic([x0]*solver.problem.T) #[np.zeros(actuation.nu)]*solver.problem.T #solver.us #solver.problem.quasiStatic([x0]*solver.problem.T)
@@ -166,9 +180,12 @@ if(SOLVE_OCP):
     q_sol = solution['jointPos']
     centroidal_sol = solution['centroidal']
     import pickle 
-    with open('/tmp/sol_unconstrained.pkl', 'wb') as f:
+    if(FRICTION_CSTR):
+        name = '/tmp/sol_constrained_mu='+str(MU)+'.pkl'
+    else:
+        name = '/tmp/sol_unconstrained_mu='+str(MU)+'.pkl'
+    with open(name, 'wb') as f:
         pickle.dump(solution, f)
-    # np.savez_compressed('/tmp/solution_constrained', data=solution)
 
     # Plot results
     if(PLOT):
@@ -183,7 +200,7 @@ if(SOLVE_OCP):
             axs[i, 1].plot(time_lin, forces[:, 1], label="Fy")
             axs[i, 2].plot(time_lin, forces[:, 2], label="Fz")
             # Add friction cone constraints 
-            Fz_lb = (1./mu)*np.sqrt(forces[:, 0]**2 + forces[:, 1]**2)
+            Fz_lb = (1./MU)*np.sqrt(forces[:, 0]**2 + forces[:, 1]**2)
             # Fz_ub = np.zeros(time_lin.shape)
             # axs[i, 2].plot(time_lin, Fz_ub, 'k-.', label='ub')
             axs[i, 2].plot(time_lin, Fz_lb, 'k-.', label='lb')
@@ -296,10 +313,10 @@ if(SOLVE_OCP):
         arrow3 = standing_utils.Arrow(viz.viewer, "force_3", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
         arrow4 = standing_utils.Arrow(viz.viewer, "force_4", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
 
-        cone1 = standing_utils.Cone(viz.viewer, "friction_cone_1", location=supportFeePos[0], mu=mu)
-        cone2 = standing_utils.Cone(viz.viewer, "friction_cone_2", location=supportFeePos[1], mu=mu)
-        cone3 = standing_utils.Cone(viz.viewer, "friction_cone_3", location=supportFeePos[2], mu=mu)
-        cone4 = standing_utils.Cone(viz.viewer, "friction_cone_4", location=supportFeePos[3], mu=mu)
+        cone1 = standing_utils.Cone(viz.viewer, "friction_cone_1", location=supportFeePos[0], mu=MU)
+        cone2 = standing_utils.Cone(viz.viewer, "friction_cone_2", location=supportFeePos[1], mu=MU)
+        cone3 = standing_utils.Cone(viz.viewer, "friction_cone_3", location=supportFeePos[2], mu=MU)
+        cone4 = standing_utils.Cone(viz.viewer, "friction_cone_4", location=supportFeePos[3], mu=MU)
 
         arrows = [arrow1, arrow2, arrow3, arrow4]
         forces = []
@@ -350,84 +367,144 @@ if(SOLVE_OCP):
 else:
     import matplotlib.pyplot as plt
     import pickle 
-    with open('/tmp/sol_constrained.pkl', 'rb') as f:
+    with open('/tmp/sol_constrained_mu='+str(MU)+'.pkl', 'rb') as f:
         constrained_sol = pickle.load(f)
-    with open('/tmp/sol_unconstrained.pkl', 'rb') as f:
+    with open('/tmp/sol_unconstrained_mu='+str(MU)+'.pkl', 'rb') as f:
         unconstrained_sol = pickle.load(f)
-    
-    # ax0.plot(xdata, jmea, color='b', linewidth=4, label=label, alpha=0.5) 
-    # # Axis label & ticks
-    # ax0.set_ylabel('Joint position $q_1$ (rad)', fontsize=26)
-    # ax0.set_xlabel('Time (s)', fontsize=26)
-    # ax0.tick_params(axis = 'y', labelsize=22)
-    # ax0.tick_params(axis = 'x', labelsize=22)
-    # ax0.grid(True) 
 
-    # Plot forces 
-    time_lin = np.linspace(0, T, solver.problem.T)
-    fig, axs = plt.subplots(4, 3, figsize=(19.2,10.8), constrained_layout=True)
-    for i, frame_idx in enumerate(supportFeetIds):
-        ct_frame_name = rmodel.frames[frame_idx].name + "_contact"
-        forces1 = np.array(unconstrained_sol[ct_frame_name])
-        forces2 = np.array(constrained_sol[ct_frame_name])
-        # Plot unconstrained forces
-        axs[i, 0].plot(time_lin, forces1[:, 0], color='g', linewidth=4,  alpha=0.5) 
-        axs[i, 1].plot(time_lin, forces1[:, 1], color='g', linewidth=4,  alpha=0.5) 
-        axs[i, 2].plot(time_lin, forces1[:, 2], color='g', linewidth=4, label='Unconstrained', alpha=0.5) 
-        # Plot constrained forces
-        axs[i, 0].plot(time_lin, forces2[:, 0], color='b', linewidth=4,  alpha=0.5) 
-        axs[i, 1].plot(time_lin, forces2[:, 1], color='b', linewidth=4,  alpha=0.5) 
-        axs[i, 2].plot(time_lin, forces2[:, 2], color='b', linewidth=4, label="Constrained", alpha=0.5) 
-        # Add friction cone constraints 
-        Fz_lb1 = (1./mu)*np.sqrt(forces1[:, 0]**2 + forces1[:, 1]**2)
-        Fz_lb2 = (1./mu)*np.sqrt(forces2[:, 0]**2 + forces2[:, 1]**2)
-        axs[i, 2].plot(time_lin, Fz_lb1, color='k', linestyle='--', linewidth=4, label='Friction cone (unconstrained)', alpha=0.5)
-        axs[i, 2].plot(time_lin, Fz_lb2, color='r', linestyle='--', linewidth=4, label='Friction cone (constrained)', alpha=0.5)
+    # Plot forces Fx,Fy,Fz
+    if(PLOT_1):
+        time_lin = np.linspace(0, T, solver.problem.T)
+        fig, axs = plt.subplots(4, 3, figsize=(19.2,10.8), constrained_layout=True)
+        for i, frame_idx in enumerate(supportFeetIds):
+            ct_frame_name = rmodel.frames[frame_idx].name + "_contact"
+            forces1 = np.array(unconstrained_sol[ct_frame_name])
+            forces2 = np.array(constrained_sol[ct_frame_name])
+            # Plot unconstrained forces
+            axs[i, 0].plot(time_lin, forces1[:, 0], color='g', linewidth=4,  alpha=0.5) 
+            axs[i, 1].plot(time_lin, forces1[:, 1], color='g', linewidth=4,  alpha=0.5) 
+            axs[i, 2].plot(time_lin, forces1[:, 2], color='g', linewidth=4, label='Unconstrained', alpha=0.5) 
+            # Plot constrained forces
+            axs[i, 0].plot(time_lin, forces2[:, 0], color='b', linewidth=4,  alpha=0.5) 
+            axs[i, 1].plot(time_lin, forces2[:, 1], color='b', linewidth=4,  alpha=0.5) 
+            axs[i, 2].plot(time_lin, forces2[:, 2], color='b', linewidth=4, label="Constrained", alpha=0.5) 
+            # Add friction cone constraints 
+            Fz_lb1 = (1./MU)*np.sqrt(forces1[:, 0]**2 + forces1[:, 1]**2)
+            Fz_lb2 = (1./MU)*np.sqrt(forces2[:, 0]**2 + forces2[:, 1]**2)
+            axs[i, 2].plot(time_lin, Fz_lb1, color='k', linestyle='--', linewidth=4, label='Friction cone (unconstrained)', alpha=0.5)
+            axs[i, 2].plot(time_lin, Fz_lb2, color='r', linestyle='--', linewidth=4, label='Friction cone (constrained)', alpha=0.5)
+            
+
+            axs[i, 0].tick_params(axis = 'y', labelsize=18)
+            axs[i, 1].tick_params(axis = 'y', labelsize=18)
+            axs[i, 2].tick_params(axis = 'y', labelsize=18)
+            if(i != 3):
+                axs[i,0].xaxis.set_tick_params(labelbottom=False)
+                axs[i,1].xaxis.set_tick_params(labelbottom=False)
+                axs[i,2].xaxis.set_tick_params(labelbottom=False)
+            axs[i, 0].grid()
+            axs[i, 1].grid()
+            axs[i, 2].grid()
+
+            axs[i,0].yaxis.set_major_locator(plt.MaxNLocator(2))
+            axs[i,0].yaxis.set_major_formatter(plt.FormatStrFormatter('%.0f'))
+            axs[i,1].yaxis.set_major_locator(plt.MaxNLocator(2))
+            axs[i,1].yaxis.set_major_formatter(plt.FormatStrFormatter('%.0f'))
+            axs[i,2].yaxis.set_major_locator(plt.MaxNLocator(2))
+            axs[i,2].yaxis.set_major_formatter(plt.FormatStrFormatter('%.0f'))
+
+        axs[0, 0].set_ylabel('FL', fontsize=22)
+        axs[1, 0].set_ylabel('FR', fontsize=22)
+        axs[2, 0].set_ylabel('HL', fontsize=22)
+        axs[3, 0].set_ylabel('HR', fontsize=22)
+
+        handles, labels = axs[-1, 2].get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.36, 0.4), prop={'size': 22}) 
+        # axs[-1, 2].legend(loc='upper left', bbox_to_anchor=(-1., 0.885), prop={'size': 22})
+
+        fig.align_ylabels(axs[:,0])
+        fig.align_ylabels(axs[:,1])
+        fig.align_ylabels(axs[:,2])
         
+        axs[-1, 0].tick_params(axis = 'x', labelsize=18)
+        axs[-1, 1].tick_params(axis = 'x', labelsize=18)
+        axs[-1, 2].tick_params(axis = 'x', labelsize=18)
 
-        axs[i, 0].tick_params(axis = 'y', labelsize=18)
-        axs[i, 1].tick_params(axis = 'y', labelsize=18)
-        axs[i, 2].tick_params(axis = 'y', labelsize=18)
-        if(i != 3):
-            axs[i,0].xaxis.set_tick_params(labelbottom=False)
-            axs[i,1].xaxis.set_tick_params(labelbottom=False)
-            axs[i,2].xaxis.set_tick_params(labelbottom=False)
-        axs[i, 0].grid()
-        axs[i, 1].grid()
-        axs[i, 2].grid()
-
-        axs[i,0].yaxis.set_major_locator(plt.MaxNLocator(2))
-        axs[i,0].yaxis.set_major_formatter(plt.FormatStrFormatter('%.0f'))
-        axs[i,1].yaxis.set_major_locator(plt.MaxNLocator(2))
-        axs[i,1].yaxis.set_major_formatter(plt.FormatStrFormatter('%.0f'))
-        axs[i,2].yaxis.set_major_locator(plt.MaxNLocator(2))
-        axs[i,2].yaxis.set_major_formatter(plt.FormatStrFormatter('%.0f'))
-
-    axs[0, 0].set_ylabel('FL', fontsize=22)
-    axs[1, 0].set_ylabel('FR', fontsize=22)
-    axs[2, 0].set_ylabel('HL', fontsize=22)
-    axs[3, 0].set_ylabel('HR', fontsize=22)
-
-    handles, labels = axs[-1, 2].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.36, 0.4), prop={'size': 22}) 
-    # axs[-1, 2].legend(loc='upper left', bbox_to_anchor=(-1., 0.885), prop={'size': 22})
-
-    fig.align_ylabels(axs[:,0])
-    fig.align_ylabels(axs[:,1])
-    fig.align_ylabels(axs[:,2])
-    
-    axs[-1, 0].tick_params(axis = 'x', labelsize=18)
-    axs[-1, 1].tick_params(axis = 'x', labelsize=18)
-    axs[-1, 2].tick_params(axis = 'x', labelsize=18)
-
-    axs[0, 0].text(2., 1.2, r"$F_x$", fontdict={'size':26})
-    axs[0, 1].text(2., 2.5, r"$F_y$", fontdict={'size':26})
-    axs[0, 2].text(2., 8, r"$F_z$", fontdict={'size':26})
+        axs[0, 0].text(2., 1.2, r"$F_x$", fontdict={'size':26})
+        axs[0, 1].text(2., 2.5, r"$F_y$", fontdict={'size':26})
+        axs[0, 2].text(2., 8, r"$F_z$", fontdict={'size':26})
 
 
-    # axs[3, 0].set_xlabel('Time (s)', fontsize=22)
-    axs[3, 1].set_xlabel('Time (s)', fontsize=22)
-    # axs[3, 2].set_xlabel('Time (s)', fontsize=22)
-    fig.savefig('/home/skleff/data_paper_fadmm/solo_standing_friction.pdf', bbox_inches="tight")
+        # axs[3, 0].set_xlabel('Time (s)', fontsize=22)
+        axs[3, 1].set_xlabel('Time (s)', fontsize=22)
+        # axs[3, 2].set_xlabel('Time (s)', fontsize=22)
+        fig.savefig('/home/skleff/data_paper_fadmm/solo_standing_friction.pdf', bbox_inches="tight")
+        # fig.suptitle('Force', fontsize=16)
+
+    if(PLOT_2):
+        time_lin = np.linspace(0, T, solver.problem.T)
+        fig, axs = plt.subplots(1, 2, figsize=(19.2,10.8), constrained_layout=True)
+        for i, ct_frame_name in enumerate(['FL_FOOT_contact', 'HL_FOOT_contact']):
+            # ct_frame_name = rmodel.frames[frame_idx].name + "_contact"
+            forces1 = np.array(unconstrained_sol[ct_frame_name])
+            forces2 = np.array(constrained_sol[ct_frame_name])
+            # Plot unconstrained forces
+            axs[i].plot(forces1[:, 0]/forces1[:, 2], forces1[:, 1]/forces1[:, 2], color='g', linewidth=4, label='Unconstrained', alpha=0.5) 
+            axs[i].plot(forces2[:, 0]/forces2[:, 2], forces2[:, 1]/forces2[:, 2], color='b', linewidth=4, label='Constrained', alpha=0.5) 
+            # Add friction cone constraints 
+            theta = np.linspace(0, 2*np.pi, 100)
+            x1 = MU*np.cos(theta)
+            x2 = MU*np.sin(theta)
+            axs[i].plot(x1, x2, color='k', linestyle='--', linewidth=4, label='Friction cone', alpha=0.5)
+            axs[i].tick_params(axis = 'y', labelsize=18)
+            axs[i].grid()
+            axs[i].yaxis.set_major_locator(plt.MaxNLocator(2))
+            axs[i].yaxis.set_major_formatter(plt.FormatStrFormatter('%.0f'))
+            axs[i].axis('equal')
+            axs[i].yaxis.set_major_locator(plt.MaxNLocator(2))
+            axs[i].yaxis.set_major_formatter(plt.FormatStrFormatter('%.0f'))
+
+    if(PLOT_3):
+        time_lin = np.linspace(0, T, solver.problem.T)
+        fig, axs = plt.subplots(1, 2, figsize=(19.2,10.8), constrained_layout=True)
+        for i, ct_frame_name in enumerate(['FL_FOOT_contact', 'HL_FOOT_contact']):
+            forces1 = np.array(unconstrained_sol[ct_frame_name])
+            forces2 = np.array(constrained_sol[ct_frame_name])
+            # Plot unconstrained forces
+            f1 = np.sqrt( ( forces1[:, 0]**2 + forces1[:, 1]**2 ) / forces1[:, 2]**2 )
+            f2 = np.sqrt( ( forces2[:, 0]**2 + forces2[:, 1]**2 ) / forces2[:, 2]**2 )
+            axs[i].plot(time_lin, f1, color='g', linewidth=4, label='Unconstrained', alpha=0.5) 
+            axs[i].plot(time_lin, f2, color='b', linewidth=4, label='Constrained', alpha=0.5) 
+            # Add friction cone constraints 
+            axs[i].plot(time_lin, [MU]*solver.problem.T, color='k', linestyle='--', linewidth=4, label='Friction cone ('+r"$\mu$"+'='+str(MU)+')', alpha=0.5)
+            axs[i].tick_params(axis = 'y', labelsize=18)
+            # if(i != 3):
+                # axs[i%2, i//2].xaxis.set_tick_params(labelbottom=False)
+            axs[i].grid()
+            # axs[i%2, i//2].set_ylim(0., 5.5)
+            # axs[i].set_ylim(0., 1)
+            # axs[i].yaxis.set_major_locator(plt.MaxNLocator(2))
+            # axs[i].yaxis.set_major_formatter(plt.FormatStrFormatter('%.0f'))
+
+        axs[0].set_ylabel('FL force ratio', fontsize=22)
+        axs[1].set_ylabel('HL force ratio', fontsize=22)
+
+        handles, labels = axs[0].get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper left', prop={'size': 22}) 
+        # axs[-1, 2].legend(loc='upper left', bbox_to_anchor=(-1., 0.885), prop={'size': 22})
+
+        fig.align_ylabels(axs[:])
+        fig.align_xlabels(axs[:])
+        
+        axs[0].tick_params(axis = 'x', labelsize=18)
+        axs[1].tick_params(axis = 'x', labelsize=18)
+
+        # axs[0].text(2., 6, 'HL', fontdict={'size':30})
+        # axs[1].text(2., 6, 'FL', fontdict={'size':30})
+
+
+        axs[0].set_xlabel('Time (s)', fontsize=22)
+        axs[1].set_xlabel('Time (s)', fontsize=22)
+        fig.savefig('/home/skleff/data_paper_fadmm/solo_standing_friction_normalized.pdf', bbox_inches="tight")
+
     plt.show()
-    # fig.suptitle('Force', fontsize=16)
