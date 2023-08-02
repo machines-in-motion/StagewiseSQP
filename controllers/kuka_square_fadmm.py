@@ -218,40 +218,40 @@ class KukaSquareFADMM:
             self.pdes = np.array([0.6, -0., .5])
 
             # Updates nodes between node_id and terminal node 
+            # cmodels = self.ddp.cmodels
+            # for _ , m in enumerate(cmodels[1:]):
+            #     m.lb = self.lb_square 
+            #     m.ub = self.ub_square 
+
+        if time_to_circle % self.CIRCLE_DURATION == 0:
+            self.count_circle += 1
+            print("CIRCLE number " + str(self.count_circle))
+
+        if time_to_circle == self.CIRCLE_DURATION + self.CIRCLE_DURATION // 2:
+            print("ADD LOWER CONSTRAINT")
+            cmodels = self.ddp.cmodels
+            lb_square_tmp = np.array([-np.inf, -np.inf, self.lb_square[2]])
+            for _ , m in enumerate(cmodels[1:]):
+                m.lb = lb_square_tmp
+
+        if time_to_circle == 3 * self.CIRCLE_DURATION:
+            print("ADD RIGHT CONSTRAINT")  # (when facing the robot)
+            cmodels = self.ddp.cmodels
+            ub_square_tmp = np.array([np.inf, self.ub_square[1], np.inf])
+            for _ , m in enumerate(cmodels[1:]):
+                m.ub = ub_square_tmp
+
+        if time_to_circle == 4 * self.CIRCLE_DURATION :
+            print("ADD UPPER CONSTRAINT")  
             cmodels = self.ddp.cmodels
             for _ , m in enumerate(cmodels[1:]):
-                m.lb = self.lb_square 
-                m.ub = self.ub_square 
+                m.ub = self.ub_square
 
-        # if time_to_circle % self.CIRCLE_DURATION == 0:
-        #     self.count_circle += 1
-        #     print("CIRCLE number " + str(self.count_circle))
-
-        # if time_to_circle == self.CIRCLE_DURATION + self.CIRCLE_DURATION // 2:
-        #     print("ADD LOWER CONSTRAINT")
-        #     cmodels = self.ddp.cmodels
-        #     lb_square_tmp = np.array([-np.inf, -np.inf, self.lb_square[2]])
-        #     for _ , m in enumerate(cmodels[1:]):
-        #         m.lb = lb_square_tmp
-
-        # if time_to_circle == 3 * self.CIRCLE_DURATION:
-        #     print("ADD RIGHT CONSTRAINT")  # (when facing the robot)
-        #     cmodels = self.ddp.cmodels
-        #     ub_square_tmp = np.array([np.inf, self.ub_square[1], np.inf])
-        #     for _ , m in enumerate(cmodels[1:]):
-        #         m.ub = ub_square_tmp
-
-        # if time_to_circle == 4 * self.CIRCLE_DURATION :
-        #     print("ADD UPPER CONSTRAINT")  
-        #     cmodels = self.ddp.cmodels
-        #     for _ , m in enumerate(cmodels[1:]):
-        #         m.ub = self.ub_square
-
-        # if time_to_circle == 5 * self.CIRCLE_DURATION :
-        #     print("ADD LEFT CONSTRAINT")  # (when facing the robot)
-        #     cmodels = self.ddp.cmodels
-        #     for _ , m in enumerate(cmodels[1:]):
-        #         m.lb = self.lb_square
+        if time_to_circle == 5 * self.CIRCLE_DURATION :
+            print("ADD LEFT CONSTRAINT")  # (when facing the robot)
+            cmodels = self.ddp.cmodels
+            for _ , m in enumerate(cmodels[1:]):
+                m.lb = self.lb_square
 
 
         # If circle tracking phase enters the MPC horizon, start updating models from the end with tracking models      
@@ -294,21 +294,16 @@ class KukaSquareFADMM:
         # # # # # # # # 
         # Send policy #
         # # # # # # # #
-        # Linear interpolation of torque control input & desired state 
-        ctr_index = int(self.count/self.OCP_TO_SIMU_ratio)
-        if ctr_index > self.Nh-1:
-            self.tau_ff   = self.us[-1]     
-            self.x_des    = self.xs[-1]  
-            K = self.Ks[-1]
-            print("DANGER")
-        else:
-            self.tau_ff   = self.us[ctr_index]     
-            self.x_des    = self.xs[ctr_index+1]  
-            K = self.Ks[ctr_index]
+        
+        # self.tau_ff = self.us[0]
+        self.x_des = self.xs[1]
+        self.tau_ff   = self.us[0]
 
         # Riccati policy (optional) on (q,v) 
         if(self.config['RICCATI']):
-            self.tau_riccati = K @ (self.x_des - np.concatenate([q, v]))
+        # Linear interpolation of torque control input & desired state 
+            alpha = self.count / self.OCP_TO_SIMU_ratio
+            self.tau_riccati = (1 - alpha) * self.Ks[0] @ (self.xs[0] - np.concatenate([q, v])) + alpha * self.Ks[1] @ (self.xs[1] - np.concatenate([q, v]))
             self.tau  = self.tau_ff + self.tau_riccati
         else:
             self.tau_riccati = np.zeros(self.nv)

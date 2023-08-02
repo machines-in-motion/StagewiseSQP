@@ -71,10 +71,9 @@ thread_head = ThreadHead(
 
 thread_head.switch_controllers(ctrl)
 
-thread_head.switch_controllers(ctrl)
 
 
-suffix = '_more_it'
+suffix = '_demo'
 
 if SIM:
     thread_head.start_logging(10, "/home/ajordana/Desktop/FADMM_demos/square/SIM_"+str(time.time())+".mds")

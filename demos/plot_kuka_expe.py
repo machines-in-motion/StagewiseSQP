@@ -19,7 +19,7 @@ model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
 
 
 # Load config file
-CONFIG_NAME = 'kuka_circle_fadmm'
+CONFIG_NAME = 'kuka_square_fadmm'
 CONFIG_PATH = "demos/"+CONFIG_NAME+".yml"
 config      = path_utils.load_yaml_file(CONFIG_PATH)
 
@@ -33,10 +33,9 @@ s = SimpleDataPlotter()
 # 
 folder = '/home/ajordana/Desktop/FADMM_demos/square/'
 if(SIM):
-    # r = DataReader(folder + 'SIM_1691002367.9969182.mds') # old
-    r = DataReader(folder + 'SIM_1691003295.5281117.mds')
+    r = DataReader(folder + 'SIM_1691007354.8480241.mds')
 else:    
-    r = DataReader(folder + 'REAL_1691004650.348041_new_ref.mds')
+    r = DataReader(folder + 'REAL_1691009280.592574_250HZ.mds')
 
 
 N = r.data['tau'].shape[0]
