@@ -25,20 +25,18 @@ config      = path_utils.load_yaml_file(CONFIG_PATH)
 
 
 # Load data 
-SIM = True 
+SIM = False 
 
 
 # Create data Plottger
 s = SimpleDataPlotter()
 
-
+folder = '/home/ajordana/Desktop/FADMM_demos/square/'
 if(SIM):
-    # r = DataReader('/tmp/kuka_reach_gnms_sim_GNMS.mds')
-    # r = DataReader('/tmp/kuka_reach_gnms_sim_FDDP.mds')
-    r = DataReader('/tmp/kuka_circle_sim_FADMM.mds')
-else:
-    r2 = DataReader('/home/skleff/ws/workspace/src/gnms/data/circle_GNMS.mds')
-    r = DataReader('/home/skleff/ws/workspace/src/gnms/data/circle_FDDP.mds')
+    r = DataReader(folder + 'SIM_1691001356.9263327.mds')
+else:    
+    r = DataReader(folder + 'REAL_1691001689.9434948.mds')
+
 
 N = r.data['tau'].shape[0]
 
@@ -84,80 +82,22 @@ else:
                   ylims=[-model.effortLimit, +model.effortLimit] )
 
 
-# p_mea = get_p_(r.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
-# p_mea2 = get_p_(r2.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
-# p_des = get_p_(r.data['x_des'][:,:nq], pinrobot.model, pinrobot.model.getFrameId('contact'))
-# target_position = np.zeros((N, 3)) #r.data['target_position'] #
-# target_position[:,0] = r.data['target_position_x'][:,0]
-# target_position[:,1] = r.data['target_position_y'][:,0]
-# target_position[:,2] = r.data['target_position_z'][:,0]
-# s.plot_ee_pos( [p_mea, 
-#                 p_mea2,
-#                 target_position],  
-#                ['fddp', 'gnms', 'ref (position cost)'], 
-#                ['r', 'b', 'k', 'g'], 
-#                linestyle=['solid','solid', 'dotted', 'solid'])
-
-# v_mea = get_v_(r.data['joint_positions'], r.data['joint_velocities'], pinrobot.model, pinrobot.model.getFrameId('contact'))
-# v_mea2 = get_v_(r2.data['joint_positions'], r2.data['x_des'][:,nq:nq+nv], pinrobot.model, pinrobot.model.getFrameId('contact'))
-# s.plot_ee_vel( [v_mea, 
-#                 v_mea2],  
-#                ['fddp', 'gnms'], 
-#                ['r', 'b'], 
-#                linestyle=['solid','solid'])
-# target_force_3d = np.zeros((N, 3))
-# target_force_3d[:,0] = -r.data['target_force'][:,0]*0
-# target_force_3d[:,1] = r.data['target_force'][:,0]*0
-# target_force_3d[:,2] = r.data['target_force'][:,0]
-# s.plot_soft_contact_force([r.data['contact_force_3d_measured'], #f_mea_new, #
-#                            target_force_3d,
-#                            r.data['fpred']],
-#                           ['Measured', 'Reference', 'Predicted'], 
-#                           ['r', 'k', 'b', 'g'],
-#                           linestyle=['solid', 'dotted', 'solid'])
+p_mea = get_p_(r.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
+target_position = np.zeros((N, 3)) #r.data['target_position'] #
+target_position[:,0] = r.data['target_position_x'][:,0]
+target_position[:,1] = r.data['target_position_y'][:,0]
+target_position[:,2] = r.data['target_position_z'][:,0]
+s.plot_ee_pos( [p_mea, 
+                target_position],  
+               ['measured', 'ref (position cost)'], 
+               ['r', 'k', 'g'], 
+               linestyle=['solid','solid', 'dotted', 'solid'])
 
 
-
-
-# v_mea = get_v_(r.data['joint_velocities'], r.data['x_des'][:,nq:nq+nv], pinrobot.model, pinrobot.model.getFrameId('contact'))
-# v_des = get_v_(r.data['joint_velocities'], r.data['x_des'][:,nq:nq+nv], pinrobot.model, pinrobot.model.getFrameId('contact'))
-# s.plot_ee_vel( [v_mea, v_des, np.zeros(v_des.shape)],  
-#                ['mea', 'pred', 'ref'], 
-#                ['r', 'b', 'k'])
-
-
-# rpy_mea = get_rpy_(r.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
-# rpy_des = get_rpy_(r.data['x_des'][:,:nq], pinrobot.model, pinrobot.model.getFrameId('contact'))
-# s.plot_ee_rpy( [p_mea, p_des, r.data['target_rpy']],  
-#                ['mea', 'pred', 'ref'], 
-#                ['r', 'b', 'k'])
-
-
-# w_mea = get_w_(r.data['joint_velocities'], r.data['x_des'][:,nq:nq+nv], pinrobot.model, pinrobot.model.getFrameId('contact'))
-# w_des = get_w_(r.data['joint_velocities'], r.data['x_des'][:,nq:nq+nv], pinrobot.model, pinrobot.model.getFrameId('contact'))
-# s.plot_ee_w( [w_mea, w_des, np.zeros(w_des.shape)],  
-#                ['mea', 'pred', 'ref'], 
-#                ['r', 'b', 'k'])
-
-# # Finite diff for acc
-# q = r.data['joint_positions']
-# v = r.data['joint_velocities']
-# a = np.zeros(v.shape)
-# for i in range(v.shape[0]):
-#     if i>0:
-#         a[i,:] = (v[i,:] - v[i-1,:])/s.dt
-# f = []
-# for i in range(v.shape[0]):
-#     pin.framesForwardKinematics(model, data, q[i])
-#     f.append(get_external_joint_torques(data.oMf[frameId], r.data['ft_sensor_wrench'][i], pinrobot))
-# tau_ft = get_tau_(q, v, a, f, model)
-
-# # Plot external torques sensed by robot vs external torques due to contact force
-# s.plot_joint_tau([r.data['joint_ext_torques'], tau_ft],
-#                  ['Measured', 'Estimated'],
-#                  ['r', 'b'])
-
-
+plt.figure("End effector trajectory")
+plt.plot(p_mea[:, 1], p_mea[:, 2])
+plt.xlabel("y")
+plt.ylabel("z")
 plt.show()
 
 

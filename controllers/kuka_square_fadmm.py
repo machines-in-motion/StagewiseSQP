@@ -204,9 +204,12 @@ class KukaSquareFADMM:
         self.TASK_PHASE = 0
         self.NH_SIMU   = int(self.Nh*self.dt_ocp/self.dt_simu)
         self.T_CIRCLE = int(self.config['T_CIRCLE']/self.dt_simu)
+        self.CIRCLE_DURATION = int(2 * np.pi/self.dt_simu)
+        self.count_circle = 0
         self.OCP_TO_SIMU_CYCLES = 1./(self.dt_simu / self.dt_ocp)
         logger.debug("Size of MPC horizon in simu cycles = "+str(self.NH_SIMU))
         logger.debug("Start of circle phase in simu cycles = "+str(self.T_CIRCLE))
+        logger.debug("CIRCLE DURATION = "+str(self.CIRCLE_DURATION))
         logger.debug("OCP to SIMU time ratio = "+str(self.OCP_TO_SIMU_CYCLES))
         self.cumulative_cost = 0
 
@@ -280,11 +283,44 @@ class KukaSquareFADMM:
             self.target_position_y = self.target_position[:,1] 
             self.target_position_z = self.target_position[:,2]
             # Updates nodes between node_id and terminal node 
+            # cmodels = self.ddp.cmodels
+            # for _ , m in enumerate(cmodels[1:]):
+            #     m.lb = self.lb_square 
+            #     m.ub = self.ub_square 
+            self.pdes = np.array([0.6, -0., .5])
+
+        if time_to_circle % self.CIRCLE_DURATION == 0:
+            self.count_circle += 1
+            print("CIRCLE number " + str(self.count_circle))
+
+
+        if time_to_circle == self.CIRCLE_DURATION + self.CIRCLE_DURATION // 2:
+            print("ADD LOWER CONSTRAINT")
+            cmodels = self.ddp.cmodels
+            lb_square_tmp = np.array([-np.inf, -np.inf, self.lb_square[2]])
+            for _ , m in enumerate(cmodels[1:]):
+                m.lb = lb_square_tmp
+
+        if time_to_circle == 3 * self.CIRCLE_DURATION:
+            print("ADD RIGHT CONSTRAINT")  # (when facing the robot)
+            cmodels = self.ddp.cmodels
+            ub_square_tmp = np.array([np.inf, self.ub_square[1], np.inf])
+            for _ , m in enumerate(cmodels[1:]):
+                m.ub = ub_square_tmp
+
+        if time_to_circle == 4 * self.CIRCLE_DURATION :
+            print("ADD UPPER CONSTRAINT")  
             cmodels = self.ddp.cmodels
             for _ , m in enumerate(cmodels[1:]):
-                m.lb = self.lb_square #np.array([-np.inf, self.center_y - self.radius2, self.center_z - self.radius2])
-                m.ub = self.ub_square #np.array([+np.inf, self.center_y + self.radius2, self.center_z + self.radius2])
-            self.pdes = np.array([0.6, -0., .5])
+                m.ub = self.ub_square
+
+        if time_to_circle == 5 * self.CIRCLE_DURATION :
+            print("ADD LEFT CONSTRAINT")  # (when facing the robot)
+            cmodels = self.ddp.cmodels
+            for _ , m in enumerate(cmodels[1:]):
+                m.lb = self.lb_square
+
+
         # If circle tracking phase enters the MPC horizon, start updating models from the end with tracking models      
         if(0 <= time_to_circle and time_to_circle <= self.NH_SIMU):
             self.TASK_PHASE = 1

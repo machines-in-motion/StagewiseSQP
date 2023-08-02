@@ -21,7 +21,7 @@ from core_mpc import path_utils, sim_utils
 
 SIM = False
 
-DGM_PARAMS_PATH = "/home/skleff/ws/workspace/install/robot_properties_kuka/lib/python3.8/site-packages/robot_properties_kuka/robot_properties_kuka/dynamic_graph_manager/dgm_parameters_iiwa.yaml"
+DGM_PARAMS_PATH = "/home/ajordana/ws/workspace/install/robot_properties_kuka/lib/python3.8/site-packages/robot_properties_kuka/robot_properties_kuka/dynamic_graph_manager/dgm_parameters_iiwa.yaml"
 CONFIG_NAME = 'kuka_square_fadmm' 
 CONFIG_PATH = 'demos/'+CONFIG_NAME+".yml"
 
@@ -76,24 +76,23 @@ if(config['USE_PROXQP']):
 else:
     suffix = 'FADMM'
 
-suffix2 = "warm_start_y="+str(config['warm_start_y'])
-suffix3 = "reset_rho="+str(config['reset_rho'])
+
+
+thread_head.switch_controllers(ctrl)
+
+if(config['USE_PROXQP']):
+    suffix = 'PROXQP'
+else:
+    suffix = 'FADMM'
 
 if SIM:
-    # thread_head.start_logging(6, "test.mds")
-    # thread_head.start_logging(10, "/tmp/kuka_square_sim_"+suffix+"_NO_CONSTRAINT.mds")
-    thread_head.start_logging(10, "/tmp/kuka_square_sim_square_constraintEEy.mds")
+    thread_head.start_logging(10, "/home/ajordana/Desktop/FADMM_demos/square/SIM_"+str(time.time())+".mds")
     thread_head.sim_run_timed(100000)
     # thread_head.stop_logging()
     thread_head.plot_timing()
 else:
     thread_head.start()
-    # thread_head.start_logging(15, "/tmp/kuka_square_real_"+suffix+"_"+suffix2+"_"+suffix3+"_allJoints.mds")
-    # thread_head.start_logging(30, "/tmp/kuka_square_real_FADMM_no_constraint_"+str(time.time())+".mds")
-    thread_head.start_logging(30, "/home/skleff/Desktop/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_square_"+str(time.time())+".mds")
-
-    # thread_head.start_logging(30, "/tmp/kuka_square_real_FADMM_constraint_jointPos1.mds")
-    # thread_head.start_logging(15, "/tmp/kuka_square_real_="+suffix+"_FULL.mds")
+    thread_head.start_logging(30, "/home/ajordana/Desktop/FADMM_demos/square/REAL_"+str(time.time())+".mds")
     time.sleep(30)
     # thread_head.plot_timing()
 # ctrl.bench.plot_timer()
