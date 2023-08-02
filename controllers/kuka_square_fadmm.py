@@ -12,9 +12,6 @@ logger = CustomLogger(__name__, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT).logger
 from multiprocessing import Pipe, Process
 
 
-USE_PIPE = False
-
-
 def solveOCP(q, v, ddp, max_sqp_iter, max_qp_iter, node_id_circle, target_reach, TASK_PHASE):
     # Read state last measurement from parent process
     t = time.time()
@@ -53,46 +50,6 @@ def solveOCP(q, v, ddp, max_sqp_iter, max_qp_iter, node_id_circle, target_reach,
     return ddp.us, ddp.xs, ddp.K, t_child, ddp_iter, t_child_1, cost, constraint_norm, gap_norm, qp_iters, kkt_norm
 
 
-def rt_SolveOCP(child_conn, ddp, max_sqp_iter, max_qp_iter, node_id_circle, target_reach, TASK_PHASE):
-    while True:
-        # Read state last measurement from parent process
-        q, v, node_id_circle, target_reach, TASK_PHASE = child_conn.recv()
-        t = time.time()
-        # Update initial state + warm-start
-        x = np.concatenate([q, v])
-        ddp.problem.x0 = x
-        xs_init = list(ddp.xs[1:]) + [ddp.xs[-1]]
-        xs_init[0] = x
-        us_init = list(ddp.us[1:]) + [ddp.us[-1]] 
-        # Get OCP nodes
-        m = list(ddp.problem.runningModels) + [ddp.problem.terminalModel]
-        # Update OCP for reaching phase
-        if(TASK_PHASE == 1):
-            # If node id is valid
-            if(node_id_circle <= ddp.problem.T and node_id_circle >= 0):
-                # Updates nodes between node_id and terminal node 
-                for k in range( node_id_circle, ddp.problem.T+1, 1 ):
-                    m[k].differential.costs.costs["translation"].active = True
-                    m[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-                    # m[k].differential.costs.costs["translation"].weight = w
-        problem_formulation_time = time.time()
-        t_child_1 =  problem_formulation_time - t
-        # Solve OCP 
-        ddp.max_qp_iters = max_qp_iter
-        ddp.solve(xs_init, us_init, maxiter=max_sqp_iter, isFeasible=False)
-        # Send solution to parent process + riccati gains
-        solve_time = time.time()
-        ddp_iter = ddp.iter
-        t_child =  solve_time - problem_formulation_time
-        cost = ddp.cost
-        constraint_norm = ddp.constraint_norm
-        gap_norm = ddp.gap_norm
-        qp_iters = ddp.qp_iters
-        kkt_norm = ddp.KKT_norm
-        child_conn.send((ddp.us, ddp.xs, ddp.K, t_child, ddp_iter, t_child_1, cost, constraint_norm, gap_norm, qp_iters, kkt_norm))        
-
-
-
 class KukaSquareFADMM:
 
     def __init__(self, head, robot, config, run_sim):
@@ -112,10 +69,6 @@ class KukaSquareFADMM:
             self.joint_torques = head.get_sensor("joint_torques_total")
             self.joint_ext_torques = head.get_sensor("joint_torques_external")
             self.joint_cmd_torques = head.get_sensor("joint_torques_commanded")      
-
-        if(USE_PIPE):
-            self.parent_conn, self.child_conn = Pipe()
-            self.sent = False
 
         self.nq = self.robot.model.nq
         self.nv = self.robot.model.nv
@@ -182,14 +135,7 @@ class KukaSquareFADMM:
         plt.plot(self.center_y - self.radius2, self.center_z + self.radius2, marker='o', label='pos')
         plt.plot(self.center_y + self.radius2, self.center_z - self.radius2, marker='o', label='pos')
         plt.plot(self.center_y - self.radius2, self.center_z - self.radius2, marker='o', label='pos')
-        # plt.plot(center_y - radius2, center_z, marker='o', label='pos')
-        # plt.plot(center_y - radius2, center_z, marker='o', label='pos')
 
-        # # plt.plot(self.pdes[1]+radius2, self.pdes[2], marker='o', label='pos')
-        # plt.plot(self.pdes[1]-radius2, self.pdes[2], marker='o', label='pos')
-        # # plt.plot(self.pdes[1]-radius2, self.pdes[2]+2*radius2, marker='o', label='pos')
-        # plt.plot(self.pdes[1]+radius2, self.pdes[2]+2*radius2, marker='o', label='pos')
-        # plt.show()
         # Targets over one horizon (initially = absolute target position)
         self.target_position = np.zeros((self.Nh+1, 3)) 
         self.target_position[:,:] = self.pdes.copy() 
@@ -226,23 +172,16 @@ class KukaSquareFADMM:
         self.ddp.xs = [self.x0 for i in range(self.config['N_h']+1)]
         self.ddp.us = [self.ug for i in range(self.config['N_h'])]
         self.is_plan_updated = False
-        # USE pipe
-        if(USE_PIPE):
-            self.subp = Process(target=rt_SolveOCP, args=(self.child_conn, self.ddp, self.max_sqp_iter, self.max_qp_iters, self.node_id_circle, self.target_position, self.TASK_PHASE))
-            self.subp.start()
-            # Read sensors and publish real state 
-            self.parent_conn.send((self.joint_positions, self.joint_velocities, self.target_position))
-            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost, self.constraint_norm, self.gap_norm, self.qp_iters, self.kkt_norm  = self.parent_conn.recv()
-        # NO pipe
-        else:
-            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost, self.constraint_norm, self.gap_norm, self.qp_iters, self.kkt_norm = solveOCP(self.joint_positions, 
-                                                                                            self.joint_velocities, 
-                                                                                            self.ddp, 
-                                                                                            self.max_sqp_iter, 
-                                                                                            self.max_qp_iters,
-                                                                                            self.node_id_circle,
-                                                                                            self.target_position,
-                                                                                            self.TASK_PHASE)
+
+        
+        self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost, self.constraint_norm, self.gap_norm, self.qp_iters, self.kkt_norm = solveOCP(self.joint_positions, 
+                                                                                        self.joint_velocities, 
+                                                                                        self.ddp, 
+                                                                                        self.max_sqp_iter, 
+                                                                                        self.max_qp_iters,
+                                                                                        self.node_id_circle,
+                                                                                        self.target_position,
+                                                                                        self.TASK_PHASE)
         self.cumulative_cost += self.cost
         self.check = 0
         self.max_sqp_iter = self.config['maxiter']
@@ -258,10 +197,6 @@ class KukaSquareFADMM:
         q = self.joint_positions
         v = self.joint_velocities
         
-        # # Add noise on the joint velocities if simulation 
-        # if(self.RUN_SIM):
-        #     v += 0.1*np.random.rand(self.nv)
-
         # When getting torque measurement from robot, do not forget to flip the sign
         if(not self.RUN_SIM):
             self.joint_torques_measured = -self.joint_torques_total  
@@ -282,43 +217,44 @@ class KukaSquareFADMM:
             self.target_position_x = self.target_position[:,0] 
             self.target_position_y = self.target_position[:,1] 
             self.target_position_z = self.target_position[:,2]
-            # Updates nodes between node_id and terminal node 
-            # cmodels = self.ddp.cmodels
-            # for _ , m in enumerate(cmodels[1:]):
-            #     m.lb = self.lb_square 
-            #     m.ub = self.ub_square 
+
             self.pdes = np.array([0.6, -0., .5])
 
-        if time_to_circle % self.CIRCLE_DURATION == 0:
-            self.count_circle += 1
-            print("CIRCLE number " + str(self.count_circle))
-
-
-        if time_to_circle == self.CIRCLE_DURATION + self.CIRCLE_DURATION // 2:
-            print("ADD LOWER CONSTRAINT")
-            cmodels = self.ddp.cmodels
-            lb_square_tmp = np.array([-np.inf, -np.inf, self.lb_square[2]])
-            for _ , m in enumerate(cmodels[1:]):
-                m.lb = lb_square_tmp
-
-        if time_to_circle == 3 * self.CIRCLE_DURATION:
-            print("ADD RIGHT CONSTRAINT")  # (when facing the robot)
-            cmodels = self.ddp.cmodels
-            ub_square_tmp = np.array([np.inf, self.ub_square[1], np.inf])
-            for _ , m in enumerate(cmodels[1:]):
-                m.ub = ub_square_tmp
-
-        if time_to_circle == 4 * self.CIRCLE_DURATION :
-            print("ADD UPPER CONSTRAINT")  
+            # Updates nodes between node_id and terminal node 
             cmodels = self.ddp.cmodels
             for _ , m in enumerate(cmodels[1:]):
-                m.ub = self.ub_square
+                m.lb = self.lb_square 
+                m.ub = self.ub_square 
 
-        if time_to_circle == 5 * self.CIRCLE_DURATION :
-            print("ADD LEFT CONSTRAINT")  # (when facing the robot)
-            cmodels = self.ddp.cmodels
-            for _ , m in enumerate(cmodels[1:]):
-                m.lb = self.lb_square
+        # if time_to_circle % self.CIRCLE_DURATION == 0:
+        #     self.count_circle += 1
+        #     print("CIRCLE number " + str(self.count_circle))
+
+        # if time_to_circle == self.CIRCLE_DURATION + self.CIRCLE_DURATION // 2:
+        #     print("ADD LOWER CONSTRAINT")
+        #     cmodels = self.ddp.cmodels
+        #     lb_square_tmp = np.array([-np.inf, -np.inf, self.lb_square[2]])
+        #     for _ , m in enumerate(cmodels[1:]):
+        #         m.lb = lb_square_tmp
+
+        # if time_to_circle == 3 * self.CIRCLE_DURATION:
+        #     print("ADD RIGHT CONSTRAINT")  # (when facing the robot)
+        #     cmodels = self.ddp.cmodels
+        #     ub_square_tmp = np.array([np.inf, self.ub_square[1], np.inf])
+        #     for _ , m in enumerate(cmodels[1:]):
+        #         m.ub = ub_square_tmp
+
+        # if time_to_circle == 4 * self.CIRCLE_DURATION :
+        #     print("ADD UPPER CONSTRAINT")  
+        #     cmodels = self.ddp.cmodels
+        #     for _ , m in enumerate(cmodels[1:]):
+        #         m.ub = self.ub_square
+
+        # if time_to_circle == 5 * self.CIRCLE_DURATION :
+        #     print("ADD LEFT CONSTRAINT")  # (when facing the robot)
+        #     cmodels = self.ddp.cmodels
+        #     for _ , m in enumerate(cmodels[1:]):
+        #         m.lb = self.lb_square
 
 
         # If circle tracking phase enters the MPC horizon, start updating models from the end with tracking models      
@@ -347,33 +283,15 @@ class KukaSquareFADMM:
         # If planning cycle, fetch OCP solution
         self.t_child, self.t_child_1 = 0, 0
         if thread.ti % int(self.sim_to_plan_ratio) == 0:         
-            # No pipe
-            if(not USE_PIPE):
-                self.count = 0
-                self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost, self.constraint_norm, self.gap_norm, self.qp_iters, self.kkt_norm = solveOCP(q, v, 
-                                                                                                  self.ddp, 
-                                                                                                  self.max_sqp_iter, 
-                                                                                                  self.max_qp_iters,
-                                                                                                  self.node_id_circle,
-                                                                                                  self.target_position,
-                                                                                                  self.TASK_PHASE)
-            # With pipe
-            else:
-                if thread.ti != 0 and not self.sent:
-                    self.is_plan_updated = False
-                    self.parent_conn.send((q, v, self.target_position)) 
-                    self.sent = True
-            self.cumulative_cost += self.cost
-
-        if USE_PIPE and self.parent_conn.poll() and not self.is_plan_updated:
             self.count = 0
-            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost, self.constraint_norm, self.gap_norm, self.qp_iters, self.kkt_norm = self.parent_conn.recv()
-            # record predictions here if necessary 
-            self.sent = False
-
-            # Increment planning counter
-            self.nb_plan += 1
-            self.is_plan_updated = True
+            self.us, self.xs, self.Ks, self.t_child, self.ddp_iter, self.t_child_1, self.cost, self.constraint_norm, self.gap_norm, self.qp_iters, self.kkt_norm = solveOCP(q, v, 
+                                                                                              self.ddp, 
+                                                                                              self.max_sqp_iter, 
+                                                                                              self.max_qp_iters,
+                                                                                              self.node_id_circle,
+                                                                                              self.target_position,
+                                                                                              self.TASK_PHASE)
+            self.cumulative_cost += self.cost
 
 
         # # # # # # # # 

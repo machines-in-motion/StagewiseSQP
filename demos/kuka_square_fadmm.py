@@ -19,7 +19,7 @@ from controllers.kuka_square_fadmm import KukaSquareFADMM
 from core_mpc import path_utils, sim_utils
 
 
-SIM = False
+SIM = True
 
 DGM_PARAMS_PATH = "/home/ajordana/ws/workspace/install/robot_properties_kuka/lib/python3.8/site-packages/robot_properties_kuka/robot_properties_kuka/dynamic_graph_manager/dgm_parameters_iiwa.yaml"
 CONFIG_NAME = 'kuka_square_fadmm' 
