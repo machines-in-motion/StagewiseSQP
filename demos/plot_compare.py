@@ -25,35 +25,22 @@ config      = path_utils.load_yaml_file(CONFIG_PATH)
 
 
 # Load data 
-SIM = False 
+SIM = False
 
 
 # Create data Plottger
 s = SimpleDataPlotter()
 
+folder = '/home/ajordana/Desktop/FADMM_demos/square/'
 
 if(SIM):
-    # r = DataReader('/home/skleff/Desktop/circle_PROXQP.mds')
-    # r1 = DataReader('/home/skleff/Desktop/circle_FADMM.mds')
-    # r1 = DataReader('/tmp/kuka_circle_sim_PROXQP.mds')
     r1 = DataReader('/tmp/kuka_square_sim_square_constraintEEy.mds') #r2
     r2 = r1
-    # r2 = DataReader('/tmp/kuka_circle_sim_PROXQP_warm_start_y=False_reset_rho=Falsesqp3.mds') #r2
-    # r2 = r1 #DataReader('/tmp/kuka_circle_sim_FADMM_warm_start_y=True_reset_rho=False.mds')
-    r3 = r1 #DataReader('/tmp/kuka_circle_sim_FADMM_warm_start_y=True_reset_rho=True.mds')
-    r4 = r1 #DataReader('/tmp/kuka_circle_sim_FADMM_warm_start_y=False_reset_rho=Truesqp3.mds')
-    # r2 = DataReader('/tmp/kuka_circle_sim_FADMM_NO_CONSTRAINT.mds')
 else:
-    # r = DataReader('/home/skleff/Desktop/circle_PROXQP.mds')
-    # r1 = DataReader('/home/skleff/Desktop/circle_FADMM.mds')
-    # r1 = DataReader('/tmp/kuka_circle_real_=PROXQP.mds')
-
-    # r1 = DataReader('/tmp/kuka_circle_real_=FADMM_NO_CONSTRAINT.mds')  # baseline
-    # r1 = DataReader('/tmp/kuka_circle_real_FADMM_no_constraint.mds')  
-    r1 = DataReader('/home/skleff/Desktop/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_square_1683311293.0681663.mds')  
-    # r1 = DataReader('/tmp/kuka_circle_real_PROXQP_warm_start_y=False_reset_rho=False_allJoints.mds')  # current best
-    r2 = r1
-    r3 = r1
+    r1 = DataReader(folder + 'REAL_1691003898.7741838_new_ref.mds')  
+    r2 =  DataReader(folder + 'REAL_1691005944.676648_more_it.mds') 
+     
+    r3 = r2
 N = r1.data['tau'].shape[0]
 
 
@@ -119,8 +106,8 @@ ulb = -np.array([config['ctrlLimit']]*N)
 uub = np.array([config['ctrlLimit']]*N) 
 # For SIM robot only
 if(SIM):
-    s.plot_joint_tau( [r2.data['tau'], r1.data['tau'], ulb, uub],
-                      ['Data 2', 'Data 1', 'lb', 'ub'], 
+    s.plot_joint_tau( [r1.data['tau'], r2.data['tau'], ulb, uub],
+                      ['Data 1', 'Data 2', 'lb', 'ub'], 
                       ['r', 'b', 'k', 'k'],
                       linestyle=['solid','solid', 'dotted', 'dotted'],
                       ylims=[-model.effortLimit-100*eps, +model.effortLimit+100*eps] )

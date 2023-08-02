@@ -31,9 +31,7 @@ def solveOCP(q, v, ddp, max_sqp_iter, max_qp_iter, node_id_circle, target_reach,
                 m[k].differential.costs.costs["translation"].active = True
                 m[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
                 m[k].differential.costs.costs["translation"].weight = 50.
-                # if(k!=0):
-                #     ddp.cmodels[k].lb = target_reach[k] - 0.02
-                #     ddp.cmodels[k].ub = target_reach[k] + 0.02
+
     problem_formulation_time = time.time()
     t_child_1 =  problem_formulation_time - t
     # Solve OCP 
@@ -86,7 +84,8 @@ class KukaSquareFADMM:
         self.dt_ocp  = self.config['dt']
         self.dt_plan = 1./self.config['plan_freq']
         self.dt_simu = 1./self.config['simu_freq']
-        self.ocp_to_sim_ratio = 1. / ( self.config['simu_freq'] * self.dt_ocp )
+
+        self.OCP_TO_SIMU_ratio = int(self.dt_ocp / self.dt_simu)
         self.sim_to_plan_ratio = self.config['simu_freq']/self.config['plan_freq']
         # Create OCP
         self.ddp = OptimalControlProblemClassicalWithConstraints(robot, self.config).initialize(self.x0, callbacks=False)
@@ -117,24 +116,24 @@ class KukaSquareFADMM:
 
         # self.target_position = np.asarray(self.config['contactPosition']) + np.asarray(self.config['oPc_offset'])
         # Circle trajectory 
-        N_total_pos = int((self.config['T_tot'] - 0.)/self.dt_ocp + self.Nh)
-        N_circle = int((self.config['T_tot'] - self.config['T_CIRCLE'])/self.dt_ocp) + self.Nh
+        N_total_pos = int((self.config['T_tot'] - 0.)/self.dt_simu + self.Nh*self.OCP_TO_SIMU_ratio)
+        N_circle = int((self.config['T_tot'] - self.config['T_CIRCLE'])/self.dt_simu + self.Nh * self.OCP_TO_SIMU_ratio)
         self.target_position_traj = np.zeros( (N_total_pos, 3) )
         # absolute desired position
         self.pdes = np.array([0.6, -0., .2]) # np.asarray(self.config['frameTranslationRef']) 
         radius = 0.4 ; omega = 1.
         self.target_position_traj[0:N_circle, :] = [np.array([self.pdes[0],
-                                                              self.pdes[1] + 1.1*radius * np.sin(i*self.dt_ocp*omega), 
-                                                              self.pdes[2] + 1.1*radius * (1-np.cos(i*self.dt_ocp*omega)) ]) for i in range(N_circle)]
+                                                              self.pdes[1] + 1.1*radius * np.sin(i*self.dt_simu*omega), 
+                                                              self.pdes[2] + 1.1*radius * (1-np.cos(i*self.dt_simu*omega)) ]) for i in range(N_circle)]
         self.target_position_traj[N_circle:, :] = self.target_position_traj[N_circle-1,:]
         plt.plot(self.target_position_traj[:,1], self.target_position_traj[:,2], label='pos')
         self.center_y = self.pdes[1] 
         self.center_z = self.pdes[2] + 1.1*radius
         self.radius2 = radius/np.sqrt(2)
-        plt.plot(self.center_y + self.radius2, self.center_z + self.radius2, marker='o', label='pos')
-        plt.plot(self.center_y - self.radius2, self.center_z + self.radius2, marker='o', label='pos')
-        plt.plot(self.center_y + self.radius2, self.center_z - self.radius2, marker='o', label='pos')
-        plt.plot(self.center_y - self.radius2, self.center_z - self.radius2, marker='o', label='pos')
+        # plt.plot(self.center_y + self.radius2, self.center_z + self.radius2, marker='o', label='pos')
+        # plt.plot(self.center_y - self.radius2, self.center_z + self.radius2, marker='o', label='pos')
+        # plt.plot(self.center_y + self.radius2, self.center_z - self.radius2, marker='o', label='pos')
+        # plt.plot(self.center_y - self.radius2, self.center_z - self.radius2, marker='o', label='pos')
 
         # Targets over one horizon (initially = absolute target position)
         self.target_position = np.zeros((self.Nh+1, 3)) 
@@ -152,11 +151,10 @@ class KukaSquareFADMM:
         self.T_CIRCLE = int(self.config['T_CIRCLE']/self.dt_simu)
         self.CIRCLE_DURATION = int(2 * np.pi/self.dt_simu)
         self.count_circle = 0
-        self.OCP_TO_SIMU_CYCLES = 1./(self.dt_simu / self.dt_ocp)
         logger.debug("Size of MPC horizon in simu cycles = "+str(self.NH_SIMU))
         logger.debug("Start of circle phase in simu cycles = "+str(self.T_CIRCLE))
         logger.debug("CIRCLE DURATION = "+str(self.CIRCLE_DURATION))
-        logger.debug("OCP to SIMU time ratio = "+str(self.OCP_TO_SIMU_CYCLES))
+        logger.debug("OCP to SIMU time ratio = "+str(self.OCP_TO_SIMU_ratio))
         self.cumulative_cost = 0
 
         # Solver logs
@@ -209,7 +207,6 @@ class KukaSquareFADMM:
 
         if(time_to_circle == 0): 
             print("Entering circle phase")
-            print(self.endeffFrameId)
             self.position_at_contact_switch = self.robot.data.oMf[self.endeffFrameId].translation.copy()
             offset_xy = self.position_at_contact_switch- self.pdes
             # self.target_position_traj += offset_xy
@@ -261,17 +258,17 @@ class KukaSquareFADMM:
         if(0 <= time_to_circle and time_to_circle <= self.NH_SIMU):
             self.TASK_PHASE = 1
             # If current time matches an OCP node 
-            if(time_to_circle%self.OCP_TO_SIMU_CYCLES == 0):
+            if(time_to_circle%self.OCP_TO_SIMU_ratio == 0):
                 # Select IAM
-                self.node_id_circle = self.Nh - int(time_to_circle/self.OCP_TO_SIMU_CYCLES)
+                self.node_id_circle = self.Nh - int(time_to_circle/self.OCP_TO_SIMU_ratio)
 
-        if(0 <= time_to_circle and time_to_circle%self.OCP_TO_SIMU_CYCLES == 0):
+        if(0 <= time_to_circle and thread.ti % int(self.sim_to_plan_ratio) == 0):
             # set position refs over current horizon
-            ti  = int(time_to_circle/self.OCP_TO_SIMU_CYCLES) 
-            tf  = ti + self.Nh+1
+            ti  = time_to_circle
+            tf  = ti + (self.Nh + 1) *self.OCP_TO_SIMU_ratio
             # Target in (x,y)  = circle trajectory + offset to start from current position instead of absolute target
             # offset_xy = self.position_at_contact_switch- self.pdes
-            self.target_position = self.target_position_traj[ti:tf,:] #+ offset_xy
+            self.target_position = self.target_position_traj[ti:tf:self.OCP_TO_SIMU_ratio,:] #+ offset_xy
             # Record target signals
             self.target_position_x = self.target_position[:,0] 
             self.target_position_y = self.target_position[:,1] 
@@ -298,7 +295,7 @@ class KukaSquareFADMM:
         # Send policy #
         # # # # # # # #
         # Linear interpolation of torque control input & desired state 
-        ctr_index = int(self.count*self.ocp_to_sim_ratio)
+        ctr_index = int(self.count/self.OCP_TO_SIMU_ratio)
         if ctr_index > self.Nh-1:
             self.tau_ff   = self.us[-1]     
             self.x_des    = self.xs[-1]  

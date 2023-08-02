@@ -19,7 +19,7 @@ from controllers.kuka_square_fadmm import KukaSquareFADMM
 from core_mpc import path_utils, sim_utils
 
 
-SIM = True
+SIM = False
 
 DGM_PARAMS_PATH = "/home/ajordana/ws/workspace/install/robot_properties_kuka/lib/python3.8/site-packages/robot_properties_kuka/robot_properties_kuka/dynamic_graph_manager/dgm_parameters_iiwa.yaml"
 CONFIG_NAME = 'kuka_square_fadmm' 
@@ -71,19 +71,10 @@ thread_head = ThreadHead(
 
 thread_head.switch_controllers(ctrl)
 
-if(config['USE_PROXQP']):
-    suffix = 'PROXQP'
-else:
-    suffix = 'FADMM'
-
-
-
 thread_head.switch_controllers(ctrl)
 
-if(config['USE_PROXQP']):
-    suffix = 'PROXQP'
-else:
-    suffix = 'FADMM'
+
+suffix = '_more_it'
 
 if SIM:
     thread_head.start_logging(10, "/home/ajordana/Desktop/FADMM_demos/square/SIM_"+str(time.time())+".mds")
@@ -92,7 +83,7 @@ if SIM:
     thread_head.plot_timing()
 else:
     thread_head.start()
-    thread_head.start_logging(30, "/home/ajordana/Desktop/FADMM_demos/square/REAL_"+str(time.time())+".mds")
+    thread_head.start_logging(30, "/home/ajordana/Desktop/FADMM_demos/square/REAL_"+str(time.time())+suffix+".mds")
     time.sleep(30)
     # thread_head.plot_timing()
 # ctrl.bench.plot_timer()

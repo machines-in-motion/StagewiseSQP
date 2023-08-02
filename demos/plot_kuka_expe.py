@@ -25,17 +25,18 @@ config      = path_utils.load_yaml_file(CONFIG_PATH)
 
 
 # Load data 
-SIM = True
+SIM = False
 
 
 # Create data Plottger
 s = SimpleDataPlotter()
-
+# 
 folder = '/home/ajordana/Desktop/FADMM_demos/square/'
 if(SIM):
-    r = DataReader(folder + 'SIM_1691002367.9969182.mds')
+    # r = DataReader(folder + 'SIM_1691002367.9969182.mds') # old
+    r = DataReader(folder + 'SIM_1691003295.5281117.mds')
 else:    
-    r = DataReader(folder + 'REAL_1691001689.9434948.mds')
+    r = DataReader(folder + 'REAL_1691004650.348041_new_ref.mds')
 
 
 N = r.data['tau'].shape[0]
