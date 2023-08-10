@@ -82,7 +82,7 @@ if SIM:
     thread_head.plot_timing()
 else:
     thread_head.start()
-    thread_head.start_logging(30, "/home/ajordana/Desktop/FADMM_demos/square/REAL_"+str(time.time())+suffix+".mds")
-    time.sleep(30)
+    thread_head.start_logging(60, "/home/ajordana/Desktop/FADMM_demos/square/REAL_"+str(time.time())+suffix+".mds")
+    time.sleep(60)
     # thread_head.plot_timing()
 # ctrl.bench.plot_timer()

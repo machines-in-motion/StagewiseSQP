@@ -35,7 +35,7 @@ folder = '/home/ajordana/Desktop/FADMM_demos/square/'
 if(SIM):
     r = DataReader(folder + 'SIM_1691007354.8480241.mds')
 else:    
-    r = DataReader(folder + 'REAL_1691009280.592574_250HZ.mds')
+    r = DataReader(folder + 'REAL_1691681175.8120902_demo.mds')
 
 
 N = r.data['tau'].shape[0]

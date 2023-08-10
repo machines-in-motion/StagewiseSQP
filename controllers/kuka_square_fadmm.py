@@ -123,17 +123,18 @@ class KukaSquareFADMM:
         self.pdes = np.array([0.6, -0., .2]) # np.asarray(self.config['frameTranslationRef']) 
         radius = 0.4 ; omega = 1.
         self.target_position_traj[0:N_circle, :] = [np.array([self.pdes[0],
-                                                              self.pdes[1] + 1.1*radius * np.sin(i*self.dt_simu*omega), 
-                                                              self.pdes[2] + 1.1*radius * (1-np.cos(i*self.dt_simu*omega)) ]) for i in range(N_circle)]
+                                                              self.pdes[1] + 1.*radius * np.sin(i*self.dt_simu*omega), 
+                                                              self.pdes[2] + 1.*radius * (1-np.cos(i*self.dt_simu*omega)) ]) for i in range(N_circle)]
         self.target_position_traj[N_circle:, :] = self.target_position_traj[N_circle-1,:]
         plt.plot(self.target_position_traj[:,1], self.target_position_traj[:,2], label='pos')
         self.center_y = self.pdes[1] 
-        self.center_z = self.pdes[2] + 1.1*radius
+        self.center_z = self.pdes[2] + 1.*radius
         self.radius2 = radius/np.sqrt(2)
         # plt.plot(self.center_y + self.radius2, self.center_z + self.radius2, marker='o', label='pos')
         # plt.plot(self.center_y - self.radius2, self.center_z + self.radius2, marker='o', label='pos')
         # plt.plot(self.center_y + self.radius2, self.center_z - self.radius2, marker='o', label='pos')
         # plt.plot(self.center_y - self.radius2, self.center_z - self.radius2, marker='o', label='pos')
+        # plt.show()
 
         # Targets over one horizon (initially = absolute target position)
         self.target_position = np.zeros((self.Nh+1, 3)) 

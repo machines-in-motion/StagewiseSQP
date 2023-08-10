@@ -37,10 +37,11 @@ if(SIM):
     r1 = DataReader('/tmp/kuka_square_sim_square_constraintEEy.mds') #r2
     r2 = r1
 else:
-    r1 = DataReader(folder + 'REAL_1691008761.744843_200HZ.mds')  
-    r2 =  DataReader(folder + 'REAL_1691008572.2509599_best.mds') 
+    # r1 = DataReader(folder + 'REAL_1691680495.0787268_demo.mds')  
+    r2 =  DataReader(folder + 'REAL_1691681175.8120902_demo.mds') 
      
-    r3 = r2
+    r3 = r2 
+    r1 = r2
 N = r1.data['tau'].shape[0]
 
 

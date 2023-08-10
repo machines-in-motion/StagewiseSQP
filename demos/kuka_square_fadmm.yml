@@ -62,7 +62,7 @@ WHICH_COSTS: ['translation', 'ctrlRegGrav', 'stateReg']
 
 # Cost function weights and activations
  # 'stateReg' : state regularization  
-stateRegWeights: [10., 5, 1., 1., 1., 1., 1., 5., 5., 5., 5., 5., 5., 5.]
+stateRegWeights: [10., 5., 1., 1., 1., 10., 1., 5., 5., 5., 5., 5., 5., 5.]
 stateRegWeight: 0.01
 stateRegWeightTerminal: 0.01
 stateRegRef: 'DEFAULT'  # 'DEFAULT' = [q0, v0]
