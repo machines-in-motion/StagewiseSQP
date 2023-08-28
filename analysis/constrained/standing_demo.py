@@ -11,18 +11,18 @@ import sys
 
 pinRef        = pin.LOCAL_WORLD_ALIGNED
 FORCE_CSTR    = False
-FRICTION_CSTR = False
+FRICTION_CSTR = True
 MU = 0.8
-PLOT = True
+PLOT = False
 PLAY = True
-SAVE = False
+SAVE = True
 
-SOLVE_OCP = False
+SOLVE_OCP = True
 
 
 PLOT_1 = False
 PLOT_2 = False 
-PLOT_3 = True
+PLOT_3 = False #True
 
 robot_name = 'solo12'
 ee_frame_names = ['FL_FOOT', 'FR_FOOT', 'HL_FOOT', 'HR_FOOT']
@@ -278,12 +278,12 @@ if(SOLVE_OCP):
         viz.loadViewerModel()
 
 
-        # angle = 0.0  # Initial angle
-        # rotation_speed = 0.05  # Speed of rotation (adjust as needed)
+        angle = 0.0  # Initial angle
+        rotation_speed = 0.05  # Speed of rotation (adjust as needed)
 
-        # cam_pose = tf.translation_matrix([-3.5, 0, 0.])  # Example camera position
-        # cam_pose[:3, :3] = tf.euler_matrix(0.0, 0.0, np.pi/6)[:3, :3]  # Example camera orientation
-        # viz.viewer["/Cameras"].set_transform(cam_pose)
+        cam_pose = tf.translation_matrix([0, 0, 0.])  # Example camera position
+        cam_pose[:3, :3] = tf.euler_matrix(0.0, 0.0, np.pi/3)[:3, :3]  # Example camera orientation
+        viz.viewer["/Cameras"].set_transform(cam_pose)
 
 
 
@@ -332,6 +332,7 @@ if(SOLVE_OCP):
 
         import time
         # visualize DDP warm-start
+        time.sleep(5)
         for t in range(N_ocp):
             # time.sleep(dt)
             viz.display(q_sol[t])
