@@ -17,12 +17,13 @@ PLOT = False
 PLAY = True
 SAVE = True
 
-SOLVE_OCP = True
+SOLVE_OCP = False
 
 
 PLOT_1 = False
 PLOT_2 = False 
-PLOT_3 = False #True
+PLOT_3 = False
+PLOT_4 = True
 
 robot_name = 'solo12'
 ee_frame_names = ['FL_FOOT', 'FR_FOOT', 'HL_FOOT', 'HR_FOOT']
@@ -465,6 +466,7 @@ else:
             axs[i].yaxis.set_major_locator(plt.MaxNLocator(2))
             axs[i].yaxis.set_major_formatter(plt.FormatStrFormatter('%.0f'))
 
+    # Current paper plot : FL and HL force ratio
     if(PLOT_3):
         time_lin = np.linspace(0, T, solver.problem.T)
         fig, axs = plt.subplots(1, 2, figsize=(19.2,10.8), constrained_layout=True)
@@ -507,5 +509,31 @@ else:
         axs[0].set_xlabel('Time (s)', fontsize=22)
         axs[1].set_xlabel('Time (s)', fontsize=22)
         fig.savefig('/home/skleff/data_paper_fadmm/solo_standing_friction_normalized.pdf', bbox_inches="tight")
+
+    # Only FL
+    if(PLOT_4):
+        time_lin = np.linspace(0, T, solver.problem.T)
+        fig, axs = plt.subplots(1, 1, figsize=(19.2,10.8), constrained_layout=True)
+        forces1 = np.array(unconstrained_sol['FL_FOOT_contact'])
+        forces2 = np.array(constrained_sol['FL_FOOT_contact'])
+        # Plot unconstrained forces
+        f1 = np.sqrt( ( forces1[:, 0]**2 + forces1[:, 1]**2 ) / forces1[:, 2]**2 )
+        f2 = np.sqrt( ( forces2[:, 0]**2 + forces2[:, 1]**2 ) / forces2[:, 2]**2 )
+        axs.plot(time_lin, f1, color='g', linewidth=4, label='Unconstrained', alpha=0.5) 
+        axs.plot(time_lin, f2, color='b', linewidth=4, label='Constrained', alpha=0.5) 
+        # Add friction cone constraints 
+        axs.plot(time_lin, [MU]*solver.problem.T, color='k', linestyle='--', linewidth=4, label='Friction cone ('+r"$\mu$"+'='+str(MU)+')', alpha=0.5)
+        axs.grid()
+        MAX = 5.3
+        axs.axhspan(0.8, MAX, -MAX, MAX, color='gray', alpha=0.2, lw=0)
+        axs.set_xlim(0., 5)
+        axs.set_ylim(0., 5.3)
+        axs.set_ylabel('FL force ratio', fontsize=22)
+        handles, labels = axs.get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.03, 1.), prop={'size': 26}) 
+        axs.tick_params(axis = 'x', labelsize=22)
+        axs.tick_params(axis = 'y', labelsize=22)
+        axs.set_xlabel('Time (s)', fontsize=26)
+        fig.savefig('/home/skleff/data_paper_fadmm/solo_standing_friction_normalized2.pdf', bbox_inches="tight")
 
     plt.show()
