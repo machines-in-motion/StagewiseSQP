@@ -1,6 +1,60 @@
 import pinocchio as pin
 import numpy as np
 import meshcat
+import crocoddyl
+
+
+
+class Force3DConstraintModelSoloStanding(crocoddyl.ConstraintModelAbstract):
+    def __init__(self, state, nu, Fmin, Fmax, name):
+        crocoddyl.ConstraintModelAbstract.__init__(self, state, 12, nu, Fmin, Fmax, name)
+        self.lmin = Fmin
+        self.lmax = Fmax
+
+    def calc(self, cdata, data, x, u=None):        
+        cdata.c = data.differential.pinocchio.lambda_c 
+
+    def calcDiff(self, cdata, data, x, u=None):
+        cdata.Cx = data.differential.df_dx
+        cdata.Cu = data.differential.df_du
+
+
+
+
+class FrictionConstraintModelSoloStanding(crocoddyl.ConstraintModelAbstract):
+    def __init__(self, state, mu, nu):
+        crocoddyl.ConstraintModelAbstract.__init__(self, state, 4, nu, np.array([0.]*4), np.array([np.inf]*4), 'friction')
+        self.mu = mu
+        self.dcone_df = np.zeros((4, 12))
+
+    def calc(self, cdata, data, x, u=None): 
+        # constraint residual (expressed in constraint ref frame already)
+        F = data.differential.pinocchio.lambda_c
+        cdata.c[0] = np.array([self.mu * F[2] - np.sqrt(F[0]**2 + F[1]**2)])
+        cdata.c[1] = np.array([self.mu * F[5] - np.sqrt(F[3]**2 + F[4]**2)])
+        cdata.c[2] = np.array([self.mu * F[8] - np.sqrt(F[6]**2 + F[7]**2)])
+        cdata.c[3] = np.array([self.mu * F[11] - np.sqrt(F[9]**2 + F[10]**2)])
+
+    def calcDiff(self, cdata, data, x, u=None):
+        F = data.differential.pinocchio.lambda_c
+        self.dcone_df[0, 0] = -F[0] / np.sqrt(F[0]**2 + F[1]**2)
+        self.dcone_df[0, 1] = -F[1] / np.sqrt(F[0]**2 + F[1]**2)
+        self.dcone_df[0, 2] = self.mu
+
+        self.dcone_df[1, 3] = -F[3] / np.sqrt(F[3]**2 + F[4]**2)
+        self.dcone_df[1, 4] = -F[4] / np.sqrt(F[3]**2 + F[4]**2)
+        self.dcone_df[1, 5] = self.mu
+
+        self.dcone_df[2, 6] = -F[6] / np.sqrt(F[6]**2 + F[7]**2)
+        self.dcone_df[2, 7] = -F[7] / np.sqrt(F[6]**2 + F[7]**2)
+        self.dcone_df[2, 8] = self.mu
+
+        self.dcone_df[3, 9] = -F[9] / np.sqrt(F[9]**2 + F[10]**2)
+        self.dcone_df[3, 10] = -F[10] / np.sqrt(F[9]**2 + F[10]**2)
+        self.dcone_df[3, 11] = self.mu
+
+        cdata.Cx = self.dcone_df @ data.differential.df_dx 
+        cdata.Cu = self.dcone_df @ data.differential.df_du
 
 
 def meshcat_material(r, g, b, a):
@@ -37,7 +91,7 @@ def applyViewerConfiguration(viz, name, xyzquat):
     if isinstance(viz, pin.visualize.MeshcatVisualizer):
         viz.viewer[name].set_transform(meshcat_transform(*xyzquat))
 
-def get_solution_trajectories(solver, rmodel, rdata, supportFeetIds):
+def get_solution_trajectories(solver, rmodel, rdata, supportFeetIds, pinRefFrame=pin.LOCAL):
     xs, us = solver.xs, solver.us
     nq, nv, N = rmodel.nq, rmodel.nv, len(xs) 
     jointPos_sol = []
@@ -72,13 +126,15 @@ def get_solution_trajectories(solver, rmodel, rdata, supportFeetIds):
     
 
     for frame_idx in supportFeetIds:
-        force_list = []
+        # print('extract foot id ', frame_idx, "_name = ", rmodel.frames[frame_idx].name)
         ct_frame_name = rmodel.frames[frame_idx].name + "_contact"
         datas = [solver.problem.runningDatas[i].differential.multibody.contacts.contacts[ct_frame_name] for i in range(N-1)]
-        lwaMf = [solver.problem.runningDatas[i].differential.pinocchio.oMf[frame_idx].copy() for i in range(N-1)]
-        for m in lwaMf:
-            m.translation = np.zeros(3)
-        ee_forces = [lwaMf[k].act(datas[k].jMf.actInv(datas[k].f)).vector for k in range(N-1)] 
+        if(pinRefFrame == pin.LOCAL):
+            ee_forces = [datas[k].jMf.actInv(datas[k].f).vector for k in range(N-1)] 
+        else:
+            lwaMf = [solver.problem.runningDatas[i].differential.pinocchio.oMf[frame_idx].copy() for i in range(N-1)]
+            for m in lwaMf: m.translation = np.zeros(3)
+            ee_forces = [lwaMf[k].act(datas[k].jMf.actInv(datas[k].f)).vector for k in range(N-1)] 
         sol[ct_frame_name] = [ee_forces[i] for i in range(N-1)]     
     
     return sol    

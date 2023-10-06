@@ -167,10 +167,10 @@ if('circle_joint_cstr' in PLOTS and 'circle_no_cstr' in PLOTS):
     ax_circle.set_xlim(-0.33, +0.33)
     ax_circle.set_ylim(0.15, 0.8)
     ax_circle.plot(p_mea2[0,1], p_mea2[0,2], 'ro', markersize=16)
-    ax_circle.text(0., 0.1, '$x_0$', fontdict={'size':26})
+    ax_circle.text(0., 0.2, '$x_0$', fontdict={'size':26})
     handles, labels = ax_circle.get_legend_handles_labels()
     fig_circle.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-    fig_circle.savefig('/home/skleff/data_paper_fadmm/jointpos_circle_plot.pdf', bbox_inches="tight")
+    fig_circle.savefig('/home/skleff/data_paper_fadmm/jointpos_circle_plot2.pdf', bbox_inches="tight")
     # Joint pos
     jmea1 = r1.data['joint_positions'][N_start:N, 0]
     jmea2 = r2.data['joint_positions'][N_start:N, 0]

@@ -10,7 +10,11 @@ import pinocchio
 import numpy as np
 np.set_printoptions(precision=4, linewidth=180)
 import pin_utils, ocp_utils
+<<<<<<< Updated upstream
 from sqp_ocp.constraint_model import NoConstraintModel, LocalCone, Force6DConstraintModel
+=======
+from sqp_ocp.constraint_model import LocalCone
+>>>>>>> Stashed changes
 from sqp_ocp.solvers import SQPOCP
 
 # # # # # # # # # # # # #
@@ -105,7 +109,7 @@ mu = 0.05
 
 
 
-ddp = SQPOCP(problem, constraintModels, "FADMM")
+ddp = crocoddyl.SolverFADMM(problem, constraintModels) #, "FADMM")
 
 
 xs_init = [x0 for i in range(T+1)]

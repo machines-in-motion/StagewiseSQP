@@ -4,6 +4,7 @@
 
 import numpy as np
 from . abstract_model import ConstraintModelAbstract
+import crocoddyl
 
 
 class Force6DConstraintModel(ConstraintModelAbstract):
@@ -16,6 +17,22 @@ class Force6DConstraintModel(ConstraintModelAbstract):
     def calcDiff(self, cdata, data, x, u=None):
         cdata.Cx = data.differential.df_dx
         cdata.Cu = data.differential.df_du
+
+class Force3DConstraintModel(crocoddyl.ConstraintModelAbstract):
+    def __init__(self, Fmin, Fmax, nc, nx, nu):
+        ConstraintModelAbstract.__init__(self, nc, nx, nu)
+        self.lmin = Fmin
+        self.lmax = Fmax
+
+        self.nc = 3
+
+    def calc(self, cdata, data, x, u=None): 
+        cdata.c = data.differential.pinocchio.lambda_c[:3]
+
+    def calcDiff(self, cdata, data, x, u=None):
+        cdata.Cx = data.differential.df_dx[:3]
+        cdata.Cu = data.differential.df_du[:3]
+
 
 class LocalCone(ConstraintModelAbstract):
     def __init__(self, state, nu, mu):

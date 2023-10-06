@@ -86,7 +86,7 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
 # choose scenario: 0 or 1 or 2 or 3
-option = 1
+option = 0
 
 if option == 0:    
   clip_state_max = np.array([np.inf]*14)
@@ -94,14 +94,14 @@ if option == 0:
   clip_ctrl = np.array([np.inf, 40 , np.inf, np.inf, np.inf, np.inf , np.inf] )
 
 
-  statemodel = StateConstraintModel(state, 7, clip_state_min, clip_state_max)
-  controlmodel = ControlConstraintModel(state, 7,  -clip_ctrl, clip_ctrl)
+  statemodel = crocoddyl.StateConstraintModel(state, 7, clip_state_min, clip_state_max, 'stateConstraint')
+  controlmodel = crocoddyl.ControlConstraintModel(state, 7,  -clip_ctrl, clip_ctrl, 'ctrlConstraint')
 
   nc = statemodel.nc + controlmodel.nc
-  ConstraintModel = ConstraintModelStack([statemodel, controlmodel], state, nc, 7)
+  ConstraintModel = crocoddyl.ConstraintStack([statemodel, controlmodel], state, nc, 7, 'runningConstraint')
   clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.01]*7)
-  terminal = StateConstraintModel(state, 7, clip_state_min, clip_state_max)
-  TerminalConstraintModel = ConstraintModelStack([terminal], state, 14, 7)
+  terminal = crocoddyl.StateConstraintModel(state, 7, clip_state_min, clip_state_max, 'stateConstraint')
+  TerminalConstraintModel = crocoddyl.ConstraintStack([terminal], state, 14, 7, 'terminalConstraint')
 
   constraintModels =[controlmodel] * (T) + [terminal]
 elif option == 1:    

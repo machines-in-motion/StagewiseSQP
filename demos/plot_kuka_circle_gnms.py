@@ -25,7 +25,7 @@ config      = path_utils.load_yaml_file(CONFIG_PATH)
 
 
 # Load data 
-SIM = True 
+SIM = False 
 
 
 # Create data Plottger
@@ -37,8 +37,8 @@ if(SIM):
     # r = DataReader('/tmp/kuka_reach_gnms_sim_FDDP.mds')
     r = DataReader('/tmp/kuka_circle_sim_FADMM.mds')
 else:
-    r2 = DataReader('/home/skleff/ws/workspace/src/gnms/data/circle_GNMS.mds')
-    r = DataReader('/home/skleff/ws/workspace/src/gnms/data/circle_FDDP.mds')
+    # r2 = DataReader('/home/skleff/ws/workspace/src/gnms/data/circle_GNMS.mds')
+    r = DataReader('/home/skleff/data_paper_fadmm/circle_no_cstr/no_constraint_1683299184.3249779.mds')
 
 N = r.data['tau'].shape[0]
 
