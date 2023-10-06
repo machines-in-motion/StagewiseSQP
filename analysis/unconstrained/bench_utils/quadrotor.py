@@ -8,7 +8,7 @@ os.sys.path.insert(1, str(python_path))
 import numpy as np
 import crocoddyl
 import matplotlib.pyplot as plt
-from sqp_ocp.solvers import GNMSCPP,GNMS
+from sqp_ocp.solvers import CSSQPCPP,SQP
 
 LINE_WIDTH = 100
 
@@ -194,7 +194,7 @@ if __name__ == "__main__":
     print(" Constructing shooting problem completed ".center(LINE_WIDTH, "-"))
 
     # ddp = crocoddyl.SolverDDP(problem)
-    ddp = GNMS(problem)
+    ddp = SQP(problem)
 
     print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
     ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])

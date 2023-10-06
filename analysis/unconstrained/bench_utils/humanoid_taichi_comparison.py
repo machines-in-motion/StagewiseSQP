@@ -161,21 +161,21 @@ TOL       = 1e-6
 CALLBACKS = True
 KKT_COND  = True
 
-# GNMS
-# from sqp_ocp.solvers import GNMSCPP,GNMS
+# SQP
+# from sqp_ocp.solvers import CSSQPCPP,SQP
 
-solverGNMS = crocoddyl.SolverGNMS(problem)
-# solverGNMS = GNMSCPP(problem)
-# solverGNMS.termination_tol = TOL
-# solverGNMS.VERBOSE = CALLBACKS
-solverGNMS.termination_tolerance = TOL
-solverGNMS.with_callbacks = CALLBACKS
-solverGNMS.use_kkt_condition = KKT_COND
-print("Solver GNMS :")  
-# print("  Use KKT condition     = ", solverGNMS.use_kkt_condition)
-print("  Termination tolerance = ", solverGNMS.termination_tolerance)
-print("  Penalty parameter mu  = ", solverGNMS.mu)
-print("  use_heuristic_line_search  = ", solverGNMS.use_heuristic_line_search)
+solverSQP = crocoddyl.SolverSQP(problem)
+# solverSQP = CSSQPCPP(problem)
+# solverSQP.termination_tol = TOL
+# solverSQP.VERBOSE = CALLBACKS
+solverSQP.termination_tolerance = TOL
+solverSQP.with_callbacks = CALLBACKS
+solverSQP.use_kkt_condition = KKT_COND
+print("Solver SQP :")  
+# print("  Use KKT condition     = ", solverSQP.use_kkt_condition)
+print("  Termination tolerance = ", solverSQP.termination_tolerance)
+print("  Penalty parameter mu  = ", solverSQP.mu)
+print("  use_heuristic_line_search  = ", solverSQP.use_heuristic_line_search)
 
 
 # FDDP 
@@ -188,17 +188,17 @@ print("  Use KKT condition     = ", solverFDDP.use_kkt_condition)
 print("  Termination tolerance = ", solverFDDP.termination_tolerance)
 
 
-# SOLVE GNMS
+# SOLVE SQP
 mu_values      = [1e0, 1e2, 1e3]
-converged_gnms = []
-iter_gnms      = []
+converged_SQP = []
+iter_SQP      = []
 for mu in mu_values:
-    solverGNMS.mu = mu
+    solverSQP.mu = mu
     print('------------------')
-    print("mu = ", solverGNMS.mu)
-    converged_gnms.append(solverGNMS.solve(xs, us, MAXITER, False))
-    print("nb iter = ", solverGNMS.iter)
-    iter_gnms.append(solverGNMS.iter)
+    print("mu = ", solverSQP.mu)
+    converged_SQP.append(solverSQP.solve(xs, us, MAXITER, False))
+    print("nb iter = ", solverSQP.iter)
+    iter_SQP.append(solverSQP.iter)
     print('------------------')
     
 # SOLVE FDDP
@@ -206,8 +206,8 @@ converged_fddp = solverFDDP.solve(xs, us, MAXITER, False)
 iter_fddp      = solverFDDP.iter
 
 # Print
-print("GNMS mu \n", mu_values)
-print("GNMS iter \n", iter_gnms)
-print("GNMS converged \n", converged_gnms)
+print("SQP mu \n", mu_values)
+print("SQP iter \n", iter_SQP)
+print("SQP converged \n", converged_SQP)
 print("FDDP iter \n", iter_fddp)
 print("FDDP converged \n", converged_fddp)

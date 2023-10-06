@@ -80,16 +80,16 @@ def rt_SolveOCP(child_conn, ddp, nb_iter, node_id_circle, target_reach, TASK_PHA
 
 
 
-class KukaCircleGNMS:
+class KukaCircleSQP:
 
-    def __init__(self, head, robot, config, run_sim, use_gnms):
+    def __init__(self, head, robot, config, run_sim, use_SQP):
         """
         Input:
             head              : thread head
             robot_model       : pinocchio model
             config            : MPC config yaml file
             run_sim           : boolean sim or real
-            use_gnms          : use GNMS solver
+            use_SQP          : use SQP solver
         """
         self.robot   = robot
         self.head    = head
@@ -124,7 +124,7 @@ class KukaCircleGNMS:
         self.ocp_to_sim_ratio = 1. / ( self.config['simu_freq'] * self.dt_ocp )
         self.sim_to_plan_ratio = self.config['simu_freq']/self.config['plan_freq']
         # Create OCP
-        self.ddp = OptimalControlProblemClassical(robot, self.config).initialize(self.x0, callbacks=False, USE_GNMS=use_gnms)
+        self.ddp = OptimalControlProblemClassical(robot, self.config).initialize(self.x0, callbacks=False, USE_SQP=use_SQP)
         self.ug  = pin_utils.get_u_grav(self.x0[:self.robot.model.nq], self.robot.model, self.config['armature'])
 
 

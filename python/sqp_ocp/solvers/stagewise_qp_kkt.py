@@ -12,7 +12,7 @@ np.set_printoptions(precision = 2)
 
 pp = lambda s : np.format_float_scientific(s, exp_digits=2, precision =4)
 
-class FAdmmKKT():
+class StagewiseQPKKT():
 
     def __init__(self):
 

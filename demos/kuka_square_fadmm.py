@@ -12,17 +12,17 @@ from bullet_utils.env import BulletEnvWithGround
 
 import pathlib
 import os
-python_path = pathlib.Path('.').absolute().parent/'gnms'
+python_path = pathlib.Path('.').absolute().parent/'SQP'
 print(python_path)
 os.sys.path.insert(1, str(python_path))
-from controllers.kuka_square_fadmm import KukaSquareFADMM
+from controllers.kuka_square_CSSQP import KukaSquareCSSQP
 from core_mpc import path_utils, sim_utils
 
 
 SIM = False
 
 DGM_PARAMS_PATH = "/home/skleff/ws/workspace/install/robot_properties_kuka/lib/python3.8/site-packages/robot_properties_kuka/robot_properties_kuka/dynamic_graph_manager/dgm_parameters_iiwa.yaml"
-CONFIG_NAME = 'kuka_square_fadmm' 
+CONFIG_NAME = 'kuka_square_CSSQP' 
 CONFIG_PATH = 'demos/'+CONFIG_NAME+".yml"
 
 
@@ -52,7 +52,7 @@ else:
 
 
 
-ctrl = KukaSquareFADMM(head, pin_robot, config, run_sim=SIM)
+ctrl = KukaSquareCSSQP(head, pin_robot, config, run_sim=SIM)
 # ctrl.warm_start(100)
 # ctrl.update_desired_position(x_des)
 
@@ -74,7 +74,7 @@ thread_head.switch_controllers(ctrl)
 if(config['USE_PROXQP']):
     suffix = 'PROXQP'
 else:
-    suffix = 'FADMM'
+    suffix = 'CSSQP'
 
 suffix2 = "warm_start_y="+str(config['warm_start_y'])
 suffix3 = "reset_rho="+str(config['reset_rho'])
@@ -89,10 +89,10 @@ if SIM:
 else:
     thread_head.start()
     # thread_head.start_logging(15, "/tmp/kuka_square_real_"+suffix+"_"+suffix2+"_"+suffix3+"_allJoints.mds")
-    # thread_head.start_logging(30, "/tmp/kuka_square_real_FADMM_no_constraint_"+str(time.time())+".mds")
-    thread_head.start_logging(30, "/home/skleff/Desktop/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_square_"+str(time.time())+".mds")
+    # thread_head.start_logging(30, "/tmp/kuka_square_real_CSSQP_no_constraint_"+str(time.time())+".mds")
+    thread_head.start_logging(30, "/home/skleff/Desktop/data_paper_CSSQP/circle_endeff_cstr/endeff_constraint_square_"+str(time.time())+".mds")
 
-    # thread_head.start_logging(30, "/tmp/kuka_square_real_FADMM_constraint_jointPos1.mds")
+    # thread_head.start_logging(30, "/tmp/kuka_square_real_CSSQP_constraint_jointPos1.mds")
     # thread_head.start_logging(15, "/tmp/kuka_square_real_="+suffix+"_FULL.mds")
     time.sleep(30)
     # thread_head.plot_timing()

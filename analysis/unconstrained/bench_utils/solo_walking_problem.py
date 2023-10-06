@@ -753,7 +753,7 @@ class WholeBodyDDPSolver:
                                 wbd_model.running_models, 
                                 wbd_model.terminal_model)
             return ocp
-            # self.solver = crocoddyl.SolverFDDP(ocp)#GNMSCPP(ocp, VERBOSE=True)
+            # self.solver = crocoddyl.SolverFDDP(ocp)#CSSQPCPP(ocp, VERBOSE=True)
             # # self.solver.with_callbacks = True
             # self.solver.termination_tol = 1e-4
             # self.solver.setCallbacks([crocoddyl.CallbackLogger(),

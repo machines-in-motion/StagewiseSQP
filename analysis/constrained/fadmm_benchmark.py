@@ -1,5 +1,5 @@
 '''
-Compare FADMM with and without constraints
+Compare CSSQP with and without constraints
 '''
 import sys
 import numpy as np
@@ -182,7 +182,7 @@ N_pb = len(names)
 solversDDP         = []
 solversFDDP        = []
 solversFDDP_filter = []
-solversGNMS        = []
+solverCSSQP        = []
 
 # Initial states
 pendulum_x0  = np.array([3.14, 0., 0., 0.])
@@ -229,15 +229,15 @@ for k,name in enumerate(names):
     if(CALLBACKS): solverfddp_filter.setCallbacks([crocoddyl.CallbackVerbose()])
     solversFDDP_filter.append(solverfddp_filter)
 
-    # Create solver GNMS (MS)
-    solvergnms = crocoddyl.SolverGNMS(pb)
-    solvergnms.xs = [solvergnms.problem.x0] * (solvergnms.problem.T + 1)  
-    solvergnms.us = solvergnms.problem.quasiStatic([solvergnms.problem.x0] * solvergnms.problem.T)
-    solvergnms.termination_tol        = TOL
-    solvergnms.use_filter_line_search = True
-    solvergnms.filter_size            = MAXITER
-    solvergnms.with_callbacks         = CALLBACKS
-    solversGNMS.append(solvergnms)
+    # Create solver SQP (MS)
+    solverSQP = crocoddyl.SolverSQP(pb)
+    solverSQP.xs = [solverSQP.problem.x0] * (solverSQP.problem.T + 1)  
+    solverSQP.us = solverSQP.problem.quasiStatic([solverSQP.problem.x0] * solverSQP.problem.T)
+    solverSQP.termination_tol        = TOL
+    solverSQP.use_filter_line_search = True
+    solverSQP.filter_size            = MAXITER
+    solverSQP.with_callbacks         = CALLBACKS
+    solverCSSQP.append(solverSQP)
 
 
 
@@ -270,9 +270,9 @@ fddp_filter_iter_samples   = []
 fddp_filter_kkt_samples    = []
 fddp_filter_solved_samples = []
 
-gnms_iter_samples   = []  
-gnms_kkt_samples    = []
-gnms_solved_samples = []
+SQP_iter_samples   = []  
+SQP_kkt_samples    = []
+SQP_solved_samples = []
 
 for i in range(N_samples):
     ddp_iter_samples.append([])
@@ -287,9 +287,9 @@ for i in range(N_samples):
     fddp_filter_kkt_samples.append([])
     fddp_filter_solved_samples.append([])
 
-    gnms_iter_samples.append([])
-    gnms_kkt_samples.append([])
-    gnms_solved_samples.append([])
+    SQP_iter_samples.append([])
+    SQP_kkt_samples.append([])
+    SQP_solved_samples.append([])
 
     print("---")
     print("Sample "+str(i+1)+'/'+str(N_samples))
@@ -351,30 +351,30 @@ for i in range(N_samples):
             fddp_filter_iter_samples[i].append(solverfddp_filter.iter)
         fddp_filter_kkt_samples[i].append(solverfddp_filter.KKT)
 
-        # GNMS        
-        print("   Problem : "+name+" GNMS")
-        solvergnms = solversGNMS[k]
-        solvergnms.problem.x0 = x0
-        solvergnms.xs = [x0] * (solvergnms.problem.T + 1) 
-        solvergnms.us = solvergnms.problem.quasiStatic([x0] * solvergnms.problem.T)
-        solvergnms.solve(solvergnms.xs, solvergnms.us, MAXITER, False)
+        # SQP        
+        print("   Problem : "+name+" SQP")
+        solverSQP = solverCSSQP[k]
+        solverSQP.problem.x0 = x0
+        solverSQP.xs = [x0] * (solverSQP.problem.T + 1) 
+        solverSQP.us = solverSQP.problem.quasiStatic([x0] * solverSQP.problem.T)
+        solverSQP.solve(solverSQP.xs, solverSQP.us, MAXITER, False)
             # Check convergence
-        solved = (solvergnms.iter < MAXITER) and (solvergnms.KKT < TOL)
-        gnms_solved_samples[i].append( solved )
-        print("   iter = "+str(solvergnms.iter)+"  |  KKT = "+str(solvergnms.KKT))
+        solved = (solverSQP.iter < MAXITER) and (solverSQP.KKT < TOL)
+        SQP_solved_samples[i].append( solved )
+        print("   iter = "+str(solverSQP.iter)+"  |  KKT = "+str(solverSQP.KKT))
         if(not solved): 
             print("      FAILED !!!!")
-            gnms_iter_samples[i].append(MAXITER)
+            SQP_iter_samples[i].append(MAXITER)
         else:
-            gnms_iter_samples[i].append(solvergnms.iter)
-        gnms_kkt_samples[i].append(solvergnms.KKT)
+            SQP_iter_samples[i].append(solverSQP.iter)
+        SQP_kkt_samples[i].append(solverSQP.KKT)
 
 
 # Average fddp iters
 ddp_iter_solved = np.zeros((MAXITER, N_pb))
 fddp_iter_solved = np.zeros((MAXITER, N_pb))
 fddp_filter_iter_solved = np.zeros((MAXITER, N_pb))
-gnms_iter_solved = np.zeros((MAXITER, N_pb))
+SQP_iter_solved = np.zeros((MAXITER, N_pb))
 
 for k,exp in enumerate(names):
     # Count number of problems solved for each sample initial state 
@@ -383,12 +383,12 @@ for k,exp in enumerate(names):
         ddp_iter_ik  = np.array(ddp_iter_samples)[i,k]
         fddp_iter_ik = np.array(fddp_iter_samples)[i,k]
         fddp_filter_iter_ik = np.array(fddp_filter_iter_samples)[i,k]
-        gnms_iter_ik = np.array(gnms_iter_samples)[i,k]
+        SQP_iter_ik = np.array(SQP_iter_samples)[i,k]
         for j in range(MAXITER):
             if(ddp_iter_ik < j): ddp_iter_solved[j,k] += 1
             if(fddp_iter_ik < j): fddp_iter_solved[j,k] += 1
             if(fddp_filter_iter_ik < j): fddp_filter_iter_solved[j,k] += 1
-            if(gnms_iter_ik < j): gnms_iter_solved[j,k] += 1
+            if(SQP_iter_ik < j): SQP_iter_solved[j,k] += 1
 
 
 # Generate plot of number of iterations for each problem
@@ -404,7 +404,7 @@ for k in range(N_pb):
     ax0.plot(xdata, ddp_iter_solved[:,k]/N_samples, color='r', linewidth=4, label='DDP') 
     ax0.plot(xdata, fddp_iter_solved[:,k]/N_samples, color='y', linewidth=4, label='FDDP (default LS)') 
     ax0.plot(xdata, fddp_filter_iter_solved[:,k]/N_samples, color='g', linewidth=4, label='FDDP (filter LS)') 
-    ax0.plot(xdata, gnms_iter_solved[:,k]/N_samples, color='b', linewidth=4, label='SQP') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='GNMS')
+    ax0.plot(xdata, SQP_iter_solved[:,k]/N_samples, color='b', linewidth=4, label='SQP') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
     # Set axis and stuff
     ax0.set_ylabel('Percentage of problems solved', fontsize=26)
     ax0.set_xlabel('Max. number of iterations', fontsize=26)
@@ -416,7 +416,7 @@ for k in range(N_pb):
     handles0, labels0 = ax0.get_legend_handles_labels()
     fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
     # Save, show , clean
-    fig0.savefig('/home/skleff/data_paper_fadmm/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
+    fig0.savefig('/home/skleff/data_paper_CSSQP/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
 
 
 # # Plot CV
@@ -424,9 +424,9 @@ for k in range(N_pb):
 # # Create bar plot
 # X = np.arange(N_pb)
 # b2 = ax1.bar(X, fddp_iter_avg, yerr=fddp_iter_std, color = 'g', width = 0.22, capsize=10, label='FDDP')
-# b3 = ax1.bar(X + 0.13, gnms_iter_avg, yerr=gnms_iter_std, color = 'b', width = 0.22, capsize=10, label='GNMS')
+# b3 = ax1.bar(X + 0.13, SQP_iter_avg, yerr=SQP_iter_std, color = 'b', width = 0.22, capsize=10, label='SQP')
 # # b1 = ax1.bar(X - 0.13, fddp_iter_avg, yerr=fddp_iter_std, color = 'r', width = 0.25, capsize=10, label='FDDP')
-# # b2 = ax1.bar(X + 0.13, gnms_iter_avg, yerr=gnms_iter_std, color = 'g', width = 0.25, capsize=10, label='GNMS')
+# # b2 = ax1.bar(X + 0.13, SQP_iter_avg, yerr=SQP_iter_std, color = 'g', width = 0.25, capsize=10, label='SQP')
 # # Set axis and stuff
 # ax1.set_ylabel('Number of iterations', fontsize=26)
 # ax1.set_ylim(-10, MAXITER)
@@ -436,13 +436,13 @@ for k in range(N_pb):
 # ax1.set_xticks(X)
 # ax1.set_xticklabels(names, rotation='horizontal', fontsize=18)
 # ax1.tick_params(axis = 'x', labelsize = 22)
-# # ax1.set_title('Performance of GNMS and FDDP', fontdict={'size': 26})
+# # ax1.set_title('Performance of SQP and FDDP', fontdict={'size': 26})
 # ax1.grid(True) 
 # # Legend 
 # handles1, labels1 = ax1.get_legend_handles_labels()
 # fig1.legend(handles1, labels1, loc='upper right', prop={'size': 26}) #, ncols=2)
 # Save, show , clean
-# fig0.savefig('/home/skleff/data_paper_fadmm/bench_'+names[0]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.png')
+# fig0.savefig('/home/skleff/data_paper_CSSQP/bench_'+names[0]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.png')
 
 
 plt.show()

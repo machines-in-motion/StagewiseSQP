@@ -135,13 +135,13 @@ for t in range(N_ocp+1):
         cstr_list.append(standing_utils.FrictionConstraintModelSoloStanding(state, MU, nu))
         n_cstr += 4
     if(not FRICTION_CSTR and not FORCE_CSTR):
-        cstr_list = [crocoddyl.NoConstraintModel(state, actuation.nu, "noCstr")]
+        cstr_list = [crocoddyl.NoConstraintModelModel(state, actuation.nu, "noCstr")]
     # Create constraint model stack for the current node
     runningConstraintModel = crocoddyl.ConstraintStack(cstr_list, state, n_cstr, actuation.nu, 'runningConstraintModel')
 
     # Append the constraint model stack to the list of constraint models
     if( t == N_ocp):
-        constraintModels += [crocoddyl.NoConstraintModel(state, actuation.nu, "noCstr")]
+        constraintModels += [crocoddyl.NoConstraintModelModel(state, actuation.nu, "noCstr")]
     else:
         constraintModels += [runningConstraintModel] 
 
@@ -165,7 +165,7 @@ if(FRICTION_CSTR):
     solver.eps_abs = 1e-6
     solver.eps_rel = 1e-6
 else:
-    solver = crocoddyl.SolverGNMS(ocp)
+    solver = crocoddyl.SolverSQP(ocp)
     max_iter = 500
     solver.termination_tol = 1e-4
     solver.with_callbacks = True
@@ -440,7 +440,7 @@ else:
         # axs[3, 0].set_xlabel('Time (s)', fontsize=22)
         axs[3, 1].set_xlabel('Time (s)', fontsize=22)
         # axs[3, 2].set_xlabel('Time (s)', fontsize=22)
-        fig.savefig('/home/skleff/data_paper_fadmm/solo_standing_friction.pdf', bbox_inches="tight")
+        fig.savefig('/home/skleff/data_paper_CSSQP/solo_standing_friction.pdf', bbox_inches="tight")
         # fig.suptitle('Force', fontsize=16)
 
     if(PLOT_2):
@@ -508,7 +508,7 @@ else:
 
         axs[0].set_xlabel('Time (s)', fontsize=22)
         axs[1].set_xlabel('Time (s)', fontsize=22)
-        fig.savefig('/home/skleff/data_paper_fadmm/solo_standing_friction_normalized.pdf', bbox_inches="tight")
+        fig.savefig('/home/skleff/data_paper_CSSQP/solo_standing_friction_normalized.pdf', bbox_inches="tight")
 
     # Only FL
     if(PLOT_4):
@@ -534,6 +534,6 @@ else:
         axs.tick_params(axis = 'x', labelsize=22)
         axs.tick_params(axis = 'y', labelsize=22)
         axs.set_xlabel('Time (s)', fontsize=26)
-        fig.savefig('/home/skleff/data_paper_fadmm/solo_standing_friction_normalized2.pdf', bbox_inches="tight")
+        fig.savefig('/home/skleff/data_paper_CSSQP/solo_standing_friction_normalized2.pdf', bbox_inches="tight")
 
     plt.show()

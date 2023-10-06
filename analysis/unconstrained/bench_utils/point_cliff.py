@@ -1,8 +1,8 @@
 import numpy as np
 import crocoddyl
 import matplotlib.pyplot as plt
-from gnms import GNMS
-from gnms_cpp import GNMSCPP
+from SQP import SQP
+from SQP_cpp import CSSQPCPP
 
 LINE_WIDTH = 100
 
@@ -119,8 +119,8 @@ if __name__ == "__main__":
     problem = crocoddyl.ShootingProblem(x0, [cliff_running] * T, cliff_terminal)
     print(" Constructing shooting problem completed ".center(LINE_WIDTH, "-"))
 
-    # ddp = GNMS(problem)
-    ddp = GNMSCPP(problem)
+    # ddp = SQP(problem)
+    ddp = CSSQPCPP(problem)
     print(" Constructing DDP solver completed ".center(LINE_WIDTH, "-"))
     # ddp.setCallbacks([crocoddyl.CallbackLogger(), crocoddyl.CallbackVerbose()])
     xs = [x0] * (T + 1)

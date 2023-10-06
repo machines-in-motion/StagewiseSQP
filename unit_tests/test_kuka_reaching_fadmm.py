@@ -9,8 +9,8 @@ import crocoddyl
 import numpy as np
 import pinocchio as pin
 np.set_printoptions(precision=4, linewidth=180)
-from sqp_ocp.constraint_model import StateConstraintModel, ControlConstraintModel, EndEffConstraintModel, NoConstraintModel, ConstraintModelStack
-from sqp_ocp.solvers import SQPOCP
+from sqp_ocp.constraint_model import StateConstraintModel, ControlConstraintModel, EndEffConstraintModel, NoConstraintModelModel, ConstraintModelStack
+from sqp_ocp.solvers import CSSQP
 
 LINE_WIDTH = 100
 
@@ -110,18 +110,18 @@ elif option == 1:
   statemodel = StateConstraintModel(state, 7, clip_state_min, clip_state_max)
   clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.00]*7)
   TerminalConstraintModel = StateConstraintModel(state, 7, -clip_state_end, clip_state_end)
-  constraintModels =  [NoConstraintModel(state, 7)] + [statemodel] * (T-1) + [TerminalConstraintModel]
+  constraintModels =  [NoConstraintModelModel(state, 7)] + [statemodel] * (T-1) + [TerminalConstraintModel]
 
 elif option == 2:
   endeff_translation = np.array([0.7, 0, 1.1]) # move endeff +30 cm along x in WORLD frame
 
   lmin = np.array([-np.inf, endeff_translation[1], endeff_translation[2]])
   lmax =  np.array([np.inf, endeff_translation[1], endeff_translation[2]])
-  constraintModels = [NoConstraintModel(state, 7)] + [EndEffConstraintModel(state, 7, fid, lmin, lmax)] * T
+  constraintModels = [NoConstraintModelModel(state, 7)] + [EndEffConstraintModel(state, 7, fid, lmin, lmax)] * T
 
 
 elif option == 3:
-  constraintModels = [NoConstraintModel(state, 7)] * (T+1)
+  constraintModels = [NoConstraintModelModel(state, 7)] * (T+1)
 
 
 xs = [x0] * (T+1)
@@ -161,7 +161,7 @@ us = [np.zeros(nu)] * T
 
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
-ddppy = SQPOCP(problem, constraintModels, "FADMM")
+ddppy = CSSQP(problem, constraintModels, "StagewiseQP")
 ddppy.eps_abs = eps_abs
 ddppy.eps_rel = eps_rel
 

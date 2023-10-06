@@ -19,7 +19,7 @@ model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
 
 
 # Load config file
-CONFIG_NAME = 'kuka_reach_gnms'
+CONFIG_NAME = 'kuka_reach_SQP'
 CONFIG_PATH = "demos/"+CONFIG_NAME+".yml"
 config      = path_utils.load_yaml_file(CONFIG_PATH)
 
@@ -33,11 +33,11 @@ s = SimpleDataPlotter()
 
 
 if(SIM):
-    # r = DataReader('/tmp/kuka_reach_gnms_sim_GNMS.mds')
-    # r = DataReader('/tmp/kuka_reach_gnms_sim_FDDP.mds')
-    r = DataReader('/tmp/kuka_circle_gnms_sim_FDDP.mds')
+    # r = DataReader('/tmp/kuka_reach_SQP_sim_SQP.mds')
+    # r = DataReader('/tmp/kuka_reach_SQP_sim_FDDP.mds')
+    r = DataReader('/tmp/kuka_circle_SQP_sim_FDDP.mds')
 else:
-    r = DataReader('/tmp/kuka_reach_gnms_real.mds')
+    r = DataReader('/tmp/kuka_reach_SQP_real.mds')
 
 N = r.data['tau'].shape[0]
 

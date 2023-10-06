@@ -8,10 +8,10 @@ import proxsuite
 import time 
 from scipy import sparse
 from . py_osqp import CustomOSQP
-from . fadmm_kkt import FAdmmKKT
+from . stagewise_qp_kkt import StagewiseQPKKT
 from crocoddyl import SolverAbstract
 
-class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
+class QPSolvers(SolverAbstract, CustomOSQP, StagewiseQPKKT):
 
     def __init__(self, shootingProblem, constraintModel, method, verboseQP = True):
         
@@ -19,12 +19,12 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
         SolverAbstract.__init__(self, shootingProblem)        
 
         assert method == "ProxQP" or method=="OSQP"\
-              or method=="CustomOSQP" or method =="FAdmmKKT" 
+              or method=="CustomOSQP" or method =="StagewiseQPKKT" 
         self.method = method
         if method == "CustomOSQP":
             CustomOSQP.__init__(self)
-        if method == "FAdmmKKT":
-            FAdmmKKT.__init__(self)
+        if method == "StagewiseQPKKT":
+            StagewiseQPKKT.__init__(self)
 
         self.allocateDataQP()
         self.max_iters = 1000
@@ -196,7 +196,7 @@ class QPSolvers(SolverAbstract, CustomOSQP, FAdmmKKT):
             res = self.optimize_osqp(maxiters=self.max_iters)
 
 
-        elif self.method == "FAdmmKKT":
+        elif self.method == "StagewiseQPKKT":
             self.A_eq = sparse.csr_matrix(A.copy())
             self.A_in = sparse.csr_matrix(C.copy())
             self.b = B.copy()

@@ -8,7 +8,7 @@ import numpy as np
 import example_robot_data
 import pinocchio
 np.set_printoptions(precision=4, linewidth=180)
-from sqp_ocp.solvers import GNMS, GNMSCPP
+from sqp_ocp.solvers import SQP, CSSQPCPP
 
 LINE_WIDTH = 100
 
@@ -151,7 +151,7 @@ terminalModel = crocoddyl.IntegratedActionModelEuler(dmodelTerminal, 0)
 x0 = np.concatenate([q0, pinocchio.utils.zero(state.nv)])
 problem = crocoddyl.ShootingProblem(x0, [runningModel1] * T + [runningModel2] * T + [runningModel3] * T, terminalModel)
 
-print("TEST HUMANOID TAICHI PROBLEM GNMS".center(LINE_WIDTH, "-"))
+print("TEST HUMANOID TAICHI PROBLEM SQP".center(LINE_WIDTH, "-"))
 
 # Warm-start 
 # Solving it with the DDP algorithm
@@ -159,8 +159,8 @@ xs = [x0] * (problem.T + 1)
 us = problem.quasiStatic([x0] * problem.T)
 
 # Create solvers
-ddp0 = GNMSCPP(problem)
-ddp1 = crocoddyl.SolverGNMS(problem)
+ddp0 = CSSQPCPP(problem)
+ddp1 = crocoddyl.SolverSQP(problem)
 
 # Set Heuristic Line Search (filter)
 ddp0.use_filter_ls = True

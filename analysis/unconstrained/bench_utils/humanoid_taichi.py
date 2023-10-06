@@ -11,7 +11,7 @@ from crocoddyl.utils.biped import plotSolution
 import numpy as np
 import example_robot_data
 import pinocchio
-from sqp_ocp.solvers import GNMSCPP,GNMS
+from sqp_ocp.solvers import CSSQPCPP,SQP
 
 
 WITHDISPLAY = 'display' in sys.argv or 'CROCODDYL_DISPLAY' in os.environ
@@ -164,8 +164,8 @@ x0 = np.concatenate([q0, pinocchio.utils.zero(state.nv)])
 problem = crocoddyl.ShootingProblem(x0, [runningModel1] * T + [runningModel2] * T + [runningModel3] * T, terminalModel)
 
 # Creating the DDP solver for this OC problem, defining a logger
-# solver = GNMSCPP(problem)
-solver = crocoddyl.SolverGNMS(problem)
+# solver = CSSQPCPP(problem)
+solver = crocoddyl.SolverSQP(problem)
 solver.set_mu = 1e5
 solver.set_termination_tolerance = 1e-7
 solver.with_callbacks = True

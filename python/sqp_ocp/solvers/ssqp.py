@@ -1,4 +1,4 @@
-### This is a python implementation of GNMS with crocoddyl with a different line search and step
+### This is a python implementation of stagewise SQP with crocoddyl with a different line search and step
 ### Date : 17/02/2023
 ## Authors : Avadesh, Armand, Sebastien
 
@@ -23,7 +23,7 @@ def raiseIfNan(A, error=None):
     if np.any(np.isnan(A)) or np.any(np.isinf(A)) or np.any(abs(np.asarray(A)) > 1e30):
         raise error
 
-class GNMS(SolverAbstract):
+class SSQP(SolverAbstract):
     def __init__(self, shootingProblem, use_heuristic_ls=False, VERBOSE=False):
         SolverAbstract.__init__(self, shootingProblem)
         self.x_reg = 0

@@ -1,4 +1,4 @@
-## UNIT TEST - to compare one QP solve of FADMM and FAdmmKKT for the kuka reaching problem
+## UNIT TEST - to compare one QP solve of CSSQP and StagewiseQPKKT for the kuka reaching problem
 import pathlib
 import os
 python_path = pathlib.Path('.').absolute().parent/'python'
@@ -9,8 +9,8 @@ import numpy as np
 import pinocchio as pin
 np.set_printoptions(precision=4, linewidth=180)
 # import ocp_utils
-from sqp_ocp.constraint_model import StateConstraintModel, ControlConstraintModel, EndEffConstraintModel, NoConstraint, ConstraintModelStack
-from sqp_ocp.solvers import FADMM, QPSolvers
+from sqp_ocp.constraint_model import StateConstraintModel, ControlConstraintModel, EndEffConstraintModel, NoConstraintModel, ConstraintModelStack
+from sqp_ocp.solvers import CSSQP, QPSolvers
 
 
 # # # # # # # # # # # # #
@@ -109,26 +109,26 @@ elif option == 1:
   statemodel = StateConstraintModel(clip_state_min, clip_state_max, 7, 14, 7)
   clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7)
   TerminalConstraintModel = StateConstraintModel(-clip_state_end, clip_state_end, 7, 14, 7)
-  constraintModels =  [NoConstraint(14, 7)] + [statemodel] * (T-1) + [TerminalConstraintModel]
+  constraintModels =  [NoConstraintModel(14, 7)] + [statemodel] * (T-1) + [TerminalConstraintModel]
 
 elif option == 2:
   lmin = np.array([-np.inf, endeff_translation[1], endeff_translation[2]])
   lmax =  np.array([np.inf, endeff_translation[1], endeff_translation[2]])
-  constraintModels = [NoConstraint(14, 7)] + [EndEffConstraintModel(robot, lmin, lmax, 3, 14, 7)] * T
+  constraintModels = [NoConstraintModel(14, 7)] + [EndEffConstraintModel(robot, lmin, lmax, 3, 14, 7)] * T
 
 
 elif option == 3:
-  constraintModels = [NoConstraint(14, 7)] * (T+1)
+  constraintModels = [NoConstraintModel(14, 7)] * (T+1)
 
 
-print("TEST KUKA PROBLEM : FADMM = FAdmmKKT".center(LINE_WIDTH, "-"))
+print("TEST KUKA PROBLEM : CSSQP = StagewiseQPKKT".center(LINE_WIDTH, "-"))
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
-ddp1 = FADMM(problem, constraintModels, verbose = False)
+ddp1 = CSSQP(problem, constraintModels, verbose = False)
 ddp1.solve(xs, us, 1)
 
-ddp2 = QPSolvers(problem, constraintModels, "FAdmmKKT", verbose = False)
+ddp2 = QPSolvers(problem, constraintModels, "StagewiseQPKKT", verbose = False)
 ddp2.solve(xs, us, 1)
 
 ##### UNIT TEST #####################################

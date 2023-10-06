@@ -1,4 +1,4 @@
-### UNIT TEST for GNMS solvers on Kuka reaching task
+### UNIT TEST for SQP solvers on Kuka reaching task
 
 import pathlib
 import os
@@ -9,7 +9,7 @@ import crocoddyl
 import numpy as np
 import pinocchio as pin
 np.set_printoptions(precision=4, linewidth=180)
-from sqp_ocp.solvers import GNMS, GNMSCPP
+from sqp_ocp.solvers import SQP, CSSQPCPP
 
 LINE_WIDTH = 100
 
@@ -79,15 +79,15 @@ terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
 T = 10
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
-print("TEST KUKA PROBLEM GNMS".center(LINE_WIDTH, "-"))
+print("TEST KUKA PROBLEM SQP".center(LINE_WIDTH, "-"))
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 
 # Create solvers
-ddp0 = GNMS(problem)
-ddp1 = GNMSCPP(problem)
-ddp2 = crocoddyl.SolverGNMS(problem)
+ddp0 = SQP(problem)
+ddp1 = CSSQPCPP(problem)
+ddp2 = crocoddyl.SolverSQP(problem)
 ddp3 = crocoddyl.SolverFDDP(problem)
 
 ddp0.solve(xs, us, 100)

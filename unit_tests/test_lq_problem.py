@@ -7,8 +7,8 @@ import numpy as np
 import crocoddyl
 import matplotlib.pyplot as plt
 
-from sqp_ocp.solvers import SQPOCP, GNMS
-from sqp_ocp.constraint_model import StateConstraintModel, NoConstraint
+from sqp_ocp.solvers import CSSQP, SQP
+from sqp_ocp.constraint_model import StateConstraintModel, NoConstraintModel
 
 LINE_WIDTH = 100
 
@@ -144,12 +144,12 @@ if __name__ == "__main__":
     xs = [10*np.ones(4)] * (horizon + 1)
     us = [np.ones(2)*100 for t in range(horizon)] 
 
-    print("TEST 1: GNMS = FADMM with sigma = 0".center(LINE_WIDTH, "-"))
+    print("TEST 1: SQP = CSSQP with sigma = 0".center(LINE_WIDTH, "-"))
 
-    ddp1 = GNMS(problem)
+    ddp1 = SQP(problem)
     converged = ddp1.solve(xs, us, 1)
 
-    ddp2 = SQPOCP(problem, [NoConstraint(nx, nu)]*(horizon+1), "FADMM", verbose = False)
+    ddp2 = CSSQP(problem, [NoConstraintModel(nx, nu)]*(horizon+1), "StagewiseQP", verbose = False)
     ddp2.sigma_sparse = 0.0
     converged = ddp2.solve(xs, us, 1)
 
@@ -157,14 +157,14 @@ if __name__ == "__main__":
     assert np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)) < 1e-8, "Test failed"
 
 
-    print("TEST SQP 1 iter : FADMM = FAdmmKKT".center(LINE_WIDTH, "-"))
+    print("TEST SQP 1 iter : CSSQP = StagewiseQPKKT".center(LINE_WIDTH, "-"))
 
-    ddp1 = SQPOCP(problem, [ConstraintModel]*(horizon+1), "FADMM", verbose = False)
+    ddp1 = CSSQP(problem, [ConstraintModel]*(horizon+1), "StagewiseQP", verbose = False)
 
     ddp1.verbose = True
     converged = ddp1.solve(xs, us, 10)
 
-    ddp2 = SQPOCP(problem, [ConstraintModel]*(horizon+1), "FAdmmKKT", verbose = False)
+    ddp2 = CSSQP(problem, [ConstraintModel]*(horizon+1), "StagewiseQPKKT", verbose = False)
     converged = ddp2.solve(xs, us, 1)
     
 

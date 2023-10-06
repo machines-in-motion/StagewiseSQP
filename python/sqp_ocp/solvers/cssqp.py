@@ -4,7 +4,7 @@
 
 import numpy as np
 import scipy.linalg as scl
-from . fadmm import FADMM
+from .stagewise_qp import StagewiseQP
 from .qpsolvers import QPSolvers
 
 pp = lambda s : np.format_float_scientific(s, exp_digits=2, precision =4)
@@ -19,12 +19,12 @@ def raiseIfNan(A, error=None):
     if np.any(np.isnan(A)) or np.any(np.isinf(A)) or np.any(abs(np.asarray(A)) > 1e30):
         raise error
 
-class SQPOCP(FADMM, QPSolvers):
+class CSSQP(StagewiseQP, QPSolvers):
 
     def __init__(self, shootingProblem, constraintModel, method, use_heuristic_ls=False, verboseQP = False, verbose = False):
         self.verbose = verbose
-        if method == "FADMM":
-            FADMM.__init__(self, shootingProblem, constraintModel, verboseQP = verboseQP)
+        if method == "StagewiseQP":
+            StagewiseQP.__init__(self, shootingProblem, constraintModel, verboseQP = verboseQP)
             self.using_qp = 0        
         else:
             QPSolvers.__init__(self, shootingProblem, constraintModel, method, verboseQP = verboseQP)

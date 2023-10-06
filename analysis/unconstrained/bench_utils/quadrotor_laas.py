@@ -8,7 +8,7 @@ import crocoddyl
 import pinocchio
 import numpy as np
 import example_robot_data
-from sqp_ocp.solvers import GNMSCPP,GNMS
+from sqp_ocp.solvers import CSSQPCPP,SQP
 
 
 WITHDISPLAY = 'display' in sys.argv or 'CROCODDYL_DISPLAY' in os.environ
@@ -77,27 +77,27 @@ for i in range(N_iter):
 ddp_delta = [np.linalg.norm(np.array(u) - ddp.us) for u in ddp_reccord] 
 
 
-GNMS_reccord = []
+SQP_reccord = []
 
-GNMS = crocoddyl.SolverGNMS(problem)
-GNMS.th_stop = 1e-20
-GNMS.with_callbacks = True
-# GNMS.setCallbacks([crocoddyl.CallbackVerbose()])
+SQP = crocoddyl.SolverSQP(problem)
+SQP.th_stop = 1e-20
+SQP.with_callbacks = True
+# SQP.setCallbacks([crocoddyl.CallbackVerbose()])
 
 
 
 for i in range(N_iter):
     xs = [x0] * (T+1)
     us = [np.zeros(nu)] * T 
-    GNMS.solve(xs, us, isFeasible=False, maxiter=i)
-    GNMS_reccord.append(np.array(GNMS.us))
+    SQP.solve(xs, us, isFeasible=False, maxiter=i)
+    SQP_reccord.append(np.array(SQP.us))
 
-GNMS_delta = [np.linalg.norm(np.array(u) - GNMS.us) for u in GNMS_reccord] 
+SQP_delta = [np.linalg.norm(np.array(u) - SQP.us) for u in SQP_reccord] 
 
 
 # xs = [x0] * (T+1)
 # us = [np.zeros(nu)] * T 
-# GNMS.solve(xs, us, maxiter=200)
+# SQP.solve(xs, us, maxiter=200)
 
 
 
@@ -105,13 +105,13 @@ GNMS_delta = [np.linalg.norm(np.array(u) - GNMS.us) for u in GNMS_reccord]
 # us_ddp = [np.zeros(nu)] * T 
 # ddp.solve(xs_ddp, us_ddp, maxiter=200)
 
-# print(np.linalg.norm(np.array(ddp.us) - np.array(GNMS.us)))
-# print(np.linalg.norm(np.array(ddp.xs) - np.array(GNMS.xs)))
+# print(np.linalg.norm(np.array(ddp.us) - np.array(SQP.us)))
+# print(np.linalg.norm(np.array(ddp.xs) - np.array(SQP.xs)))
 
 # assert False
 import matplotlib.pyplot as plt
 
-plt.plot(np.array(GNMS_delta), label="gnms")
+plt.plot(np.array(SQP_delta), label="SQP")
 plt.plot(np.array(ddp_delta), label="ddp")
 plt.yscale("log")
 plt.legend()

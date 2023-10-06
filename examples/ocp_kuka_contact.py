@@ -10,12 +10,8 @@ import pinocchio
 import numpy as np
 np.set_printoptions(precision=4, linewidth=180)
 import pin_utils, ocp_utils
-<<<<<<< Updated upstream
-from sqp_ocp.constraint_model import NoConstraintModel, LocalCone, Force6DConstraintModel
-=======
-from sqp_ocp.constraint_model import LocalCone
->>>>>>> Stashed changes
-from sqp_ocp.solvers import SQPOCP
+from sqp_ocp.constraint_model import Force6DConstraintModel, NoConstraintModel
+from sqp_ocp.solvers import CSSQP
 
 # # # # # # # # # # # # #
 ### LOAD ROBOT MODEL  ###
@@ -102,14 +98,14 @@ Fmin = np.array([0, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
 Fmax =  np.array([0, np.inf, np.inf, np.inf, np.inf, np.inf])
 constraintModels = [Force6DConstraintModel(state, nu, Fmin, Fmax)] * T + [NoConstraintModel(state, nu)]
 mu = 0.05
-# constraintModels = [LocalCone(state, nu, mu)] * T + [NoConstraintModel(state, nu)]
-# constraintModels = [NoConstraintModel(state, nu)] * (T+1)
+# constraintModels = [LocalCone(state, nu, mu)] * T + [NoConstraintModelModel(state, nu)]
+# constraintModels = [NoConstraintModelModel(state, nu)] * (T+1)
 
 
 
 
 
-ddp = crocoddyl.SolverFADMM(problem, constraintModels) #, "FADMM")
+ddp = crocoddyl.SolverFADMM(problem, constraintModels) #, "StagewiseQP")
 
 
 xs_init = [x0 for i in range(T+1)]

@@ -111,7 +111,7 @@ if option == 0:
   # ax_circle.text(0., 0.1, '$x_0$', fontdict={'size':26})
   # handles, labels = ax_circle.get_legend_handles_labels()
   # fig_circle.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-  # fig_circle.savefig('/home/skleff/data_paper_fadmm/jointpos_circle_plot.pdf', bbox_inches="tight")
+  # fig_circle.savefig('/home/skleff/data_paper_CSSQP/jointpos_circle_plot.pdf', bbox_inches="tight")
   # # Joint pos
 
 # Only state constraints
@@ -121,14 +121,14 @@ elif option == 1:
   statemodel = crocoddyl.StateConstraintModel(state, 7, clip_state_min, clip_state_max, 'stateConstraint')
   clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.00]*7)
   TerminalConstraintModel = crocoddyl.StateConstraintModel(state, 7, -clip_state_end, clip_state_end, 'stateConstraint')
-  constraintModels =  [crocoddyl.NoConstraintModel(state, 7)] + [statemodel] * (T-1) + [TerminalConstraintModel]
+  constraintModels =  [crocoddyl.NoConstraintModelModel(state, 7)] + [statemodel] * (T-1) + [TerminalConstraintModel]
 
 # End-effector constraints
 elif option == 2:
   endeff_translation = np.array([0.7, 0, 1.1]) # move endeff +30 cm along x in WORLD frame
   lmin = np.array([-np.inf, endeff_translation[1], endeff_translation[2]])
   lmax =  np.array([np.inf, endeff_translation[1], endeff_translation[2]])
-  constraintModels = [crocoddyl.NoConstraintModel(state, 7)] + [crocoddyl.FrameTranslationConstraintModel(state, 7, fid, lmin, lmax)] * T
+  constraintModels = [crocoddyl.NoConstraintModelModel(state, 7)] + [crocoddyl.FrameTranslationConstraintModel(state, 7, fid, lmin, lmax)] * T
 
 # # Force constraint
 # elif option == 3:
@@ -146,7 +146,7 @@ elif option == 2:
 
 # No constraints
 elif option == 4:
-  constraintModels = [crocoddyl.NoConstraintModel(state, 7)] * (T+1)
+  constraintModels = [crocoddyl.NoConstraintModelModel(state, 7)] * (T+1)
 
 
 xs = [x0] * (T+1)
@@ -156,9 +156,9 @@ us = [np.zeros(nu)] * T
 
 ddp = crocoddyl.SolverFADMM(problem, constraintModels)
 # ddp = crocoddyl.SolverPROXQP(problem, constraintModels)
-# ddp = crocoddyl.SolverGNMS(problem)
-# ddp = SQPOCP(problem, constraintModels, "ProxQP")
-# ddp = SQPOCP(problem, constraintModels, "OSQP")
+# ddp = crocoddyl.SolverSQP(problem)
+# ddp = CSSQP(problem, constraintModels, "ProxQP")
+# ddp = CSSQP(problem, constraintModels, "OSQP")
 qp_iters = 10000
 sqp_ites = 500
 ddp.with_callbacks = True
@@ -220,7 +220,7 @@ def plot_joint_velocity(ddpSolver, fig=None, ax=None, label=None):
 
   handles, labels = ax[0].get_legend_handles_labels()
   fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-  fig.savefig('/home/skleff/data_paper_fadmm/ocp_case1.pdf', bbox_inches="tight")
+  fig.savefig('/home/skleff/data_paper_CSSQP/ocp_case1.pdf', bbox_inches="tight")
   return fig, ax 
 
 plot_joint_velocity(ddp)

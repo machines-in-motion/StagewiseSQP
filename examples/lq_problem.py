@@ -7,13 +7,13 @@ import numpy as np
 import crocoddyl
 import matplotlib.pyplot as plt
 
-from sqp_ocp.solvers import SQPOCP, GNMS
-from sqp_ocp.constraint_model import StateConstraintModel, NoConstraint
+from sqp_ocp.solvers import CSSQP, SSQP
+from sqp_ocp.constraint_model import StateConstraintModel, NoConstraintModel
 
 LINE_WIDTH = 100
 
 
-class PointMassDynamics:
+class PointMassDynamics():
     def __init__(self):
         self.g = np.array([0.0, -9.81])
         self.mass = 1
@@ -130,8 +130,6 @@ if __name__ == "__main__":
     x0 = np.zeros(4)
     lq_running = crocoddyl.IntegratedActionModelEuler(lq_diff_running, dt)
     lq_terminal = crocoddyl.IntegratedActionModelEuler(lq_diff_terminal, dt)
-   
-
     problem = crocoddyl.ShootingProblem(x0, [lq_running] * horizon, lq_terminal)
 
 
@@ -141,16 +139,16 @@ if __name__ == "__main__":
     
     lxmin = -np.inf*np.ones(nx)
     lxmax = np.array([0.5, 0.1, np.inf, np.inf])
-    ConstraintModel = StateConstraintModel(lxmin, lxmax, nx, nx, nu)
+    ConstraintModel = StateConstraintModel(crocoddyl.StateVector(2), nx, lxmin, lxmax, 'stateConstraint')
     xs = [10*np.ones(4)] * (horizon + 1)
     us = [np.ones(2)*100 for t in range(horizon)] 
 
-    print("TEST 1: GNMS = FADMM with sigma = 0".center(LINE_WIDTH, "-"))
+    print("TEST 1: SQP = CSSQP with sigma = 0".center(LINE_WIDTH, "-"))
 
-    ddp1 = GNMS(problem)
+    ddp1 = SSQP(problem)
     converged = ddp1.solve(xs, us, 1)
 
-    ddp2 = SQPOCP(problem, [NoConstraint(nx, nu)]*(horizon+1), "FADMM", verbose = False)
+    ddp2 = CSSQP(problem, [NoConstraintModel(crocoddyl.StateVector(2), nu)]*(horizon+1), "StagewiseQP", verbose = False)
     ddp2.sigma_sparse = 0.0
     converged = ddp2.solve(xs, us, 1)
 
@@ -158,14 +156,14 @@ if __name__ == "__main__":
     assert np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)) < 1e-8, "Test failed"
 
 
-    print("TEST SQP 1 iter : FADMM = FAdmmKKT".center(LINE_WIDTH, "-"))
+    print("TEST SQP 1 iter : CSSQP = StagewiseQPKKT".center(LINE_WIDTH, "-"))
 
-    ddp1 = SQPOCP(problem, [ConstraintModel]*(horizon+1), "FADMM", verbose = False)
+    ddp1 = CSSQP(problem, [ConstraintModel]*(horizon+1), "StagewiseQP", verbose = False)
 
     ddp1.verbose = True
     converged = ddp1.solve(xs, us, 10)
 
-    ddp2 = SQPOCP(problem, [ConstraintModel]*(horizon+1), "FAdmmKKT", verbose = False)
+    ddp2 = CSSQP(problem, [ConstraintModel]*(horizon+1), "StagewiseQPKKT", verbose = False)
     converged = ddp2.solve(xs, us, 1)
     
 

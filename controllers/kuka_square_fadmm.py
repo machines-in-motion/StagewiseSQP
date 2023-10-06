@@ -93,7 +93,7 @@ def rt_SolveOCP(child_conn, ddp, max_sqp_iter, max_qp_iter, node_id_circle, targ
 
 
 
-class KukaSquareFADMM:
+class KukaSquareCSSQP:
 
     def __init__(self, head, robot, config, run_sim):
         """

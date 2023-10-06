@@ -1,4 +1,4 @@
-## This is the implementation of the constrained LQR
+## This is the implementation of the constrained sparse QP Solver
 ## Author : Avadesh Meduri and Armand Jordana
 ## Date : 8/03/2023
 
@@ -24,7 +24,7 @@ def raiseIfNan(A, error=None):
         raise error
 
 
-class FADMM(SolverAbstract):
+class StagewiseQP(SolverAbstract):
     def __init__(self, shootingProblem, constraintModel, verboseQP = False):
         SolverAbstract.__init__(self, shootingProblem)        
         self.constraintModel = constraintModel
@@ -48,7 +48,7 @@ class FADMM(SolverAbstract):
         self.OSQP_update = True
 
         if self.verboseQP:
-            print("USING FADMM")
+            print("USING StagewiseQP")
 
     def reset_params(self):
         
@@ -125,7 +125,7 @@ class FADMM(SolverAbstract):
                         if self.verboseQP:
                             print("Iters", iter, "res-primal", pp(self.norm_primal), "res-dual", pp(self.norm_dual)\
                                 , "optimal rho estimate", pp(self.rho_estimate_sparse), "rho", pp(self.rho_sparse)) 
-                            print("FADMM converged", "\n")
+                            print("StagewiseQP converged", "\n")
                         break
 
             if (iter) % self.rho_update_interval == 0 and iter > 1:

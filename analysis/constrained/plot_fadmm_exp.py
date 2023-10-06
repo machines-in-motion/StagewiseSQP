@@ -1,4 +1,4 @@
-# from gnms.demos.plot_utils import SimpleDataPlotter
+# from SQP.demos.plot_utils import SimpleDataPlotter
 from mim_data_utils import DataReader
 from core_mpc.pin_utils import *
 import numpy as np
@@ -17,8 +17,8 @@ nq = model.nq ; nv = model.nv ; nc = 3
 model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
 
 # Load config file
-CONFIG_NAME = 'kuka_circle_fadmm'
-CONFIG_PATH = "/home/skleff/misc_repos/gnms/demos/"+CONFIG_NAME+".yml"
+CONFIG_NAME = 'kuka_circle_CSSQP'
+CONFIG_PATH = "/home/skleff/misc_repos/SQP/demos/"+CONFIG_NAME+".yml"
 config      = path_utils.load_yaml_file(CONFIG_PATH)
 
 PLOTS = [
@@ -36,7 +36,7 @@ rs = []
 if('circle_no_cstr' in PLOTS):
     # Circle without constraint
     print("Extract circle_no_cstr data...")
-    r1 = DataReader('/home/skleff/data_paper_fadmm/circle_no_cstr/no_constraint_1683299184.3249779.mds') 
+    r1 = DataReader('/home/skleff/data_paper_CSSQP/circle_no_cstr/no_constraint_1683299184.3249779.mds') 
     rs.append(r1)
     N = r1.data['tau'].shape[0] ; Ns.append(N)
     # p_mea1 = get_p_(r1.data['joint_positions'][:N], pinrobot.model, pinrobot.model.getFrameId('contact'))
@@ -44,8 +44,8 @@ if('circle_no_cstr' in PLOTS):
 if('circle_joint_cstr' in PLOTS):
     # Cicle with joint 1 position constraint
     print("Extract circle_joint_cstr data...") 
-    r2 = DataReader('/home/skleff/data_paper_fadmm/circle_jointpos_cstr/jointPos_constraint=0.05_1683299346.726773.mds')   
-    # r2 = DataReader('/home/skleff/data_paper_fadmm/circle_constraints_jointPos1.mds')   
+    r2 = DataReader('/home/skleff/data_paper_CSSQP/circle_jointpos_cstr/jointPos_constraint=0.05_1683299346.726773.mds')   
+    # r2 = DataReader('/home/skleff/data_paper_CSSQP/circle_constraints_jointPos1.mds')   
     rs.append(r2) 
     N = r2.data['tau'].shape[0] ; Ns.append(N)
     # p_mea2 = get_p_(r2.data['joint_positions'][:N], pinrobot.model, pinrobot.model.getFrameId('contact'))
@@ -53,7 +53,7 @@ if('circle_joint_cstr' in PLOTS):
 if('circle_ee_cstr_D' in PLOTS):
     # Circle with end-effector position constraint (D)                                  
     print("Extract circle_ee_cstr_D data...")
-    r3 = DataReader('/home/skleff/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_D_1683299505.0607696.mds')  
+    r3 = DataReader('/home/skleff/data_paper_CSSQP/circle_endeff_cstr/endeff_constraint_D_1683299505.0607696.mds')  
     rs.append(r3) 
     N = r3.data['tau'].shape[0] ; Ns.append(N)
     # p_mea3 = get_p_(r3.data['joint_positions'][:N], pinrobot.model, pinrobot.model.getFrameId('contact'))
@@ -61,33 +61,33 @@ if('circle_ee_cstr_D' in PLOTS):
 if('circle_ee_cstr_square' in PLOTS):
     # Circle with end-effector position constraint (square) 
     print("Extract circle_ee_cstr_square data...")  
-    r4 = DataReader('/home/skleff/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_square_1683311293.0681663.mds')    
+    r4 = DataReader('/home/skleff/data_paper_CSSQP/circle_endeff_cstr/endeff_constraint_square_1683311293.0681663.mds')    
     rs.append(r4) 
     N = r4.data['tau'].shape[0] ; Ns.append(N)
     # p_mea4 = get_p_(r4.data['joint_positions'][:N], pinrobot.model, pinrobot.model.getFrameId('contact'))
-    # r2 = DataReader('/home/skleff/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_square_1683311101.474164.mds')    
-    # r2 = DataReader('/home/skleff/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_square_1683319823.8800943.mds')    
-    # r2 = DataReader('/home/skleff/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_square_1683321073.5147364.mds')    
-    # r2 = DataReader('/home/skleff/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_square_fast_1683316565.3754733.mds')     # fast 
-    # r2 = DataReader('/home/skleff/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_square_slow_1683318101.9747822.mds')     # slow 
+    # r2 = DataReader('/home/skleff/data_paper_CSSQP/circle_endeff_cstr/endeff_constraint_square_1683311101.474164.mds')    
+    # r2 = DataReader('/home/skleff/data_paper_CSSQP/circle_endeff_cstr/endeff_constraint_square_1683319823.8800943.mds')    
+    # r2 = DataReader('/home/skleff/data_paper_CSSQP/circle_endeff_cstr/endeff_constraint_square_1683321073.5147364.mds')    
+    # r2 = DataReader('/home/skleff/data_paper_CSSQP/circle_endeff_cstr/endeff_constraint_square_fast_1683316565.3754733.mds')     # fast 
+    # r2 = DataReader('/home/skleff/data_paper_CSSQP/circle_endeff_cstr/endeff_constraint_square_slow_1683318101.9747822.mds')     # slow 
 
 if('circle_ee_cstr_line' in PLOTS):
     # Circle with end-effector position constraint (line)
     print("Extract circle_ee_cstr_line data...")  
-    r5 = DataReader('/home/skleff/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_line_1683299651.402261.mds')      
+    r5 = DataReader('/home/skleff/data_paper_CSSQP/circle_endeff_cstr/endeff_constraint_line_1683299651.402261.mds')      
     rs.append(r5) 
     N = r5.data['tau'].shape[0] ; Ns.append(N)
     # p_mea5 = get_p_(r5.data['joint_positions'][:N], pinrobot.model, pinrobot.model.getFrameId('contact'))
-    # r2 = DataReader('/home/skleff/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_line_disturbance_1683299802.012319.mds')   
+    # r2 = DataReader('/home/skleff/data_paper_CSSQP/circle_endeff_cstr/endeff_constraint_line_disturbance_1683299802.012319.mds')   
 
 if('ee_cstr_plane' in PLOTS):
     # End-effector position constraint + disturbance (plane)
     print("Extract ee_cstr_plane data...")  
-    r6 = DataReader('/home/skleff/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_plane_cost_disturbance_1683301875.1998608.mds')    
+    r6 = DataReader('/home/skleff/data_paper_CSSQP/circle_endeff_cstr/endeff_constraint_plane_cost_disturbance_1683301875.1998608.mds')    
     rs.append(r6) 
     N = r6.data['tau'].shape[0] ; Ns.append(N)
     # p_mea6 = get_p_(r6.data['joint_positions'][:N], pinrobot.model, pinrobot.model.getFrameId('contact'))
-    # r2 = DataReader('/home/skleff/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_plane_cost_disturbance_1683302232.4687898.mds')    
+    # r2 = DataReader('/home/skleff/data_paper_CSSQP/circle_endeff_cstr/endeff_constraint_plane_cost_disturbance_1683302232.4687898.mds')    
 
 N = min(Ns) 
 N_start = 2000
@@ -147,14 +147,14 @@ def plot_joint_traj(jmea, label):
 #     ax0.text(0., 0.1, '$x_0$', fontdict={'size':26})
 #     # handles, labels = ax0.get_legend_handles_labels()
 #     # fig0.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-#     # fig0.savefig('/home/skleff/data_paper_fadmm/no_cstr_circle_plot.pdf', bbox_inches="tight")
+#     # fig0.savefig('/home/skleff/data_paper_CSSQP/no_cstr_circle_plot.pdf', bbox_inches="tight")
 #     # Joint pos
 #     jmea = r1.data['joint_positions'][N_start:N, 0]
 #     fig1, ax1 = plot_joint_traj(jmea) 
 #     ax1.set_ylim(-2., 2.)
 #     # handles, labels = ax.get_legend_handles_labels()
 #     # fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-#     # fig.savefig('/home/skleff/data_paper_fadmm/no_cstr_q1_plot.pdf', bbox_inches="tight")
+#     # fig.savefig('/home/skleff/data_paper_CSSQP/no_cstr_q1_plot.pdf', bbox_inches="tight")
 
 
 # Circle joint pos constraint
@@ -170,7 +170,7 @@ if('circle_joint_cstr' in PLOTS and 'circle_no_cstr' in PLOTS):
     ax_circle.text(0., 0.2, '$x_0$', fontdict={'size':26})
     handles, labels = ax_circle.get_legend_handles_labels()
     fig_circle.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-    fig_circle.savefig('/home/skleff/data_paper_fadmm/jointpos_circle_plot2.pdf', bbox_inches="tight")
+    fig_circle.savefig('/home/skleff/data_paper_CSSQP/jointpos_circle_plot2.pdf', bbox_inches="tight")
     # Joint pos
     jmea1 = r1.data['joint_positions'][N_start:N, 0]
     jmea2 = r2.data['joint_positions'][N_start:N, 0]
@@ -187,7 +187,7 @@ if('circle_joint_cstr' in PLOTS and 'circle_no_cstr' in PLOTS):
     ax_q.plot(xdata, jmea1, color='g', linewidth=4, label='Unconstrained', alpha=0.5) 
     handles, labels = ax_q.get_legend_handles_labels()
     fig_q.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-    fig_q.savefig('/home/skleff/data_paper_fadmm/jointpos_q1_plot.pdf', bbox_inches="tight")
+    fig_q.savefig('/home/skleff/data_paper_CSSQP/jointpos_q1_plot.pdf', bbox_inches="tight")
     
 
 # Circle D shape
@@ -200,7 +200,7 @@ if('circle_ee_cstr_D' in PLOTS):
     ax.axhspan(0.8, -0.5, 0.5, -0., color='gray', alpha=0.2, lw=0)
     handles, labels = ax.get_legend_handles_labels()
     fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-    fig.savefig('/home/skleff/data_paper_fadmm/circle_ee_cstr_D_plot.pdf', bbox_inches="tight")
+    fig.savefig('/home/skleff/data_paper_CSSQP/circle_ee_cstr_D_plot.pdf', bbox_inches="tight")
 
 # Circle square shape
 if('circle_ee_cstr_square' in PLOTS):
@@ -223,7 +223,7 @@ if('circle_ee_cstr_square' in PLOTS):
     ax.set_ylim(0.18, 1.1)
     handles, labels = ax.get_legend_handles_labels()
     fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-    fig.savefig('/home/skleff/data_paper_fadmm/circle_ee_cstr_square_plot.pdf', bbox_inches="tight")
+    fig.savefig('/home/skleff/data_paper_CSSQP/circle_ee_cstr_square_plot.pdf', bbox_inches="tight")
 
 
 

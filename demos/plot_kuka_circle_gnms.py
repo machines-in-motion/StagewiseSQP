@@ -19,7 +19,7 @@ model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
 
 
 # Load config file
-CONFIG_NAME = 'kuka_circle_fadmm'
+CONFIG_NAME = 'kuka_circle_CSSQP'
 CONFIG_PATH = "demos/"+CONFIG_NAME+".yml"
 config      = path_utils.load_yaml_file(CONFIG_PATH)
 
@@ -33,12 +33,12 @@ s = SimpleDataPlotter()
 
 
 if(SIM):
-    # r = DataReader('/tmp/kuka_reach_gnms_sim_GNMS.mds')
-    # r = DataReader('/tmp/kuka_reach_gnms_sim_FDDP.mds')
-    r = DataReader('/tmp/kuka_circle_sim_FADMM.mds')
+    # r = DataReader('/tmp/kuka_reach_SQP_sim_SQP.mds')
+    # r = DataReader('/tmp/kuka_reach_SQP_sim_FDDP.mds')
+    r = DataReader('/tmp/kuka_circle_sim_CSSQP.mds')
 else:
-    # r2 = DataReader('/home/skleff/ws/workspace/src/gnms/data/circle_GNMS.mds')
-    r = DataReader('/home/skleff/data_paper_fadmm/circle_no_cstr/no_constraint_1683299184.3249779.mds')
+    # r2 = DataReader('/home/skleff/ws/workspace/src/SQP/data/circle_SQP.mds')
+    r = DataReader('/home/skleff/data_paper_CSSQP/circle_no_cstr/no_constraint_1683299184.3249779.mds')
 
 N = r.data['tau'].shape[0]
 
@@ -58,11 +58,11 @@ fig.legend() #handles, labels, loc='upper right', prop={'size': 16})
 
 
 s.plot_joint_pos( [r.data['joint_positions']], #, r2.data['joint_positions']], 
-                   ['fddp'], #, 'gnms'], 
+                   ['fddp'], #, 'SQP'], 
                    ['r'], #, 'b'], 
                    ylims=[model.lowerPositionLimit, model.upperPositionLimit] )
 s.plot_joint_vel( [r.data['joint_velocities']], #, r2.data['joint_velocities']], 
-                  ['fddp'], #, 'gnms'], 
+                  ['fddp'], #, 'SQP'], 
                   ['r'], #, 'b'], 
                   ylims=[-model.velocityLimit, +model.velocityLimit] )
 # s.plot_joint_vel( [r.data['joint_accelerations']], ['mea'], ['r'],)
@@ -94,7 +94,7 @@ else:
 # s.plot_ee_pos( [p_mea, 
 #                 p_mea2,
 #                 target_position],  
-#                ['fddp', 'gnms', 'ref (position cost)'], 
+#                ['fddp', 'SQP', 'ref (position cost)'], 
 #                ['r', 'b', 'k', 'g'], 
 #                linestyle=['solid','solid', 'dotted', 'solid'])
 
@@ -102,7 +102,7 @@ else:
 # v_mea2 = get_v_(r2.data['joint_positions'], r2.data['x_des'][:,nq:nq+nv], pinrobot.model, pinrobot.model.getFrameId('contact'))
 # s.plot_ee_vel( [v_mea, 
 #                 v_mea2],  
-#                ['fddp', 'gnms'], 
+#                ['fddp', 'SQP'], 
 #                ['r', 'b'], 
 #                linestyle=['solid','solid'])
 # target_force_3d = np.zeros((N, 3))

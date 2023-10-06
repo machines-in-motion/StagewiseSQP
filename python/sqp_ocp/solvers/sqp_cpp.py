@@ -1,4 +1,4 @@
-## This is  a python implementation of GNMS with an FDDP backward pass from C++ and line search and step in python. 
+## This is  a python implementation of SQP with an FDDP backward pass from C++ and line search and step in python. 
 ## This file provides the baseline to transfer code completely to C++
 ## Date : 17/02/2023
 ## Authors : Avadesh, Armand, Sebastien
@@ -9,7 +9,7 @@ from crocoddyl import SolverFDDP
 from collections import deque
 
 
-class GNMSCPP(SolverFDDP):
+class CSSQPCPP(SolverFDDP):
 
     def __init__(self, shootingProblem, use_filter_ls=False, VERBOSE=False):
         

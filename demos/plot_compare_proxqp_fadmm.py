@@ -19,7 +19,7 @@ model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
 
 
 # Load config file
-CONFIG_NAME = 'kuka_circle_fadmm'
+CONFIG_NAME = 'kuka_circle_CSSQP'
 CONFIG_PATH = "demos/"+CONFIG_NAME+".yml"
 config      = path_utils.load_yaml_file(CONFIG_PATH)
 
@@ -34,24 +34,24 @@ s = SimpleDataPlotter()
 
 if(SIM):
     # r = DataReader('/home/skleff/Desktop/circle_PROXQP.mds')
-    # r1 = DataReader('/home/skleff/Desktop/circle_FADMM.mds')
+    # r1 = DataReader('/home/skleff/Desktop/circle_CSSQP.mds')
     # r1 = DataReader('/tmp/kuka_circle_sim_PROXQP.mds')
     r1 = DataReader('/tmp/kuka_square_sim_square_constraintEEy.mds') #r2
     r2 = r1
     # r2 = DataReader('/tmp/kuka_circle_sim_PROXQP_warm_start_y=False_reset_rho=Falsesqp3.mds') #r2
-    # r2 = r1 #DataReader('/tmp/kuka_circle_sim_FADMM_warm_start_y=True_reset_rho=False.mds')
-    r3 = r1 #DataReader('/tmp/kuka_circle_sim_FADMM_warm_start_y=True_reset_rho=True.mds')
-    r4 = r1 #DataReader('/tmp/kuka_circle_sim_FADMM_warm_start_y=False_reset_rho=Truesqp3.mds')
-    # r2 = DataReader('/tmp/kuka_circle_sim_FADMM_NO_CONSTRAINT.mds')
+    # r2 = r1 #DataReader('/tmp/kuka_circle_sim_CSSQP_warm_start_y=True_reset_rho=False.mds')
+    r3 = r1 #DataReader('/tmp/kuka_circle_sim_CSSQP_warm_start_y=True_reset_rho=True.mds')
+    r4 = r1 #DataReader('/tmp/kuka_circle_sim_CSSQP_warm_start_y=False_reset_rho=Truesqp3.mds')
+    # r2 = DataReader('/tmp/kuka_circle_sim_CSSQP_NO_CONSTRAINT.mds')
 else:
     # r = DataReader('/home/skleff/Desktop/circle_PROXQP.mds')
-    # r1 = DataReader('/home/skleff/Desktop/circle_FADMM.mds')
+    # r1 = DataReader('/home/skleff/Desktop/circle_CSSQP.mds')
     # r1 = DataReader('/tmp/kuka_circle_real_=PROXQP.mds')
 
-    # r1 = DataReader('/tmp/kuka_circle_real_=FADMM_NO_CONSTRAINT.mds')  # baseline
-    # r1 = DataReader('/tmp/kuka_circle_real_FADMM_no_constraint.mds')  
-    # r1 = DataReader('/home/skleff/data_paper_fadmm/circle_endeff_cstr/endeff_constraint_square_1683311293.0681663.mds')  
-    r1 = DataReader('/home/skleff/data_paper_fadmm/circle_no_cstr/no_constraint_1683299184.3249779.mds')  
+    # r1 = DataReader('/tmp/kuka_circle_real_=CSSQP_NO_CONSTRAINT.mds')  # baseline
+    # r1 = DataReader('/tmp/kuka_circle_real_CSSQP_no_constraint.mds')  
+    # r1 = DataReader('/home/skleff/data_paper_CSSQP/circle_endeff_cstr/endeff_constraint_square_1683311293.0681663.mds')  
+    r1 = DataReader('/home/skleff/data_paper_CSSQP/circle_no_cstr/no_constraint_1683299184.3249779.mds')  
     # r1 = DataReader('/tmp/kuka_circle_real_PROXQP_warm_start_y=False_reset_rho=False_allJoints.mds')  # current best
     r2 = r1
     r3 = r1
@@ -79,15 +79,15 @@ ax[3].plot(r2.data['kkt_norm'], label='KKT norm (2)')
 ax[3].plot(r3.data['kkt_norm'], label='KKT norm (3)')
 # ax[3].plot(r4.data['kkt_norm'], label='KKT norm (4)')
 
-ax[4].plot(r1.data['t_child'], label='FADMM solve (1)')
-ax[4].plot(r2.data['t_child'], label='FADMM solve (3)')
-ax[4].plot(r3.data['t_child'], label='FADMM solve (3)')
-# ax[4].plot(r4.data['t_child'], label='FADMM solve (4)')
+ax[4].plot(r1.data['t_child'], label='CSSQP solve (1)')
+ax[4].plot(r2.data['t_child'], label='CSSQP solve (3)')
+ax[4].plot(r3.data['t_child'], label='CSSQP solve (3)')
+# ax[4].plot(r4.data['t_child'], label='CSSQP solve (4)')
 ax[4].plot(N*[1./config['plan_freq']], label= 'mpc')
 
-ax[5].plot(r1.data['t_run'], label='FADMM cycle (1)')
-ax[5].plot(r2.data['t_run'], label='FADMM cycle (3)')
-ax[5].plot(r3.data['t_run'], label='FADMM cycle (4)')
+ax[5].plot(r1.data['t_run'], label='CSSQP cycle (1)')
+ax[5].plot(r2.data['t_run'], label='CSSQP cycle (3)')
+ax[5].plot(r3.data['t_run'], label='CSSQP cycle (4)')
 ax[5].plot(N*[1./config['plan_freq']], label= 'mpc')
 fig.legend() 
 

@@ -1,7 +1,7 @@
 # ROBOT : 'iiwa' 
 # TASK  : 3D contact force task
 
-USE_GNMS: False
+USE_SQP: False
 
 
 # MPC & sim parameters

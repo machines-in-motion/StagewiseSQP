@@ -6,8 +6,8 @@ os.sys.path.insert(1, str(python_path))
 import numpy as np
 import crocoddyl
 import matplotlib.pyplot as plt
-from sqp_ocp.solvers import FADMM
-from sqp_ocp.constraint_model import StateConstraintModel, NoConstraint
+from sqp_ocp.solvers import CSSQP
+from sqp_ocp.constraint_model import StateConstraintModel, NoConstraintModel
 from lq_problem import DifferentialActionModelLQ
 
 LINE_WIDTH = 100
@@ -26,12 +26,12 @@ nu = 2
 
 lxmin = -np.inf*np.ones(nx)
 lxmax = np.array([0.5, 0.1, np.inf, np.inf])
-ConstraintModel = [NoConstraint(4, 2)] + [StateConstraintModel(lxmin, lxmax, 4, 4, 2)] * horizon
+ConstraintModel = [NoConstraintModel(4, 2)] + [StateConstraintModel(lxmin, lxmax, 4, 4, 2)] * horizon
 
 print("\n\n")
-print("TEST : FADMM = FAdmmKKT".center(LINE_WIDTH, "-"))
+print("TEST : CSSQP = StagewiseQPKKT".center(LINE_WIDTH, "-"))
 
-ddp = FADMM(problem, ConstraintModel)
+ddp = CSSQP(problem, ConstraintModel)
 xs = [10*np.ones(4)] * (horizon + 1)
 us = [np.ones(2)*100 for t in range(horizon)] 
 
@@ -39,7 +39,7 @@ converged = ddp.solve(xs, us, 1)
 
 if True:
     plt.figure("trajectory plot")
-    plt.plot(np.array(ddp.xs)[:, 0], np.array(ddp.xs)[:, 1], label="FADMM")
+    plt.plot(np.array(ddp.xs)[:, 0], np.array(ddp.xs)[:, 1], label="StagewiseQP")
     plt.xlabel("x")
     plt.ylabel("y")
     plt.title("DDP")

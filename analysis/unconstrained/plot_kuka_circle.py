@@ -1,4 +1,4 @@
-# from gnms.demos.plot_utils import SimpleDataPlotter
+# from SQP.demos.plot_utils import SimpleDataPlotter
 from mim_data_utils import DataReader
 from core_mpc.pin_utils import *
 import numpy as np
@@ -17,13 +17,13 @@ nq = model.nq ; nv = model.nv ; nc = 3
 model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
 
 # Load config file
-CONFIG_NAME = 'kuka_circle_gnms'
-CONFIG_PATH = "/home/skleff/misc_repos/gnms/demos/"+CONFIG_NAME+".yml"
+CONFIG_NAME = 'kuka_circle_SQP'
+CONFIG_PATH = "/home/skleff/misc_repos/SQP/demos/"+CONFIG_NAME+".yml"
 config      = path_utils.load_yaml_file(CONFIG_PATH)
 
 # Load experimental data
-r1 = DataReader('/home/skleff/data_paper_fadmm/circle_GNMS.mds')
-r2 = DataReader('/home/skleff/data_paper_fadmm/circle_FDDP.mds')
+r1 = DataReader('/home/skleff/data_paper_CSSQP/circle_SQP.mds')
+r2 = DataReader('/home/skleff/data_paper_CSSQP/circle_FDDP.mds')
 N = min(r1.data['tau'].shape[0], r1.data['tau'].shape[0])
 p_mea1 = get_p_(r1.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
 p_mea2 = get_p_(r2.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
@@ -36,7 +36,7 @@ target_position[:,2] = r1.data['target_position_z'][:,0]
 # Compute MSE ||y - yd||^2 + ||z - zd||^2
 err1 = np.sum(np.abs(p_mea1 - target_position)[2000:,1:]**2, axis=1)
 err2 = np.sum(np.abs(p_mea2 - target_position)[2000:,1:]**2, axis=1)
-print("MSE GNMS = ", np.average(err1))
+print("MSE SQP = ", np.average(err1))
 print("MSE FDDP = ", np.average(err2))
 
 # Generate plot of number of iterations for each problem
