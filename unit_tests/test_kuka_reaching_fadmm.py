@@ -9,7 +9,7 @@ import crocoddyl
 import numpy as np
 import pinocchio as pin
 np.set_printoptions(precision=4, linewidth=180)
-from sqp_ocp.constraint_model import StateConstraintModel, ControlConstraintModel, EndEffConstraintModel, NoConstraintModelModel, ConstraintModelStack
+from sqp_ocp.constraint_model import NoConstraintModel, StateConstraintModel, ControlConstraintModel, EndEffConstraintModel, ConstraintModelStack
 from sqp_ocp.solvers import CSSQP
 
 LINE_WIDTH = 100
@@ -75,18 +75,13 @@ dt = 1e-2
 runningModel = crocoddyl.IntegratedActionModelEuler(running_DAM, dt)
 terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
 
-# Optionally add armature to take into account actuator's inertia
-# runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
-# terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
-
 # Create the shooting problem
 T = 10
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
-
 # choose scenario: 0 or 1 or 2 or 3
-option = 2
+option = 0
 
 if option == 0:    
   clip_state_max = np.array([np.inf]*14)
@@ -94,34 +89,34 @@ if option == 0:
   clip_ctrl = np.array([np.inf, 40 , np.inf, np.inf, np.inf, np.inf , np.inf] )
 
 
-  statemodel = StateConstraintModel(state, 7, clip_state_min, clip_state_max)
-  controlmodel = ControlConstraintModel(state, 7,  -clip_ctrl, clip_ctrl)
+  statemodel = StateConstraintModel(state, 7, clip_state_min, clip_state_max, "state")
+  controlmodel = ControlConstraintModel(state, 7,  -clip_ctrl, clip_ctrl, "control")
 
   nc = statemodel.nc + controlmodel.nc
-  ConstraintModel = ConstraintModelStack([statemodel, controlmodel], state, nc, 7)
+  ConstraintModel = ConstraintModelStack([statemodel, controlmodel], state, nc, 7, "stack")
   clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.01]*7)
-  terminal = StateConstraintModel(state, 7, clip_state_min, clip_state_max)
-  TerminalConstraintModel = ConstraintModelStack([terminal], state, 14, 7)
+  terminal = StateConstraintModel(state, 7, clip_state_min, clip_state_max, "state")
+  TerminalConstraintModel = ConstraintModelStack([terminal], state, 14, 7, "stack")
 
   constraintModels =[controlmodel] * (T) + [terminal]
 elif option == 1:    
   clip_state_max = np.array([np.inf]*14)
   clip_state_min = -np.array([np.inf]*7 + [0.5]*7)
-  statemodel = StateConstraintModel(state, 7, clip_state_min, clip_state_max)
+  statemodel = StateConstraintModel(state, 7, clip_state_min, clip_state_max, "state")
   clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.00]*7)
-  TerminalConstraintModel = StateConstraintModel(state, 7, -clip_state_end, clip_state_end)
-  constraintModels =  [NoConstraintModelModel(state, 7)] + [statemodel] * (T-1) + [TerminalConstraintModel]
+  TerminalConstraintModel = StateConstraintModel(state, 7, -clip_state_end, clip_state_end, "state")
+  constraintModels =  [NoConstraintModel(state, 7, "none")] + [statemodel] * (T-1) + [TerminalConstraintModel]
 
 elif option == 2:
   endeff_translation = np.array([0.7, 0, 1.1]) # move endeff +30 cm along x in WORLD frame
 
   lmin = np.array([-np.inf, endeff_translation[1], endeff_translation[2]])
   lmax =  np.array([np.inf, endeff_translation[1], endeff_translation[2]])
-  constraintModels = [NoConstraintModelModel(state, 7)] + [EndEffConstraintModel(state, 7, fid, lmin, lmax)] * T
+  constraintModels = [NoConstraintModel(state, 7, "none")] + [EndEffConstraintModel(state, 7, fid, lmin, lmax, "ee")] * T
 
 
 elif option == 3:
-  constraintModels = [NoConstraintModelModel(state, 7)] * (T+1)
+  constraintModels = [NoConstraintModel(state, 7, "none")] * (T+1)
 
 
 xs = [x0] * (T+1)
@@ -183,7 +178,7 @@ ddppy.backwardPass()
 tol = 1e-3
 
 for i in range(0, T):
-  # print (ddp.k[i] + ddppy.l[i])
+  print (ddp.k[i] + ddppy.l[i])
   assert (np.linalg.norm(ddp.k[i] + ddppy.l[i])) < tol
   assert(np.linalg.norm(ddp.K[i] + ddppy.L[i])) < tol
 

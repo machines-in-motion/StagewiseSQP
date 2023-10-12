@@ -7,8 +7,8 @@ import osqp
 import proxsuite
 import time 
 from scipy import sparse
-from . py_osqp import CustomOSQP
-from . stagewise_qp_kkt import StagewiseQPKKT
+from .py_osqp import CustomOSQP
+from .stagewise_qp_kkt import StagewiseQPKKT
 from crocoddyl import SolverAbstract
 
 class QPSolvers(SolverAbstract, CustomOSQP, StagewiseQPKKT):
@@ -55,8 +55,8 @@ class QPSolvers(SolverAbstract, CustomOSQP, StagewiseQPKKT):
             self.constraint_norm += np.linalg.norm(np.clip(cdata.c - cmodel.ub, 0, np.inf), 1)
 
         cmodel, cdata = self.constraintModel[-1], self.constraintData[-1]
-        cmodel.calc(cdata, self.problem.terminalData, self.xs[-1])
-        cmodel.calcDiff(cdata, self.problem.terminalData, self.xs[-1])
+        cmodel.calc(cdata, self.problem.terminalData, self.xs[-1], np.zeros(self.problem.terminalModel.nu))
+        cmodel.calcDiff(cdata, self.problem.terminalData, self.xs[-1], np.zeros(self.problem.terminalModel.nu))
 
         self.constraint_norm += np.linalg.norm(np.clip(cmodel.lb - cdata.c, 0, np.inf), 1) 
         self.constraint_norm += np.linalg.norm(np.clip(cdata.c - cmodel.ub, 0, np.inf), 1)

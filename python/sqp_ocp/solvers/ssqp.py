@@ -212,6 +212,7 @@ class SSQP(SolverAbstract):
             self.l[t][:] = -1*scl.cho_solve(Lb_uu, h)
             
             self.S[t] = Q + A.T @ (self.S[t+1])@A - self.L[t].T@H@self.L[t] 
+            self.S[t] = (self.S[t] + self.S[t].T) / 2 
             self.s[t] = q + A.T @ (self.S[t+1] @ self.gap[t] + self.s[t+1]) + G.T@self.l[t][:]+ self.L[t].T@(h + H@self.l[t][:])
 
     def solve(self, init_xs=None, init_us=None, maxiter=100, isFeasible=False, regInit=None):

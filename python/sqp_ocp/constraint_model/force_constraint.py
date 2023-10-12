@@ -8,8 +8,8 @@ import crocoddyl
 
 
 class Force6DConstraintModel(ConstraintModelAbstract):
-    def __init__(self, state, nu, Fmin, Fmax):
-        ConstraintModelAbstract.__init__(self, state, 6, nu, Fmin, Fmax)
+    def __init__(self, state, nu, Fmin, Fmax, name):
+        ConstraintModelAbstract.__init__(self, state, 6, nu, Fmin, Fmax, name)
 
     def calc(self, cdata, data, x, u=None): 
         cdata.c = data.differential.pinocchio.lambda_c

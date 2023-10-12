@@ -7,7 +7,7 @@ import numpy as np
 import crocoddyl
 import matplotlib.pyplot as plt
 
-from sqp_ocp.solvers import CSSQP, SQP
+from sqp_ocp.solvers import CSSQP, SSQP
 from sqp_ocp.constraint_model import StateConstraintModel, NoConstraintModel
 
 LINE_WIDTH = 100
@@ -140,16 +140,16 @@ if __name__ == "__main__":
     
     lxmin = -np.inf*np.ones(nx)
     lxmax = np.array([0.5, 0.1, np.inf, np.inf])
-    ConstraintModel = StateConstraintModel(lxmin, lxmax, nx, nx, nu)
+    ConstraintModel = StateConstraintModel(lq_diff_running.state, nu, lxmin, lxmax, "state")
     xs = [10*np.ones(4)] * (horizon + 1)
     us = [np.ones(2)*100 for t in range(horizon)] 
 
     print("TEST 1: SQP = CSSQP with sigma = 0".center(LINE_WIDTH, "-"))
 
-    ddp1 = SQP(problem)
+    ddp1 = SSQP(problem)
     converged = ddp1.solve(xs, us, 1)
 
-    ddp2 = CSSQP(problem, [NoConstraintModel(nx, nu)]*(horizon+1), "StagewiseQP", verbose = False)
+    ddp2 = CSSQP(problem, [NoConstraintModel(lq_diff_running.state, nu, "None")]*(horizon+1), "StagewiseQP", verbose = False)
     ddp2.sigma_sparse = 0.0
     converged = ddp2.solve(xs, us, 1)
 

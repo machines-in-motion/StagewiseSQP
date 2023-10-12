@@ -8,7 +8,7 @@ import numpy as np
 import example_robot_data
 import pinocchio
 np.set_printoptions(precision=4, linewidth=180)
-from sqp_ocp.solvers import SQP, CSSQPCPP
+from sqp_ocp.solvers.ssqp import SSQP
 
 LINE_WIDTH = 100
 
@@ -159,8 +159,8 @@ xs = [x0] * (problem.T + 1)
 us = problem.quasiStatic([x0] * problem.T)
 
 # Create solvers
-ddp0 = CSSQPCPP(problem)
-ddp1 = crocoddyl.SolverSQP(problem)
+ddp0 = SSQP(problem)
+ddp1 = crocoddyl.SolverGNMS(problem)
 
 # Set Heuristic Line Search (filter)
 ddp0.use_filter_ls = True

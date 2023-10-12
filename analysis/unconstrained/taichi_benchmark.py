@@ -202,7 +202,7 @@ for k,name in enumerate(names):
     solversFDDP_filter.append(solverfddp_filter)
 
     # Create solver SQP (MS)
-    solverSQP = crocoddyl.SolverSQP(pb)
+    solverSQP = crocoddyl.SolverGNMS(pb)
     solverSQP.xs = [solverSQP.problem.x0] * (solverSQP.problem.T + 1)  
     solverSQP.us = solverSQP.problem.quasiStatic([solverSQP.problem.x0] * solverSQP.problem.T)
     solverSQP.termination_tol = TOL
@@ -384,7 +384,7 @@ for k in range(N_pb):
     handles0, labels0 = ax0.get_legend_handles_labels()
     fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
     # Save, show , clean
-fig0.savefig('/home/skleff/data_paper_CSSQP/bench_taichi_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+'.pdf', bbox_inches="tight")
+# fig0.savefig('/home/skleff/data_paper_CSSQP/bench_taichi_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+'.pdf', bbox_inches="tight")
 
 plt.show()
 plt.close('all')

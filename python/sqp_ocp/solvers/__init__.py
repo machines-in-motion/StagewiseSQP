@@ -1,5 +1,5 @@
-from . qpsolvers import QPSolvers
-from .stagewise_qp import StagewiseQP
+from .dev_tools.qpsolvers import QPSolvers
+from .dev_tools.stagewise_qp import StagewiseQP
 from .ssqp import SSQP
-from .sqp_cpp import CSSQPCPP
+from .dev_tools.ssqp_cpp import SSQPCPP
 from .cssqp import CSSQP

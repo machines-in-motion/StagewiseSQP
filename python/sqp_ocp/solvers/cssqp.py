@@ -4,8 +4,8 @@
 
 import numpy as np
 import scipy.linalg as scl
-from .stagewise_qp import StagewiseQP
-from .qpsolvers import QPSolvers
+from .dev_tools.stagewise_qp import StagewiseQP
+from .dev_tools.qpsolvers import QPSolvers
 
 pp = lambda s : np.format_float_scientific(s, exp_digits=2, precision =4)
 

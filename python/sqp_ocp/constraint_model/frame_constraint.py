@@ -3,10 +3,12 @@
 ## Date : 12/04/2023
 
 
-try:
-    from crocoddyl import FrameTranslationConstraintModel as EndEffConstraintModel
-except:
 
+CROCODDYL_VERSION = "fork_v1"
+
+if CROCODDYL_VERSION == "fork_v1":
+    from crocoddyl import FrameTranslationConstraintModel as EndEffConstraintModel
+else:
     import pinocchio as pin
     import numpy as np
     from . abstract_model import ConstraintModelAbstract

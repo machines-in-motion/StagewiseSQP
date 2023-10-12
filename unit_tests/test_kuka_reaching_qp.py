@@ -75,13 +75,10 @@ dt = 1e-2
 runningModel = crocoddyl.IntegratedActionModelEuler(running_DAM, dt)
 terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
 
-# Optionally add armature to take into account actuator's inertia
-# runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
-# terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
-
 # Create the shooting problem
 T = 10
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
+
 
 
 
@@ -94,41 +91,45 @@ if option == 0:
   clip_ctrl = np.array([np.inf, 40 , np.inf, np.inf, np.inf, np.inf , np.inf] )
 
 
-  statemodel = StateConstraintModel(clip_state_min, clip_state_max, 7, 14, 7)
-  controlmodel = ControlConstraintModel(-clip_ctrl, clip_ctrl, 7, 14, 7)
+  statemodel = crocoddyl.StateConstraintModel(state, 7, clip_state_min, clip_state_max, 'stateConstraint')
+  controlmodel = crocoddyl.ControlConstraintModel(state, 7,  -clip_ctrl, clip_ctrl, 'ctrlConstraint')
 
-  ConstraintModel = ConstraintModelStack([statemodel, controlmodel], 14, 7)
-
+  nc = statemodel.nc + controlmodel.nc
+  ConstraintModel = crocoddyl.ConstraintStack([statemodel, controlmodel], state, nc, 7, 'runningConstraint')
   clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7)
-  TerminalConstraintModel = StateConstraintModel(-clip_state_end, clip_state_end, 7, 14, 7)
-  constraintModels = [controlmodel] + [controlmodel] * (T-1) + [TerminalConstraintModel]
+  terminal = crocoddyl.StateConstraintModel(state, 7, clip_state_min, clip_state_max, 'stateConstraint')
+  TerminalConstraintModel = crocoddyl.ConstraintStack([terminal], state, 14, 7, 'terminalConstraint')
 
+  constraintModels =[controlmodel] * (T) + [terminal]
 elif option == 1:    
   clip_state_max = np.array([np.inf]*14)
   clip_state_min = -np.array([np.inf]*7 + [0.5]*7)
-  statemodel = StateConstraintModel(clip_state_min, clip_state_max, 7, 14, 7)
+  statemodel = StateConstraintModel(state, 7, clip_state_min, clip_state_max)
   clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.001]*7)
-  TerminalConstraintModel = StateConstraintModel(-clip_state_end, clip_state_end, 7, 14, 7)
-  constraintModels =  [NoConstraintModel(14, 7)] + [statemodel] * (T-1) + [TerminalConstraintModel]
+  TerminalConstraintModel = StateConstraintModel(state, 7, -clip_state_end, clip_state_end)
+  constraintModels =  [NoConstraintModel(state, 7)] + [statemodel] * (T-1) + [TerminalConstraintModel]
 
 elif option == 2:
+  endeff_translation = np.array([0.7, 0, 1.1]) # move endeff +30 cm along x in WORLD frame
+
   lmin = np.array([-np.inf, endeff_translation[1], endeff_translation[2]])
   lmax =  np.array([np.inf, endeff_translation[1], endeff_translation[2]])
-  constraintModels = [NoConstraintModel(14, 7)] + [EndEffConstraintModel(robot, lmin, lmax, 3, 14, 7)] * T
+  fid = model.getFrameId("contact")
+  constraintModels = [NoConstraintModel(state, 7)] + [EndEffConstraintModel(state, 7, fid, lmin, lmax)] * T
 
 
 elif option == 3:
-  constraintModels = [NoConstraintModel(14, 7)] * (T+1)
+  constraintModels = [NoConstraintModel(state, 7)] * (T+1)
 
 
 print("TEST KUKA PROBLEM : CSSQP = StagewiseQPKKT".center(LINE_WIDTH, "-"))
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
-ddp1 = CSSQP(problem, constraintModels, verbose = False)
+ddp1 = CSSQP(problem, constraintModels, "StagewiseQP", verbose = False)
 ddp1.solve(xs, us, 1)
 
-ddp2 = QPSolvers(problem, constraintModels, "StagewiseQPKKT", verbose = False)
+ddp2 = QPSolvers(problem, constraintModels, "StagewiseQPKKT")
 ddp2.solve(xs, us, 1)
 
 ##### UNIT TEST #####################################

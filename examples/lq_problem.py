@@ -136,39 +136,30 @@ if __name__ == "__main__":
     nx = 4
     nu = 2
     
-    
-    lxmin = -np.inf*np.ones(nx)
-    lxmax = np.array([0.5, 0.1, np.inf, np.inf])
-    ConstraintModel = StateConstraintModel(crocoddyl.StateVector(2), nx, lxmin, lxmax, 'stateConstraint')
     xs = [10*np.ones(4)] * (horizon + 1)
     us = [np.ones(2)*100 for t in range(horizon)] 
 
-    print("TEST 1: SQP = CSSQP with sigma = 0".center(LINE_WIDTH, "-"))
 
     ddp1 = SSQP(problem)
     converged = ddp1.solve(xs, us, 1)
 
-    ddp2 = CSSQP(problem, [NoConstraintModel(crocoddyl.StateVector(2), nu)]*(horizon+1), "StagewiseQP", verbose = False)
-    ddp2.sigma_sparse = 0.0
-    converged = ddp2.solve(xs, us, 1)
-
-    assert np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)) < 1e-8, "Test failed"
-    assert np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)) < 1e-8, "Test failed"
-
-
-    print("TEST SQP 1 iter : CSSQP = StagewiseQPKKT".center(LINE_WIDTH, "-"))
-
-    ddp1 = CSSQP(problem, [ConstraintModel]*(horizon+1), "StagewiseQP", verbose = False)
-
-    ddp1.verbose = True
-    converged = ddp1.solve(xs, us, 10)
-
-    ddp2 = CSSQP(problem, [ConstraintModel]*(horizon+1), "StagewiseQPKKT", verbose = False)
-    converged = ddp2.solve(xs, us, 1)
     
+    lxmin = -np.inf*np.ones(nx)
+    xlim = 0.4
+    ylim = 0.2
+    lxmax = np.array([xlim, ylim, np.inf, np.inf])
+    ConstraintModel = StateConstraintModel(lq_diff_running.state, lq_diff_running.nu, lxmin, lxmax, 'stateConstraint')
+    ConstraintModels = [NoConstraintModel(lq_diff_running.state, lq_diff_running.nu, "none")] + [ConstraintModel] * horizon
 
-    assert np.linalg.norm(np.array(ddp1.xs) - np.array(ddp2.xs)) < 1e-8, "Test failed"
-    assert np.linalg.norm(np.array(ddp1.us) - np.array(ddp2.us)) < 1e-8, "Test failed"
+    ddp2 = CSSQP(problem, ConstraintModels, "StagewiseQP")
+    converged = ddp2.solve(xs, us, 1)
 
-    print("ALL TEST PASSED".center(LINE_WIDTH, "-"))
-    print("\n")
+    plt.figure("trajectory plot")
+    plt.plot(np.array(ddp1.xs)[:, 0], np.array(ddp1.xs)[:, 1], label="LQP")
+    plt.plot(np.array(ddp2.xs)[:, 0], np.array(ddp2.xs)[:, 1], label="Constrained LQR")
+    plt.plot([xlim] * (horizon+1), np.array(ddp2.xs)[:, 1], "--", color="black", label="x bound")
+    plt.plot(np.array(ddp2.xs)[:, 0], [ylim] * (horizon+1), "--", color="black", label="y bound")
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.legend()
+    plt.show()

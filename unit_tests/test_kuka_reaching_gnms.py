@@ -9,7 +9,8 @@ import crocoddyl
 import numpy as np
 import pinocchio as pin
 np.set_printoptions(precision=4, linewidth=180)
-from sqp_ocp.solvers import SQP, CSSQPCPP
+from sqp_ocp.solvers import SSQP
+from sqp_ocp.solvers import SSQPCPP
 
 LINE_WIDTH = 100
 
@@ -85,9 +86,9 @@ xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 
 # Create solvers
-ddp0 = SQP(problem)
-ddp1 = CSSQPCPP(problem)
-ddp2 = crocoddyl.SolverSQP(problem)
+ddp0 = SSQP(problem)
+ddp1 = SSQPCPP(problem)
+ddp2 = crocoddyl.SolverGNMS(problem)
 ddp3 = crocoddyl.SolverFDDP(problem)
 
 ddp0.solve(xs, us, 100)

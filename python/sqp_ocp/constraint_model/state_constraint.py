@@ -3,16 +3,19 @@
 ## Date : 12/04/2023
 
 
-try:
-  from crocoddyl import StateConstraintModel
-except:
+
+CROCODDYL_VERSION = "fork_v1"
+
+if CROCODDYL_VERSION == "fork_v1":
+   from crocoddyl import StateConstraintModel
+else:
   print("USING PYTHON CONSTRAINT")
   import numpy as np
   from . abstract_model import ConstraintModelAbstract
 
 
   class StateConstraintModel(ConstraintModelAbstract):
-      def __init__(self, state, nu, lxmin, lxmax):
+      def __init__(self, state, nu, lxmin, lxmax, name):
         ConstraintModelAbstract.__init__(self, state, state.nx, nu, lxmin, lxmax)
 
         self.Cx = np.eye(len(lxmin))

@@ -16,7 +16,7 @@ import pinocchio as pin
 
 from robot_properties_kuka.config import IiwaConfig
 import example_robot_data
-from bench_utils.cartpole_swingup import DifferentialActionModelCartpole
+# from bench_utils.cartpole_swingup import DifferentialActionModelCartpole
 from crocoddyl.utils.pendulum import CostModelDoublePendulum, ActuationModelDoublePendulum
 
 def create_double_pendulum_problem(x0):
@@ -169,18 +169,18 @@ def create_quadrotor_problem(x0):
 
 
 # Solver params
-MAXITER     = 300 
+MAXITER     = 100 
 TOL         = 1e-4 
 CALLBACKS   = False
 FILTER_SIZE = MAXITER
 
 # Benchmark params
 SEED = 1 ; np.random.seed(SEED)
-N_samples = 10
+N_samples = 100
 names = [
     #    'Pendulum'] # maxiter = 500
-        #  'Kuka'] # maxiter = 100
-         'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
+         'Kuka'] # maxiter = 100
+        #  'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
         #  'Quadrotor'] # maxiter = 200
 
 N_pb = len(names)
@@ -237,7 +237,7 @@ for k,name in enumerate(names):
     solversFDDP_filter.append(solverfddp_filter)
 
     # Create solver SQP (MS)
-    solverSQP = crocoddyl.SolverSQP(pb)
+    solverSQP = crocoddyl.SolverGNMS(pb)
     solverSQP.xs = [solverSQP.problem.x0] * (solverSQP.problem.T + 1)  
     solverSQP.us = solverSQP.problem.quasiStatic([solverSQP.problem.x0] * solverSQP.problem.T)
     solverSQP.termination_tol        = TOL
@@ -423,7 +423,7 @@ for k in range(N_pb):
     handles0, labels0 = ax0.get_legend_handles_labels()
     fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
     # Save, show , clean
-    fig0.savefig('/home/skleff/data_paper_CSSQP/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
+    # fig0.savefig('/home/skleff/data_paper_CSSQP/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
 
 
 # # Plot CV

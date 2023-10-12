@@ -82,10 +82,6 @@ dt = 1e-2
 runningModel = crocoddyl.IntegratedActionModelEuler(running_DAM, dt)
 terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
 
-# Optionally add armature to take into account actuator's inertia
-# runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
-# terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
-
 # Create the shooting problem
 T = 10
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
@@ -94,32 +90,36 @@ problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 # Constraint model
 
 
-Fmin = np.array([0, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
-Fmax =  np.array([0, np.inf, np.inf, np.inf, np.inf, np.inf])
-constraintModels = [Force6DConstraintModel(state, nu, Fmin, Fmax)] * T + [NoConstraintModel(state, nu)]
-mu = 0.05
-# constraintModels = [LocalCone(state, nu, mu)] * T + [NoConstraintModelModel(state, nu)]
-# constraintModels = [NoConstraintModelModel(state, nu)] * (T+1)
+Fmin = np.array([0., -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
+Fmax = np.array([0., np.inf, np.inf, np.inf, np.inf, np.inf])
+constraintModels = [Force6DConstraintModel(state, nu, Fmin, Fmax, "force")] * T + [NoConstraintModel(state, nu, "none")]
 
 
+ddppy = CSSQP(problem, constraintModels, "StagewiseQP")
 
-
-
-ddp = crocoddyl.SolverFADMM(problem, constraintModels) #, "StagewiseQP")
-
-
-xs_init = [x0 for i in range(T+1)]
-us_init = ddp.problem.quasiStatic(xs_init[:-1])
+xs = [x0 for i in range(T+1)]
+us = ddppy.problem.quasiStatic(xs[:-1])
 
 # Solve
 
-ddp.solve(xs_init, us_init, 100)
+qp_iters = 1000
+sqp_ites = 10
+eps_abs = 1e-8
+eps_rel = 0
+termination_tol = 1e-2
+
+
+ddppy.eps_abs = eps_abs
+ddppy.eps_rel = eps_rel
+ddppy.termination_tol = termination_tol
+ddppy.verbose = True
+ddppy.solve(xs, us, qp_iters)
 
 print(100*"*")
 
 # Extract DDP data and plot
 ddp_data = {}
-ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact', ct_frame_name='contact')
+ddp_data = ocp_utils.extract_ocp_data(ddppy, ee_frame_name='contact', ct_frame_name='contact')
 
 ocp_utils.plot_ocp_results(ddp_data, which_plots='all', labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
 
@@ -127,4 +127,4 @@ ocp_utils.plot_ocp_results(ddp_data, which_plots='all', labels=None, markers=['.
 
 # Display solution in Gepetto Viewer
 display = crocoddyl.GepettoDisplay(robot, frameNames=['contact'])
-display.displayFromSolver(ddp, factor=1)
+display.displayFromSolver(ddppy, factor=1)

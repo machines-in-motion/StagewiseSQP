@@ -6,9 +6,11 @@ import numpy as np
 import pinocchio
 import pinocchio as pin
 
-try:
+CROCODDYL_VERSION = "fork_v1"
+
+if CROCODDYL_VERSION == "fork_v1":
     from crocoddyl import ConstraintModelAbstract, NoConstraintModel
-except:
+else:
     print("USING PYTHON ABSTRACT")
 
     class ConstraintModelAbstract():

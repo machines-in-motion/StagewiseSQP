@@ -26,16 +26,16 @@ nu = 2
 
 lxmin = -np.inf*np.ones(nx)
 lxmax = np.array([0.5, 0.1, np.inf, np.inf])
-ConstraintModel = [NoConstraintModel(4, 2)] + [StateConstraintModel(lxmin, lxmax, 4, 4, 2)] * horizon
+ConstraintModel = [NoConstraintModel(lq_diff_running.state, lq_diff_running.nu, "none")] + [StateConstraintModel(lq_diff_running.state, nu, lxmin, lxmax, "state")] * horizon
 xs = [10*np.ones(4)] * (horizon + 1)
 us = [np.ones(2)*100 for t in range(horizon)] 
 
 
 print("TEST LQ PROBLEM : CSSQP = StagewiseQPKKT".center(LINE_WIDTH, "-"))
 
-ddp1 = CSSQP(problem, ConstraintModel, verbose = False)
+ddp1 = CSSQP(problem, ConstraintModel, "StagewiseQP", verbose = False)
 
-ddp2 = QPSolvers(problem, ConstraintModel, "StagewiseQPKKT", verbose = False)
+ddp2 = QPSolvers(problem, ConstraintModel, "StagewiseQPKKT")
 
 
 converged = ddp1.solve(xs, us, 1)

@@ -10,7 +10,7 @@ import numpy as np
 import pinocchio as pin
 np.set_printoptions(precision=4, linewidth=180)
 import ocp_utils
-from sqp_ocp.constraint_model import StateConstraintModel, ControlConstraintModel, EndEffConstraintModel, NoConstraintModelModel, ConstraintModelStack
+from sqp_ocp.constraint_model import StateConstraintModel, EndEffConstraintModel, NoConstraintModel
 from sqp_ocp.solvers import CSSQP
 
 
@@ -46,14 +46,13 @@ terminalCostModel = crocoddyl.CostModelSum(state)
 
 # Create cost terms 
   # Control regularization cost
-uResidual = crocoddyl.ResidualModelContactControlGrav(state)
+uResidual = crocoddyl.ResidualModelControlGrav(state)
 uRegCost = crocoddyl.CostModelResidual(state, uResidual)
   # State regularization cost
 xResidual = crocoddyl.ResidualModelState(state, x0)
 xRegCost = crocoddyl.CostModelResidual(state, xResidual)
   # endeff frame translation cost
 endeff_frame_id = model.getFrameId("contact")
-# endeff_translation = robot.data.oMf[endeff_frame_id].translation.copy()
 endeff_translation = np.array([0.7, 0, 1.1]) # move endeff +30 cm along x in WORLD frame
 frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(state, endeff_frame_id, endeff_translation)
 frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
@@ -67,20 +66,16 @@ terminalCostModel.addCost("stateReg", xRegCost, 1e-1)
 terminalCostModel.addCost("translation", frameTranslationCost, 1)
 
 # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
-running_DAM = crocoddyl.DifferentialActionModelContactFwdDynamics(state, actuation, crocoddyl.ContactModelMultiple(state, actuation.nu), runningCostModel)
-terminal_DAM = crocoddyl.DifferentialActionModelContactFwdDynamics(state, actuation, crocoddyl.ContactModelMultiple(state, actuation.nu), terminalCostModel)
+running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, runningCostModel)
+terminal_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, terminalCostModel)
 
 # Create Integrated Action Model (IAM), i.e. Euler integration of continuous dynamics and cost
-dt = 1e-2
+dt = 5e-2
 runningModel = crocoddyl.IntegratedActionModelEuler(running_DAM, dt)
 terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
 
-# Optionally add armature to take into account actuator's inertia
-# runningModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
-# terminalModel.differential.armature = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.])
-
 # Create the shooting problem
-T = 10
+T = 40
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
@@ -107,116 +102,43 @@ if option == 0:
 elif option == 1:    
   clip_state_max = np.array([np.inf]*14)
   clip_state_min = -np.array([np.inf]*7 + [0.5]*7)
-  statemodel = StateConstraintModel(state, 7, clip_state_min, clip_state_max)
+  statemodel = StateConstraintModel(state, 7, clip_state_min, clip_state_max, 'stateConstraint')
   clip_state_end = np.array([np.inf, np.inf, np.inf, np.inf, np.inf, np.inf , np.inf] + [0.00]*7)
-  TerminalConstraintModel = StateConstraintModel(state, 7, -clip_state_end, clip_state_end)
-  constraintModels =  [NoConstraintModelModel(state, 7)] + [statemodel] * (T-1) + [TerminalConstraintModel]
+  TerminalConstraintModel = StateConstraintModel(state, 7, -clip_state_end, clip_state_end, 'CtrlConstraint')
+  constraintModels =  [NoConstraintModel(state, 7, "none")] + [statemodel] * (T-1) + [TerminalConstraintModel]
 
 elif option == 2:
   endeff_translation = np.array([0.7, 0, 1.1]) # move endeff +30 cm along x in WORLD frame
 
   lmin = np.array([-np.inf, endeff_translation[1], endeff_translation[2]])
   lmax =  np.array([np.inf, endeff_translation[1], endeff_translation[2]])
-  constraintModels = [NoConstraintModelModel(state, 7)] + [EndEffConstraintModel(state, 7, fid, lmin, lmax)] * T
+  constraintModels = [NoConstraintModel(state, 7, "none")] + [EndEffConstraintModel(state, 7, fid, lmin, lmax, "ee")] * T
 
 
 elif option == 3:
-  constraintModels = [NoConstraintModelModel(state, 7)] * (T+1)
+  constraintModels = [NoConstraintModel(state, 7, "none")] * (T+1)
 
 
 xs = [x0] * (T+1)
 us = [np.zeros(nu)] * T 
 
 
-ddp = crocoddyl.SolverFADMM(problem, constraintModels)
 
 qp_iters = 1000
 sqp_ites = 10
 eps_abs = 1e-4
 eps_rel = 1e-4
-
-ddp.with_callbacks = True
-ddp.use_filter_ls = True
-ddp.filter_size = 10
-ddp.termination_tol = 1e-3
-ddp.warm_start = True
-ddp.max_qp_iters = qp_iters
-ddp.eps_abs = eps_abs
-ddp.eps_rel = eps_rel
-
-
-
-ddp.solve(xs, us, sqp_ites)
-
-ddp.calc(True)
-ddp.backwardPass_without_constraints()
-ddp.forwardPass()
-ddp.update_lagrangian_parameters(False)
-ddp.backwardPass()
-
-print("after warm start")
-ddp.solve(ddp.xs, ddp.us, sqp_ites)
-
-
-# xs = [x0] * (T+1)
-# us = [np.zeros(nu)] * T 
+termination_tol = 1e-4
 
 
 ddppy = CSSQP(problem, constraintModels, "StagewiseQP")
 ddppy.eps_abs = eps_abs
 ddppy.eps_rel = eps_rel
-
+ddppy.termination_tol = termination_tol
 ddppy.verbose = True
-# ddppy.verboseQP = False
-ddppy.max_iters = qp_iters
+ddppy.solve(xs, us, qp_iters)
 
-# ddppy.solve(xs, us, sqp_ites)
-
-ddppy.calc(True)
-ddppy.backwardPass_without_constraints()
-ddppy.computeUpdates()
-ddppy.update_lagrangian_parameters_infinity(False)
-
-ddppy.backwardPass()
-
-
-############## UNIT TEST #################################
-tol = 1e-3
-
-for i in range(0, T):
-  # print (ddp.k[i] + ddppy.l[i])
-  assert (np.linalg.norm(ddp.k[i] + ddppy.l[i])) < tol
-  assert(np.linalg.norm(ddp.K[i] + ddppy.L[i])) < tol
-
-
-# # print("_____________________________________________")
-for i in range(T, 0, -1):
-  assert (np.linalg.norm(ddp.Vxx[i] -  ddppy.S[i])) < tol
-  assert(np.linalg.norm(ddp.Vx[i] -  ddppy.s[i])) < tol
-
-assert (np.linalg.norm(np.array(ddp.dx_tilde) - ddppy.dx_tilde)) < tol
-assert (np.linalg.norm(np.array(ddp.du_tilde) - ddppy.du_tilde)) < tol
-
-
-assert (ddp.rho_sparse - ddppy.rho_sparse) < tol
-assert (ddp.norm_primal - ddppy.norm_primal) < tol
-assert (ddp.norm_dual - ddppy.norm_dual) < tol
-assert (ddp.norm_primal_rel - ddppy.norm_primal_rel) < tol
-assert (ddp.norm_dual_rel - ddppy.norm_dual_rel) < tol
-
-for i in range(len(ddppy.lag_mul)):
-  assert(np.linalg.norm((ddp.lag_mul)[i] - ddppy.lag_mul[i])) < tol
-  assert(np.linalg.norm((ddp.y)[i] - ddppy.y[i])) < tol
-  assert (np.linalg.norm((ddp.get_rho_vec)[i] - ddppy.rho_vec[i])) < tol
-  assert (np.linalg.norm((ddp.z)[i] - ddppy.z[i])) < tol
-
-assert (np.linalg.norm(np.array(ddp.xs) - ddppy.xs)/(T+1)) < tol
-assert (np.linalg.norm(np.array(ddp.us) - ddppy.us)/T) < tol
-
-
-
-# # Extract DDP data and plot
-# # ddp_data = ocp_utils.extract_ocp_data(ddp, ee_frame_name='contact')
-
-# # ocp_utils.plot_ocp_results(ddp_data, which_plots="all", labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
+# Extract DDP data and plot
+ddp_data = ocp_utils.extract_ocp_data(ddppy, ee_frame_name="contact")
+ocp_utils.plot_ocp_results(ddp_data, which_plots="all", labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
 

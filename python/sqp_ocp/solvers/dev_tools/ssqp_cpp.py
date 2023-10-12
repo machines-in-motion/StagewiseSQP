@@ -9,7 +9,7 @@ from crocoddyl import SolverFDDP
 from collections import deque
 
 
-class CSSQPCPP(SolverFDDP):
+class SSQPCPP(SolverFDDP):
 
     def __init__(self, shootingProblem, use_filter_ls=False, VERBOSE=False):
         

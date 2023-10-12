@@ -2,16 +2,17 @@
 ## Author : Armand Jordana
 ## Date : 12/04/2023
 
+CROCODDYL_VERSION = "fork_v1"
 
-try:
+if CROCODDYL_VERSION == "fork_v1":
     from crocoddyl import ConstraintStack as ConstraintModelStack
-except:
+else:
     import numpy as np
 
     from . abstract_model import ConstraintModelAbstract
 
     class ConstraintModelStack(ConstraintModelAbstract):
-        def __init__(self, constraintmodels, state, nc, nu):
+        def __init__(self, constraintmodels, state, nc, nu, name):
 
             self.cmodels = constraintmodels
             self.cdatas = [cmodel.createData() for cmodel in constraintmodels]
