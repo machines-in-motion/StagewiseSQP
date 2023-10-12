@@ -18,6 +18,7 @@ from robot_properties_kuka.config import IiwaConfig
 import example_robot_data
 # from bench_utils.cartpole_swingup import DifferentialActionModelCartpole
 from crocoddyl.utils.pendulum import CostModelDoublePendulum, ActuationModelDoublePendulum
+import mim_solvers
 
 def create_double_pendulum_problem(x0):
     '''
@@ -211,7 +212,7 @@ for k,name in enumerate(names):
         pb = create_quadrotor_problem(quadrotor_x0) 
 
     # Create solver DDP (SS)
-    solverddp = crocoddyl.SolverDDP(pb)
+    solverddp = mim_solvers.SolverDDP(pb)
     solverddp.xs = [solverddp.problem.x0] * (solverddp.problem.T + 1)  
     solverddp.us = solverddp.problem.quasiStatic([solverddp.problem.x0] * solverddp.problem.T)
     solverddp.termination_tolerance = TOL
@@ -219,7 +220,7 @@ for k,name in enumerate(names):
     solversDDP.append(solverddp)
     
     # Create solver FDDP (MS)
-    solverfddp = crocoddyl.SolverFDDP(pb)
+    solverfddp = mim_solvers.SolverFDDP(pb)
     solverfddp.xs = [solverfddp.problem.x0] * (solverfddp.problem.T + 1)  
     solverfddp.us = solverfddp.problem.quasiStatic([solverfddp.problem.x0] * solverfddp.problem.T)
     solverfddp.termination_tolerance = TOL
@@ -227,7 +228,7 @@ for k,name in enumerate(names):
     solversFDDP.append(solverfddp)
 
     # Create solver FDDP_filter (MS)
-    solverfddp_filter = crocoddyl.SolverFDDP(pb)
+    solverfddp_filter = mim_solvers.SolverFDDP(pb)
     solverfddp_filter.xs = [solverfddp_filter.problem.x0] * (solverfddp_filter.problem.T + 1)  
     solverfddp_filter.us = solverfddp_filter.problem.quasiStatic([solverfddp_filter.problem.x0] * solverfddp_filter.problem.T)
     solverfddp_filter.termination_tolerance  = TOL
@@ -237,7 +238,7 @@ for k,name in enumerate(names):
     solversFDDP_filter.append(solverfddp_filter)
 
     # Create solver SQP (MS)
-    solverSQP = crocoddyl.SolverGNMS(pb)
+    solverSQP = mim_solvers.SolverSQP(pb)
     solverSQP.xs = [solverSQP.problem.x0] * (solverSQP.problem.T + 1)  
     solverSQP.us = solverSQP.problem.quasiStatic([solverSQP.problem.x0] * solverSQP.problem.T)
     solverSQP.termination_tol        = TOL
