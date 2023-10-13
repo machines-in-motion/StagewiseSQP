@@ -12,7 +12,7 @@ import mim_solvers
 
 pinRef        = pin.LOCAL_WORLD_ALIGNED
 FORCE_CSTR    = False
-FRICTION_CSTR = True
+FRICTION_CSTR = False
 MU = 0.8
 PLOT = False
 PLAY = False
@@ -162,7 +162,7 @@ if(FRICTION_CSTR):
     solver.eps_abs = 1e-6
     solver.eps_rel = 1e-6
 else:
-    solver = mim_solvers.SolverCSQP(ocp)
+    solver = mim_solvers.SolverSQP(ocp)
     max_iter = 500
     solver.termination_tol = 1e-4
     solver.with_callbacks = True

@@ -159,12 +159,7 @@ def get_solution_trajectories(solver, rmodel, rdata, supportFeetIds, pinRefFrame
         # print('extract foot id ', frame_idx, "_name = ", rmodel.frames[frame_idx].name)
         ct_frame_name = rmodel.frames[frame_idx].name + "_contact"
         datas = [solver.problem.runningDatas[i].differential.multibody.contacts.contacts[ct_frame_name] for i in range(N-1)]
-        if(pinRefFrame == pin.LOCAL):
-            ee_forces = [datas[k].jMf.actInv(datas[k].f).vector for k in range(N-1)] 
-        else:
-            lwaMf = [solver.problem.runningDatas[i].differential.pinocchio.oMf[frame_idx].copy() for i in range(N-1)]
-            for m in lwaMf: m.translation = np.zeros(3)
-            ee_forces = [lwaMf[k].act(datas[k].jMf.actInv(datas[k].f)).vector for k in range(N-1)] 
+        ee_forces = [datas[k].jMf.actInv(datas[k].f).vector for k in range(N-1)] 
         sol[ct_frame_name] = [ee_forces[i] for i in range(N-1)]     
     
     return sol    
