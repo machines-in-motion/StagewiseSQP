@@ -5,16 +5,17 @@ import example_robot_data
 from robot_properties_solo.solo12wrapper import Solo12Config
 import pinocchio as pin
 import standing_utils
-import sobec
+# import sobec
 
 import sys
+import mim_solvers
 
 pinRef        = pin.LOCAL_WORLD_ALIGNED
 FORCE_CSTR    = False
 FRICTION_CSTR = True
 MU = 0.8
 PLOT = False
-PLAY = True
+PLAY = False
 SAVE = True
 
 SOLVE_OCP = False
@@ -80,12 +81,13 @@ for t in range(N_ocp+1):
 running_models = []
 constraintModels = []
 for t in range(N_ocp+1):
-    contactModel = sobec.ContactModelMultiple(state, nu)
+    contactModel = crocoddyl.ContactModelMultiple(state, nu)
     costModel = crocoddyl.CostModelSum(state, nu)
 
     # Add contact
     for frame_idx in supportFeetIds:
-        support_contact = sobec.ContactModel3D(state, frame_idx, np.array([0., 0., 0.]), nu, np.array([0., 0.]), pinRef)
+        support_contact = crocoddyl.ContactModel3D(state, frame_idx, np.array([0., 0., 0.]), pinRef, nu, np.array([0., 0.]))
+        # print("contact name = ", rmodel.frames[frame_idx].name + "_contact")
         contactModel.addContact(rmodel.frames[frame_idx].name + "_contact", support_contact) 
 
     # Add state/control reg costs
@@ -124,28 +126,23 @@ for t in range(N_ocp+1):
         costModel.addCost("comTrack", com_track, 1e5)
 
     # Add contact force constraint >= 0 & friction cone 
-    cstr_list = []
     n_cstr = 0
-    if(FORCE_CSTR):
-        clip_force_min = np.array([-np.inf, -np.inf, -np.inf]*4)
-        clip_force_max = np.array([np.inf, np.inf, np.inf]*4)
-        cstr_list.append(standing_utils.Force3DConstraintModelSoloStanding(state, actuation.nu, clip_force_min, clip_force_max, "feet_cstr"))
-        n_cstr += 12
-    if(FRICTION_CSTR):
-        cstr_list.append(standing_utils.FrictionConstraintModelSoloStanding(state, MU, nu))
-        n_cstr += 4
-    if(not FRICTION_CSTR and not FORCE_CSTR):
-        cstr_list = [crocoddyl.NoConstraintModelModel(state, actuation.nu, "noCstr")]
-    # Create constraint model stack for the current node
-    runningConstraintModel = crocoddyl.ConstraintStack(cstr_list, state, n_cstr, actuation.nu, 'runningConstraintModel')
+    constraintModelManager = crocoddyl.ConstraintModelManager(state, actuation.nu)
+    if(t != N_ocp):
+        if(FORCE_CSTR):
+            clip_force_min = np.array([-np.inf, -np.inf, -np.inf]*4)
+            clip_force_max = np.array([np.inf, np.inf, np.inf]*4)
+            residualForce = standing_utils.ResidualForce3D(state, actuation.nu)
+            constraintForce = crocoddyl.ConstraintModelResidual(state, residualForce, clip_force_min, clip_force_max)
+            constraintModelManager.addConstraint("force", constraintForce)
+            n_cstr += 12
+        if(FRICTION_CSTR):
+            residualFriction = standing_utils.ResidualFrictionCone(state, MU, actuation.nu)
+            constraintFriction = crocoddyl.ConstraintModelResidual(state, residualFriction, np.array([0.]*4), np.array([np.inf]*4))
+            constraintModelManager.addConstraint("friction", constraintFriction)
+            n_cstr += 4
 
-    # Append the constraint model stack to the list of constraint models
-    if( t == N_ocp):
-        constraintModels += [crocoddyl.NoConstraintModelModel(state, actuation.nu, "noCstr")]
-    else:
-        constraintModels += [runningConstraintModel] 
-
-    dmodel = sobec.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel, costModel, 0., True)
+    dmodel = crocoddyl.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel, costModel, constraintModelManager, 0., True)
     model = crocoddyl.IntegratedActionModelEuler(dmodel, dt)
 
     running_models += [model]
@@ -155,7 +152,7 @@ ocp = crocoddyl.ShootingProblem(x0, running_models[:-1], running_models[-1])
 
 # Create solver , warm-start and solve
 if(FRICTION_CSTR):
-    solver = crocoddyl.SolverFADMM(ocp, constraintModels)
+    solver = mim_solvers.SolverCSQP(ocp)
     solver.max_qp_iters = 1000
     max_iter = 500
     solver.with_callbacks = True
@@ -165,7 +162,7 @@ if(FRICTION_CSTR):
     solver.eps_abs = 1e-6
     solver.eps_rel = 1e-6
 else:
-    solver = crocoddyl.SolverSQP(ocp)
+    solver = mim_solvers.SolverCSQP(ocp)
     max_iter = 500
     solver.termination_tol = 1e-4
     solver.with_callbacks = True
@@ -440,7 +437,7 @@ else:
         # axs[3, 0].set_xlabel('Time (s)', fontsize=22)
         axs[3, 1].set_xlabel('Time (s)', fontsize=22)
         # axs[3, 2].set_xlabel('Time (s)', fontsize=22)
-        fig.savefig('/home/skleff/data_paper_CSSQP/solo_standing_friction.pdf', bbox_inches="tight")
+        # fig.savefig('/home/skleff/data_paper_CSSQP/solo_standing_friction.pdf', bbox_inches="tight")
         # fig.suptitle('Force', fontsize=16)
 
     if(PLOT_2):
@@ -508,7 +505,7 @@ else:
 
         axs[0].set_xlabel('Time (s)', fontsize=22)
         axs[1].set_xlabel('Time (s)', fontsize=22)
-        fig.savefig('/home/skleff/data_paper_CSSQP/solo_standing_friction_normalized.pdf', bbox_inches="tight")
+        # fig.savefig('/home/skleff/data_paper_CSSQP/solo_standing_friction_normalized.pdf', bbox_inches="tight")
 
     # Only FL
     if(PLOT_4):
@@ -534,6 +531,6 @@ else:
         axs.tick_params(axis = 'x', labelsize=22)
         axs.tick_params(axis = 'y', labelsize=22)
         axs.set_xlabel('Time (s)', fontsize=26)
-        fig.savefig('/home/skleff/data_paper_CSSQP/solo_standing_friction_normalized2.pdf', bbox_inches="tight")
+        # fig.savefig('/home/skleff/data_paper_CSSQP/solo_standing_friction_normalized2.pdf', bbox_inches="tight")
 
     plt.show()

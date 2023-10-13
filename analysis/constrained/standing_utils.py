@@ -5,38 +5,56 @@ import crocoddyl
 
 
 
-class Force3DConstraintModelSoloStanding(crocoddyl.ConstraintModelAbstract):
-    def __init__(self, state, nu, Fmin, Fmax, name):
-        crocoddyl.ConstraintModelAbstract.__init__(self, state, 12, nu, Fmin, Fmax, name)
-        self.lmin = Fmin
-        self.lmax = Fmax
+class ResidualForce3D(crocoddyl.ResidualModelAbstract):
+    def __init__(self, state, nu):
+        crocoddyl.ResidualModelAbstract.__init__(self, state, 12, nu, True, True, True)
 
-    def calc(self, cdata, data, x, u=None):        
-        cdata.c = data.differential.pinocchio.lambda_c 
+    def calc(self, data, x, u=None):  
+        data.r[:3] = data.shared.contacts.contacts['FL_FOOT_contact'].f.vector[:3]   
+        data.r[3:6] = data.shared.contacts.contacts['FR_FOOT_contact'].f.vector[:3]   
+        data.r[6:9] = data.shared.contacts.contacts['HL_FOOT_contact'].f.vector[:3]   
+        data.r[9:12] = data.shared.contacts.contacts['HR_FOOT_contact'].f.vector[:3]   
+        # # data.r = data.shared.differential.pinocchio.lambda_c 
 
-    def calcDiff(self, cdata, data, x, u=None):
-        cdata.Cx = data.differential.df_dx
-        cdata.Cu = data.differential.df_du
+    def calcDiff(self, data, x, u=None):
+        # data.Rx = data.shared.differential.df_dx
+        # data.Ru = data.shared.differential.df_du
+        data.Rx[:3] = data.shared.contacts.contacts['FL_FOOT_contact'].df_dx[:3]   
+        data.Rx[3:6] = data.shared.contacts.contacts['FR_FOOT_contact'].df_dx[:3]   
+        data.Rx[6:9] = data.shared.contacts.contacts['HL_FOOT_contact'].df_dx[:3]   
+        data.Rx[9:12] = data.shared.contacts.contacts['HR_FOOT_contact'].df_dx[:3]   
+        
+        data.Ru[:3] = data.shared.contacts.contacts['FL_FOOT_contact'].df_du[:3]   
+        data.Ru[3:6] = data.shared.contacts.contacts['FR_FOOT_contact'].df_du[:3]   
+        data.Ru[6:9] = data.shared.contacts.contacts['HL_FOOT_contact'].df_du[:3]   
+        data.Ru[9:12] = data.shared.contacts.contacts['HR_FOOT_contact'].df_du[:3] 
 
-
-
-
-class FrictionConstraintModelSoloStanding(crocoddyl.ConstraintModelAbstract):
+class ResidualFrictionCone(crocoddyl.ResidualModelAbstract):
     def __init__(self, state, mu, nu):
-        crocoddyl.ConstraintModelAbstract.__init__(self, state, 4, nu, np.array([0.]*4), np.array([np.inf]*4), 'friction')
+        crocoddyl.ResidualModelAbstract.__init__(self, state, 4, nu, True, True, True)
         self.mu = mu
         self.dcone_df = np.zeros((4, 12))
 
-    def calc(self, cdata, data, x, u=None): 
+    def calc(self, data, x, u=None): 
         # constraint residual (expressed in constraint ref frame already)
-        F = data.differential.pinocchio.lambda_c
-        cdata.c[0] = np.array([self.mu * F[2] - np.sqrt(F[0]**2 + F[1]**2)])
-        cdata.c[1] = np.array([self.mu * F[5] - np.sqrt(F[3]**2 + F[4]**2)])
-        cdata.c[2] = np.array([self.mu * F[8] - np.sqrt(F[6]**2 + F[7]**2)])
-        cdata.c[3] = np.array([self.mu * F[11] - np.sqrt(F[9]**2 + F[10]**2)])
+        F = np.zeros(12) #data.shared.differential.pinocchio.lambda_c
+        F[:3] = data.shared.contacts.contacts['FL_FOOT_contact'].f.vector[:3]   
+        F[3:6] = data.shared.contacts.contacts['FR_FOOT_contact'].f.vector[:3]   
+        F[6:9] = data.shared.contacts.contacts['HL_FOOT_contact'].f.vector[:3]   
+        F[9:12] = data.shared.contacts.contacts['HR_FOOT_contact'].f.vector[:3]  
 
-    def calcDiff(self, cdata, data, x, u=None):
-        F = data.differential.pinocchio.lambda_c
+        data.r[0] = np.array([self.mu * F[2] - np.sqrt(F[0]**2 + F[1]**2)])
+        data.r[1] = np.array([self.mu * F[5] - np.sqrt(F[3]**2 + F[4]**2)])
+        data.r[2] = np.array([self.mu * F[8] - np.sqrt(F[6]**2 + F[7]**2)])
+        data.r[3] = np.array([self.mu * F[11] - np.sqrt(F[9]**2 + F[10]**2)])
+
+    def calcDiff(self, data, x, u=None):
+        F = np.zeros(12) #data.shared.differential.pinocchio.lambda_c
+        F[:3] = data.shared.contacts.contacts['FL_FOOT_contact'].f.vector[:3]   
+        F[3:6] = data.shared.contacts.contacts['FR_FOOT_contact'].f.vector[:3]   
+        F[6:9] = data.shared.contacts.contacts['HL_FOOT_contact'].f.vector[:3]   
+        F[9:12] = data.shared.contacts.contacts['HR_FOOT_contact'].f.vector[:3]  
+
         self.dcone_df[0, 0] = -F[0] / np.sqrt(F[0]**2 + F[1]**2)
         self.dcone_df[0, 1] = -F[1] / np.sqrt(F[0]**2 + F[1]**2)
         self.dcone_df[0, 2] = self.mu
@@ -53,8 +71,20 @@ class FrictionConstraintModelSoloStanding(crocoddyl.ConstraintModelAbstract):
         self.dcone_df[3, 10] = -F[10] / np.sqrt(F[9]**2 + F[10]**2)
         self.dcone_df[3, 11] = self.mu
 
-        cdata.Cx = self.dcone_df @ data.differential.df_dx 
-        cdata.Cu = self.dcone_df @ data.differential.df_du
+        df_dx = np.zeros((12, self.state.ndx))
+        df_du = np.zeros((12, self.nu))
+        df_dx[:3]  = data.shared.contacts.contacts['FL_FOOT_contact'].df_dx[:3]   
+        df_dx[3:6] = data.shared.contacts.contacts['FR_FOOT_contact'].df_dx[:3]   
+        df_dx[6:9] = data.shared.contacts.contacts['HL_FOOT_contact'].df_dx[:3]   
+        df_dx[9:12] = data.shared.contacts.contacts['HR_FOOT_contact'].df_dx[:3]   
+        
+        df_du[:3] = data.shared.contacts.contacts['FL_FOOT_contact'].df_du[:3]   
+        df_du[3:6] = data.shared.contacts.contacts['FR_FOOT_contact'].df_du[:3]   
+        df_du[6:9] = data.shared.contacts.contacts['HL_FOOT_contact'].df_du[:3]   
+        df_du[9:12] = data.shared.contacts.contacts['HR_FOOT_contact'].df_du[:3] 
+
+        data.Rx = self.dcone_df @ df_dx 
+        data.Ru = self.dcone_df @ df_du
 
 
 def meshcat_material(r, g, b, a):
