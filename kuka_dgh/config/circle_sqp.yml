@@ -1,34 +1,25 @@
 # ROBOT : 'iiwa' 
-# TASK  : 3D contact force task
-
-USE_SQP: False
+# TASK  : end-effector position tracking task
 
 
 # MPC & sim parameters
-simu_freq: 1000         # Simulation frequency in Hz
-ctrl_freq: 1000         # Control frequency (Hz)
-plan_freq: 1000         # Planning frequency (Hz)
-T_tot: 1000.              # Simulation duration (s)
-# Simulation options
-SAVE_DATA: False              # Save plot_data to npz
-RECORD_SOLVER_DATA: False     # Keep trace of Vxx, Riccati gains, reg, Jacobian etc. (more data to save)
-INIT_LOG: True                # Initial logs summarizing parameters
-init_log_display_time: 1      # How long (s) to display the initial logs ?
-LOG: True                     # Logs during simulation
-log_rate: 500                 # Display sim status once very 'log_rate' sim cycles
-WHICH_PLOTS: ['x','u', 'ee']  # Which plots to generate
-RICCATI: False
+ctrl_freq: 1000         # Control frequency
+RICCATI: False 
 
-T_CIRCLE: 2.
 
 # General
-dt: 0.01                                             # OCP integration step 
-N_h: 20                                              # Horizon length in nodes
+SOLVER: 'sqp' # 'fddp'
+dt: 0.05                                             # OCP integration step 
+N_h: 10                                              # Horizon length in nodes
 maxiter: 1                                           # Max number of iterations in DDP
+solver_termination_tolerance: 0.0001                 # Tolerance on KKT residual 
 q0: [0., 1.0471975511965976, 0., -1.1344640137963142, 0.2,  0.7853981633974483, 0.]               # Initial robot joint configuration
 dq0: [0.,0.,0.,0.,0.,0.,0.]                         # Initial robot joint velocity
+             # Initial robot joint velocity
 
 
+T_REACH: 0.
+T_CIRCLE: 2.
 
 # Cost function composition (a.k.a which terms will be actually used in the OCP)
 # to select from the list : 'stateReg', 'ctrlReg', 'ctrlRegGrav', 'stateLim', 'ctrlLim'
@@ -44,10 +35,9 @@ stateRegRef: 'DEFAULT'  # 'DEFAULT' = [q0, v0]
 
 
  # 'ctrlReg', 'ctrlRegGrav' : torque regularization 
-ctrlRegWeights: [1., 1., 1., 1., 1., 1., 1.]
-ctrlRegWeight: 0.0001
-ctrlRegWeightTerminal: 0.0001
-ctrlRegRef: 'DEFAULT' # DEFAULT = g(q) | NOT used for 'ctrlRegGrav' cost
+ctrlRegGravWeights: [1., 1., 1., 1., 1., 1., 1.]
+ctrlRegGravWeight: 0.0001
+ctrlRegGravWeightTerminal: 0.0001
 
 
  # 'translation' : end-effector frame translation 
