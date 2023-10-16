@@ -18,12 +18,12 @@ os.sys.path.insert(1, str(python_path))
 from core_mpc import path_utils, sim_utils
 
 
-SUPPORTED_EXPERIMENTS = ['reach_sqp', 'circle_sqp', 'circle_csqp', 'square_csqp']
+SUPPORTED_EXPERIMENTS = ['reach_ssqp', 'circle_ssqp', 'circle_cssqp', 'square_cssqp']
 
 SIM = True
 
 DGM_PARAMS_PATH = "/home/skleff/ws/workspace/install/robot_properties_kuka/lib/python3.8/site-packages/robot_properties_kuka/robot_properties_kuka/dynamic_graph_manager/dgm_parameters_iiwa.yaml"
-CONFIG_NAME = 'circle_sqp' # circle_sqp
+CONFIG_NAME = 'circle_ssqp' # circle_sqp
 CONFIG_PATH = 'config/'+CONFIG_NAME+".yml"
 
 try: 
@@ -32,14 +32,14 @@ except NameError:
     print("Error : config file name must be in "+str(SUPPORTED_EXPERIMENTS))
     
 
-if(CONFIG_NAME == 'reach_sqp'):
-    from controllers.reach_sqp import KukaReachSQP as MPCController
-elif(CONFIG_NAME == 'circle_sqp'):
-    from controllers.circle_sqp import KukaCircleSQP as MPCController
-elif(CONFIG_NAME == 'circle_csqp'):
-    from controllers.circle_csqp import KukaCircleCSQP as MPCController
-elif(CONFIG_NAME == 'square_csqp'):
-    from controllers.square_csqp import KukaSquareCSQP as MPCController
+if(CONFIG_NAME == 'reach_ssqp'):
+    from StagewiseSQP.kuka_dgh.controllers.reach_ssqp import KukaReachSSQP as MPCController
+elif(CONFIG_NAME == 'circle_ssqp'):
+    from controllers.circle_ssqp import KukaCircleSSQP as MPCController
+elif(CONFIG_NAME == 'circle_cssqp'):
+    from StagewiseSQP.kuka_dgh.controllers.circle_cssqp import KukaCircleCSSQP as MPCController
+elif(CONFIG_NAME == 'square_cssqp'):
+    from StagewiseSQP.kuka_dgh.controllers.square_cssqp import KukaSquareCSSQP as MPCController
 
 
 pin_robot = IiwaConfig.buildRobotWrapper()
@@ -51,7 +51,7 @@ if SIM:
     # Sim env + set initial state 
     config['T_tot'] = 15              
     
-    env = BulletEnvWithGround(p.GUI)
+    env = BulletEnvWithGround(p.DIRECT)
     robot_simulator = env.add_robot(IiwaRobot())
     robot_simulator.pin_robot = pin_robot
     q_init = np.asarray(config['q0'] )

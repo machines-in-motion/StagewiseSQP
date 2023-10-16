@@ -8,8 +8,10 @@ from core_mpc import pin_utils
 from core_mpc.misc_utils import CustomLogger, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT
 logger = CustomLogger(__name__, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT).logger
 
+
+
 # @profile
-def solveOCP(q, v, ddp, nb_iter, target_position):
+def solveOCP(q, v, ddp, nb_iter, target_reach, TASK_PHASE):
     t = time.time()
     # Update initial state + warm-start
     x = np.concatenate([q, v])
@@ -20,26 +22,31 @@ def solveOCP(q, v, ddp, nb_iter, target_position):
     us_init = list(ddp.us[1:]) + [ddp.us[-1]] 
     
     # Update OCP 
-    for i in range(ddp.problem.T):
-        ddp.problem.runningModels[i].differential.costs.costs['translation'].cost.residual.reference = target_position
-    ddp.problem.terminalModel.differential.costs.costs['translation'].cost.residual.reference = target_position
-
+    m = list(ddp.problem.runningModels) + [ddp.problem.terminalModel]
+    if(TASK_PHASE == 1):
+        for k in range( ddp.problem.T+1 ):
+            m[k].differential.costs.costs["translation"].active = True
+            m[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
+            m[k].differential.costs.costs["translation"].weight = 30.
+    
     ddp.solve(xs_init, us_init, maxiter=nb_iter, isFeasible=False)
     solve_time = time.time()
     
     return ddp.us[0], ddp.xs[1], ddp.K[0], solve_time - t, ddp.iter, ddp.KKT
 
+  
 
 
-class KukaReachSQP:
+
+class KukaCircleSSQP:
 
     def __init__(self, head, robot, config, run_sim):
         """
         Input:
-            head        : thread head
-            robot_model : pinocchio model
-            config      : MPC config yaml file
-            run_sim     : boolean sim or real
+            head              : thread head
+            robot_model       : pinocchio model
+            config            : MPC config yaml file
+            run_sim           : boolean sim or real
         """
         self.robot   = robot
         self.head    = head
@@ -60,7 +67,7 @@ class KukaReachSQP:
         logger.warning("Controlled model dimensions : ")
         logger.warning(" nq = "+str(self.nq))
         logger.warning(" nv = "+str(self.nv))
-        
+
         # Config
         self.config = config
         if(self.RUN_SIM):
@@ -99,11 +106,37 @@ class KukaReachSQP:
             self.joint_torques_total    = head.get_sensor("joint_torques_total")
             logger.warning("      >>> Correct minus sign in measured torques ! ")
             self.joint_torques_measured = -self.joint_torques_total 
-            
-        self.target_position = np.asarray(self.config['frameTranslationRef'])
 
-        self.t_child = 0
- 
+
+        # Circle trajectory 
+        N_total_pos = int((self.config['T_tot'] - self.config['T_REACH'])/self.dt_ctrl + self.Nh*self.OCP_TO_CTRL_RATIO)
+        N_circle    = int((self.config['T_tot'] - self.config['T_CIRCLE'])/self.dt_ctrl + self.Nh*self.OCP_TO_CTRL_RATIO )
+        self.target_position_traj = np.zeros( (N_total_pos, 3) )
+        # absolute desired position
+        self.pdes = np.asarray(self.config['frameTranslationRef']) 
+    
+        radius = 0.07 ; omega = 3.
+        self.target_position_traj[0:N_circle, :] = [np.array([self.pdes[0] + radius * (1-np.cos(i*self.dt_ctrl*omega)), 
+                                                                           self.pdes[1] - radius * np.sin(i*self.dt_ctrl*omega),
+                                                                           self.pdes[2]]) for i in range(N_circle)]
+        self.target_position_traj[N_circle:, :] = self.target_position_traj[N_circle-1,:]
+        # Targets over one horizon (initially = absolute target position)
+        self.target_position = np.zeros((self.Nh+1, 3)) 
+        self.target_joint = np.zeros(self.Nh+1) 
+        self.target_position[:,:] = self.pdes.copy() 
+        self.target_position_x = self.target_position[:,0] 
+        self.target_position_y = self.target_position[:,1] 
+        self.target_position_z = self.target_position[:,2]
+
+        self.TASK_PHASE      = 0
+        self.NH_SIMU   = int(self.Nh*self.dt_ocp/self.dt_ctrl)
+        self.T_CIRCLE  = int(self.config['T_CIRCLE']/self.dt_ctrl)
+        logger.debug("Size of MPC horizon in ctrl cycles = "+str(self.NH_SIMU))
+        logger.debug("Start of circle phase in ctrl cycles = "+str(self.T_CIRCLE))
+        logger.debug("OCP to ctrl time ratio = "+str(self.OCP_TO_CTRL_RATIO))
+        self.cumulative_cost = 0
+        
+        
     def warmup(self, thread):
         self.nb_iter = 100        
         self.u0 = pin_utils.get_u_grav(self.q0, self.robot.model, np.zeros(self.robot.model.nq))
@@ -114,12 +147,14 @@ class KukaReachSQP:
                                                                                           self.joint_velocities, 
                                                                                           self.ddp, 
                                                                                           self.nb_iter,
-                                                                                          self.target_position)
+                                                                                          self.target_position,
+                                                                                          self.TASK_PHASE)
         self.check = 0
         self.nb_iter = self.config['maxiter']
 
-    # @profile
-    def run(self, thread):
+
+
+    def run(self, thread):        
 
         # # # # # # # # # 
         # Read sensors  #
@@ -130,6 +165,30 @@ class KukaReachSQP:
         # When getting torque measurement from robot, do not forget to flip the sign
         if(not self.RUN_SIM):
             self.joint_torques_measured = -self.joint_torques_total  
+
+        # # # # # # # # # 
+        # # Update OCP  #
+        # # # # # # # # # 
+        time_to_circle  = int(thread.ti - self.T_CIRCLE)       
+
+
+        if(time_to_circle == 0): 
+            print("Entering circle phase")
+        # If circle tracking phase enters the MPC horizon, start updating models from the end with tracking models      
+        if(0 <= time_to_circle and time_to_circle <= self.NH_SIMU):
+            self.TASK_PHASE = 1
+
+
+        if(0 <= time_to_circle and time_to_circle%self.OCP_TO_CTRL_RATIO == 0):
+            # set position refs over current horizon
+            tf  = time_to_circle + (self.Nh+1)*self.OCP_TO_CTRL_RATIO
+            # Target in (x,y)  = circle trajectory 
+            self.target_position[:,:2] = self.target_position_traj[time_to_circle:tf:self.OCP_TO_CTRL_RATIO,:2]
+            # Record target signals
+            self.target_position_x = self.target_position[:,0] 
+            self.target_position_y = self.target_position[:,1] 
+            self.target_position_z = self.target_position[:,2]
+            
             
         # # # # # # #  
         # Solve OCP #
@@ -138,8 +197,8 @@ class KukaReachSQP:
                                                                                           v, 
                                                                                           self.ddp,
                                                                                           self.nb_iter,
-                                                                                          self.target_position)
-
+                                                                                          self.target_position,
+                                                                                          self.TASK_PHASE)
 
         # # # # # # # # 
         # Send policy #
@@ -159,4 +218,3 @@ class KukaReachSQP:
 
 
         pin.framesForwardKinematics(self.robot.model, self.robot.data, q)
-
