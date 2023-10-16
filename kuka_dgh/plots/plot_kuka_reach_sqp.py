@@ -19,7 +19,7 @@ model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
 
 
 # Load config file
-CONFIG_NAME = 'kuka_reach_SQP'
+CONFIG_NAME = 'kuka_reach_gnms'
 CONFIG_PATH = "demos/"+CONFIG_NAME+".yml"
 config      = path_utils.load_yaml_file(CONFIG_PATH)
 
@@ -31,57 +31,57 @@ SIM = True
 # Create data Plottger
 s = SimpleDataPlotter()
 
-
 if(SIM):
-    # r = DataReader('/tmp/kuka_reach_SQP_sim_SQP.mds')
-    # r = DataReader('/tmp/kuka_reach_SQP_sim_FDDP.mds')
-    r = DataReader('/tmp/kuka_circle_SQP_sim_FDDP.mds')
+    data_path = '/tmp/'
+    data_name = 'kuka_reach_gnms_SIM_2023-10-16T17:25:56.388044_fddp' 
+    
 else:
-    r = DataReader('/tmp/kuka_reach_SQP_real.mds')
-
-N = r.data['tau'].shape[0]
-
+    data_path = '/tmp/'
+    data_name = 'reduced_soft_mpc_contact1d_REAL_2023-10-05T17:24:49.414383_soft_rt'
+    
+r = DataReader(data_path+data_name+'.mds')
+N = r.data['absolute_time'].shape[0]
+print("Total number of control cycles = ", N)
 
 fig, ax = plt.subplots(4, 1, sharex='col') 
-ax[0].plot(r.data['count']-1, label='count')
-ax[1].plot(r.data['t_child'], label='child')
-ax[1].plot(r.data['t_child_1'], label='child_1 (not solve)')
-ax[2].plot(r.data['ddp_iter'], label='iter')
-ax[3].plot(r.data['t_run'], label='t_run')
-ax[1].plot(N*[1./config['plan_freq']], label= 'mpc')
-ax[3].plot(N*[1./config['plan_freq']], label= 'mpc')
-# handles, labels = ax[0].get_legend_handles_labels()
-fig.legend() #handles, labels, loc='upper right', prop={'size': 16})
+ax[0].plot(r.data['KKT'], label='KKT residual')
+ax[0].plot(N*[config['solver_termination_tolerance']], label= 'KKT residual tolerance', color = 'r')
+ax[1].plot(r.data['ddp_iter'], label='# solver iterations')
+ax[2].plot(r.data['t_child']*1000, label='OCP solve time')
+ax[2].plot(N*[1000./config['ctrl_freq']], label= 'dt_MPC', color='r')
+ax[3].plot((r.data['timing_control'])* 1000, label='Control cycle time')
+ax[3].plot(N*[1000./config['ctrl_freq']], label= 'dt_MPC', color='r')
+for i in range(4):
+    ax[i].legend()
 
 
 
+# s.plot_joint_pos( [r.data['joint_positions'], r.data['x_des'][:,:nq]], # r.data['x'][:,:nq], r.data['x1'][:,:nq]], 
+#                    ['mea', 'pred'], #, 'pred0', 'pred1'], 
+#                    ['r', 'b'], #[0.2, 0.2, 0.2, 0.5], 'b', 'g'])
+#                 #    markers=[None, None, '.', '.']) 
+#                    ylims=[model.lowerPositionLimit, model.upperPositionLimit] )
+# s.plot_joint_vel( [r.data['joint_velocities'], r.data['x_des'][:,nq:nq+nv]], # r.data['x'][:,nq:nq+nv], r.data['x1'][:,nq:nq+nv]],
+#                   ['mea', 'pred'], # 'pred0', 'pred1'], 
+#                   ['r', 'b'], #[0.2, 0.2, 0.2, 0.5], 'b', 'g']) 
+#                   ylims=[-model.velocityLimit, +model.velocityLimit] )
+# # s.plot_joint_vel( [r.data['joint_accelerations']], ['mea'], ['r'],)
 
-s.plot_joint_pos( [r.data['joint_positions'], r.data['x_des'][:,:nq]], # r.data['x'][:,:nq], r.data['x1'][:,:nq]], 
-                   ['mea', 'pred'], #, 'pred0', 'pred1'], 
-                   ['r', 'b'], #[0.2, 0.2, 0.2, 0.5], 'b', 'g'])
-                #    markers=[None, None, '.', '.']) 
-                   ylims=[model.lowerPositionLimit, model.upperPositionLimit] )
-s.plot_joint_vel( [r.data['joint_velocities'], r.data['x_des'][:,nq:nq+nv]], # r.data['x'][:,nq:nq+nv], r.data['x1'][:,nq:nq+nv]],
-                  ['mea', 'pred'], # 'pred0', 'pred1'], 
-                  ['r', 'b'], #[0.2, 0.2, 0.2, 0.5], 'b', 'g']) 
-                  ylims=[-model.velocityLimit, +model.velocityLimit] )
-# s.plot_joint_vel( [r.data['joint_accelerations']], ['mea'], ['r'],)
-
-# For SIM robot only
-if(SIM):
-    s.plot_joint_tau( [r.data['tau'], r.data['tau_ff'], r.data['tau_riccati'], r.data['tau_gravity']], 
-                      ['total', 'ff', 'riccati', 'gravity'], 
-                      ['r', 'g', 'b', [0.2, 0.2, 0.2, 0.5]],
-                      ylims=[-model.effortLimit, +model.effortLimit] )
-# For REAL robot only !! DEFINITIVE FORMULA !!
-else:
-    # Our self.tau was subtracted gravity, so we add it again
-    # joint_torques_measured DOES include the gravity torque from KUKA
-    # There is a sign mismatch in the axis so we use a minus sign
-    s.plot_joint_tau( [-r.data['joint_cmd_torques'], r.data['joint_torques_measured'], r.data['tau'] + r.data['tau_gravity']], 
-                  ['-cmd (FRI)', 'Measured', 'Desired (+g(q))', 'Measured - EXT'], 
-                  [[0.,0.,0.,0.], 'g', 'b', 'y'],
-                  ylims=[-model.effortLimit, +model.effortLimit] )
+# # For SIM robot only
+# if(SIM):
+#     s.plot_joint_tau( [r.data['tau'], r.data['tau_ff'], r.data['tau_riccati'], r.data['tau_gravity']], 
+#                       ['total', 'ff', 'riccati', 'gravity'], 
+#                       ['r', 'g', 'b', [0.2, 0.2, 0.2, 0.5]],
+#                       ylims=[-model.effortLimit, +model.effortLimit] )
+# # For REAL robot only !! DEFINITIVE FORMULA !!
+# else:
+#     # Our self.tau was subtracted gravity, so we add it again
+#     # joint_torques_measured DOES include the gravity torque from KUKA
+#     # There is a sign mismatch in the axis so we use a minus sign
+#     s.plot_joint_tau( [-r.data['joint_cmd_torques'], r.data['joint_torques_measured'], r.data['tau'] + r.data['tau_gravity']], 
+#                   ['-cmd (FRI)', 'Measured', 'Desired (+g(q))', 'Measured - EXT'], 
+#                   [[0.,0.,0.,0.], 'g', 'b', 'y'],
+#                   ylims=[-model.effortLimit, +model.effortLimit] )
 
 
 # p_mea = get_p_(r.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
