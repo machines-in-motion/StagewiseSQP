@@ -1,4 +1,4 @@
-# StageWise implementantion of SQPs for OCP
+# Stagewise implementation of SQPs for OCP
 
 This is the repository that contains the python implementations of the sparse SQP designed for optimal control. The code base was used to generate the results discussed in the paper referenced before. 
 
