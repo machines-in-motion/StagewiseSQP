@@ -34,7 +34,7 @@ s = SimpleDataPlotter()
 
 if(SIM):
     data_path = '/tmp/'
-    data_name = 'circle_cssqp_SIM_2023-10-17T16:39:01.063617_cssqp'
+    data_name = 'plane_cssqp_SIM_2023-10-17T17:11:28.518515_cssqp'
 else:
     r = DataReader('/home/skleff/Desktop/circle_PROXQP.mds')
 
@@ -56,7 +56,7 @@ ax[6].plot(N*[1000./config['ctrl_freq']], label= 'dt_MPC', color='r')
 for i in range(len(ax)):
     ax[i].legend()
     
-
+    
 # Limits
 xlb = config['stateLowerLimit']
 xub = config['stateUpperLimit']
