@@ -19,8 +19,8 @@ model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
 
 
 # Load config file
-CONFIG_NAME = 'kuka_reach_gnms'
-CONFIG_PATH = "demos/"+CONFIG_NAME+".yml"
+CONFIG_NAME = 'circle_ssqp'
+CONFIG_PATH = "config/"+CONFIG_NAME+".yml"
 config      = path_utils.load_yaml_file(CONFIG_PATH)
 
 
@@ -33,7 +33,7 @@ s = SimpleDataPlotter()
 
 if(SIM):
     data_path = '/tmp/'
-    data_name = 'kuka_reach_gnms_SIM_2023-10-16T17:25:56.388044_fddp' 
+    data_name = 'circle_ssqp_SIM_2023-10-17T15:06:17.954978_sqp' 
     
 else:
     data_path = '/tmp/'

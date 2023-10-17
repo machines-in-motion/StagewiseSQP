@@ -2,14 +2,11 @@ import numpy as np
 import pinocchio as pin 
 
 import time
-import matplotlib.pyplot as plt 
 
 from classical_mpc.ocp import OptimalControlProblemClassicalWithConstraints
 from core_mpc import pin_utils
 from core_mpc.misc_utils import CustomLogger, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT
 logger = CustomLogger(__name__, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT).logger
-
-from multiprocessing import Pipe, Process
 
 
 USE_PIPE = False

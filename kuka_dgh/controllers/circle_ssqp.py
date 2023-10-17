@@ -115,10 +115,10 @@ class KukaCircleSSQP:
         # absolute desired position
         self.pdes = np.asarray(self.config['frameTranslationRef']) 
     
-        radius = 0.07 ; omega = 3.
-        self.target_position_traj[0:N_circle, :] = [np.array([self.pdes[0] + radius * (1-np.cos(i*self.dt_ctrl*omega)), 
-                                                                           self.pdes[1] - radius * np.sin(i*self.dt_ctrl*omega),
-                                                                           self.pdes[2]]) for i in range(N_circle)]
+        radius = 0.15 ; omega = 3.
+        self.target_position_traj[0:N_circle, :] = [np.array([self.pdes[0],
+                                                              self.pdes[1] + radius * np.sin(i*self.dt_ctrl*omega), 
+                                                              self.pdes[2] + radius * (1-np.cos(i*self.dt_ctrl*omega)) ]) for i in range(N_circle)]
         self.target_position_traj[N_circle:, :] = self.target_position_traj[N_circle-1,:]
         # Targets over one horizon (initially = absolute target position)
         self.target_position = np.zeros((self.Nh+1, 3)) 
@@ -183,7 +183,7 @@ class KukaCircleSSQP:
             # set position refs over current horizon
             tf  = time_to_circle + (self.Nh+1)*self.OCP_TO_CTRL_RATIO
             # Target in (x,y)  = circle trajectory 
-            self.target_position[:,:2] = self.target_position_traj[time_to_circle:tf:self.OCP_TO_CTRL_RATIO,:2]
+            self.target_position = self.target_position_traj[time_to_circle:tf:self.OCP_TO_CTRL_RATIO,:]
             # Record target signals
             self.target_position_x = self.target_position[:,0] 
             self.target_position_y = self.target_position[:,1] 

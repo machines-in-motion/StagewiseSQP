@@ -33,13 +33,13 @@ except NameError:
     
 
 if(CONFIG_NAME == 'reach_ssqp'):
-    from StagewiseSQP.kuka_dgh.controllers.reach_ssqp import KukaReachSSQP as MPCController
+    from controllers.reach_ssqp import KukaReachSSQP as MPCController
 elif(CONFIG_NAME == 'circle_ssqp'):
     from controllers.circle_ssqp import KukaCircleSSQP as MPCController
 elif(CONFIG_NAME == 'circle_cssqp'):
-    from StagewiseSQP.kuka_dgh.controllers.circle_cssqp import KukaCircleCSSQP as MPCController
+    from controllers.circle_cssqp import KukaCircleCSSQP as MPCController
 elif(CONFIG_NAME == 'square_cssqp'):
-    from StagewiseSQP.kuka_dgh.controllers.square_cssqp import KukaSquareCSSQP as MPCController
+    from controllers.square_cssqp import KukaSquareCSSQP as MPCController
 
 
 pin_robot = IiwaConfig.buildRobotWrapper()
@@ -51,7 +51,7 @@ if SIM:
     # Sim env + set initial state 
     config['T_tot'] = 15              
     
-    env = BulletEnvWithGround(p.DIRECT)
+    env = BulletEnvWithGround(p.GUI)
     robot_simulator = env.add_robot(IiwaRobot())
     robot_simulator.pin_robot = pin_robot
     q_init = np.asarray(config['q0'] )
