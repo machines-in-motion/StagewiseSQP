@@ -22,13 +22,15 @@ def solveOCP(q, v, ddp, nb_iter, target_reach, TASK_PHASE):
     us_init = list(ddp.us[1:]) + [ddp.us[-1]] 
     
     # Update OCP 
-    m = list(ddp.problem.runningModels) + [ddp.problem.terminalModel]
     if(TASK_PHASE == 1):
-        for k in range( ddp.problem.T+1 ):
-            m[k].differential.costs.costs["translation"].active = True
-            m[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-            m[k].differential.costs.costs["translation"].weight = 30.
-    
+        for k in range( ddp.problem.T ):
+            ddp.problem.runningModels[k].differential.costs.costs["translation"].active = True
+            ddp.problem.runningModels[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
+            ddp.problem.runningModels[k].differential.costs.costs["translation"].weight = 30.
+        ddp.problem.terminalModel.differential.costs.costs["translation"].active = True
+        ddp.problem.terminalModel.differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
+        ddp.problem.terminalModel.differential.costs.costs["translation"].weight = 30.
+            
     ddp.solve(xs_init, us_init, maxiter=nb_iter, isFeasible=False)
     solve_time = time.time()
     
@@ -83,6 +85,7 @@ class KukaCircleSSQP:
         self.dt_ctrl = 1./self.config['ctrl_freq']
         self.OCP_TO_CTRL_RATIO = int(self.dt_ocp/self.dt_ctrl)
         
+        # Create OCP 
         self.ddp = OptimalControlProblemClassical(robot, self.config).initialize(self.x0, callbacks=False)
         self.ddp.regMax = 1e6
         self.ddp.reg_max = 1e6
@@ -122,7 +125,6 @@ class KukaCircleSSQP:
         self.target_position_traj[N_circle:, :] = self.target_position_traj[N_circle-1,:]
         # Targets over one horizon (initially = absolute target position)
         self.target_position = np.zeros((self.Nh+1, 3)) 
-        self.target_joint = np.zeros(self.Nh+1) 
         self.target_position[:,:] = self.pdes.copy() 
         self.target_position_x = self.target_position[:,0] 
         self.target_position_y = self.target_position[:,1] 
@@ -142,14 +144,12 @@ class KukaCircleSSQP:
         self.u0 = pin_utils.get_u_grav(self.q0, self.robot.model, np.zeros(self.robot.model.nq))
         self.ddp.xs = [self.x0 for i in range(self.config['N_h']+1)]
         self.ddp.us = [self.u0 for i in range(self.config['N_h'])]
-        self.is_plan_updated = False
         self.tau_ff, self.x_des, self.K, self.t_child, self.ddp_iter, self.KKT = solveOCP(self.joint_positions, 
                                                                                           self.joint_velocities, 
                                                                                           self.ddp, 
                                                                                           self.nb_iter,
                                                                                           self.target_position,
                                                                                           self.TASK_PHASE)
-        self.check = 0
         self.nb_iter = self.config['maxiter']
 
 

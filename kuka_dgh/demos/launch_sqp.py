@@ -23,7 +23,7 @@ SUPPORTED_EXPERIMENTS = ['reach_ssqp', 'circle_ssqp', 'circle_cssqp', 'square_cs
 SIM = True
 
 DGM_PARAMS_PATH = "/home/skleff/ws/workspace/install/robot_properties_kuka/lib/python3.8/site-packages/robot_properties_kuka/robot_properties_kuka/dynamic_graph_manager/dgm_parameters_iiwa.yaml"
-CONFIG_NAME = 'circle_ssqp' # circle_sqp
+CONFIG_NAME = 'circle_cssqp' # circle_sqp
 CONFIG_PATH = 'config/'+CONFIG_NAME+".yml"
 
 try: 
@@ -93,14 +93,21 @@ thread_head.switch_controllers(ctrl)
 prefix = "/tmp/"
 suffix = "_"+config['SOLVER']
 
-# LOG_FIELDS = ['KKT',
-#               'ddp_iter',
-#               't_child',
-#               'joint_positions',
-#               'target_position']
+# Logs for constrained MPC
+LOG_FIELDS = ['KKT',
+              'ddp_iter',
+              't_child',
+              'qp_iters',
+              'cost',
+              'gap_norm',
+              'constraint_norm',
+              'joint_positions',
+              'target_position_x',
+              'target_position_y',
+              'target_position_z']
 
 if SIM:
-    thread_head.start_logging(int(config['T_tot']), prefix+CONFIG_NAME+"_SIM_"+str(datetime.now().isoformat())+suffix+".mds") #, LOG_FIELDS=LOG_FIELDS)
+    thread_head.start_logging(int(config['T_tot']), prefix+CONFIG_NAME+"_SIM_"+str(datetime.now().isoformat())+suffix+".mds", LOG_FIELDS=LOG_FIELDS)
     thread_head.sim_run_timed(int(config['T_tot']))
     thread_head.stop_logging()
 else:
