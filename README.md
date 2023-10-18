@@ -14,6 +14,8 @@ The two main solver variants used in this repository are available in our optima
 - [croco_mpc_utils](https://github.com/machines-in-motion/croco_mpc_utils.git) : helpers for easy & modular prototyping using Crocoddyl
 - [pinocchio](https://github.com/stack-of-tasks/pinocchio) : rigid-body dynamics computations
 
+TODO: separate dependencies for hardware experiments and for reproducing the benchmarks
+
 ## Maintainers 
 
 The code is maintained by Avadesh Meduri, Armand Jordana, Sébastien Kleff. 
