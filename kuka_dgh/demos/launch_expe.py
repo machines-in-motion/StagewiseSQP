@@ -20,7 +20,7 @@ import launch_utils
 # Choose experiment, load config and import controller  #  
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 SIM           = True
-EXP_NAME      = 'circle_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
+EXP_NAME      = 'square_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
 config        = launch_utils.load_config_file(EXP_NAME)
 MPCController = launch_utils.import_mpc_controller(EXP_NAME)
     
@@ -83,6 +83,7 @@ thread_head.switch_controllers(ctrl)
 prefix     = "/tmp/"
 suffix     = "_"+config['SOLVER']
 LOG_FIELDS = launch_utils.get_log_config(EXP_NAME) 
+# print(LOG_FIELDS)
 # LOG_FIELDS = launch_utils.LOGS_NONE 
 # LOG_FIELDS = launch_utils.SSQP_LOGS_MINIMAL 
 # LOG_FIELDS = launch_utils.CSSQP_LOGS_MINIMAL 

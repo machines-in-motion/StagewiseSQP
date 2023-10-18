@@ -3,7 +3,7 @@
 
 
 # MPC & sim parameters
-ctrl_freq: 500         # Control frequency
+ctrl_freq: 1000         # Control frequency
 RICCATI: False 
 
 

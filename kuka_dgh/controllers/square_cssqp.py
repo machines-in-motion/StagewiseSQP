@@ -262,16 +262,8 @@ class KukaSquareCSSQP:
             # for _ , m in enumerate(cmodels[1:]):
             #     m.lb = self.lb_square
 
-
-        # If circle tracking phase enters the MPC horizon, start updating models from the end with tracking models      
-        if(0 <= time_to_circle and time_to_circle <= self.NH_SIMU):
+        if(0 <= time_to_circle):
             self.TASK_PHASE = 1
-            # If current time matches an OCP node 
-            if(time_to_circle%self.OCP_TO_CTRL_RATIO == 0):
-                # Select IAM
-                self.node_id_circle = self.Nh - int(time_to_circle/self.OCP_TO_CTRL_RATIO)
-
-        if(0 <= time_to_circle and time_to_circle%self.OCP_TO_CTRL_RATIO == 0):
             # set position refs over current horizon
             tf  = time_to_circle + (self.Nh+1)*self.OCP_TO_CTRL_RATIO
             # Target in (x,y)  = circle trajectory 

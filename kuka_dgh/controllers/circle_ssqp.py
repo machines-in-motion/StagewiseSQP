@@ -188,7 +188,7 @@ class KukaCircleSSQP:
             self.TASK_PHASE = 1
 
 
-        if(0 <= time_to_circle and time_to_circle%self.OCP_TO_CTRL_RATIO == 0):
+        if(0 <= time_to_circle):
             # set position refs over current horizon
             tf  = time_to_circle + (self.Nh+1)*self.OCP_TO_CTRL_RATIO
             # Target in (x,y)  = circle trajectory 

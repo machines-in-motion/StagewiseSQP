@@ -15,7 +15,6 @@ maxiter: 1                                           # Max number of iterations
 solver_termination_tolerance: 0.0001                 # Tolerance on KKT residual 
 q0: [0., 1.0471975511965976, 0., -1.1344640137963142, 0.2,  0.7853981633974483, 0.]               # Initial robot joint configuration
 dq0: [0.,0.,0.,0.,0.,0.,0.]                         # Initial robot joint velocity
-             # Initial robot joint velocity
 
 
 T_REACH: 0.
