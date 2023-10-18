@@ -16,14 +16,13 @@ import launch_utils
 
 
 
-
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Choose experiment, load config and import controller  #  
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-SIM                     = True
-EXP_NAME                = 'plane_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
-config, MPCController   = launch_utils.load_config_file_and_import_controller(EXP_NAME)
-    
+SIM           = True
+EXP_NAME      = 'circle_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
+config        = launch_utils.load_config_file(EXP_NAME)
+MPCController = launch_utils.import_mpc_controller(EXP_NAME)
     
     
     

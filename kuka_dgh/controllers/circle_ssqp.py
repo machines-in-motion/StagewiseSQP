@@ -1,40 +1,42 @@
 import numpy as np
 import pinocchio as pin 
+import mim_solvers
 
 import time
 
-from classical_mpc.ocp import OptimalControlProblemClassical
-from core_mpc import pin_utils
-from core_mpc.misc_utils import CustomLogger, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT
+from croco_mpc_utils.ocp import OptimalControlProblemClassical
+import croco_mpc_utils.pinocchio_utils as pin_utils
+
+from croco_mpc_utils.utils import CustomLogger, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT
 logger = CustomLogger(__name__, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT).logger
 
 
 
 # @profile
-def solveOCP(q, v, ddp, nb_iter, target_reach, TASK_PHASE):
+def solveOCP(q, v, solver, nb_iter, target_reach, TASK_PHASE):
     t = time.time()
     # Update initial state + warm-start
     x = np.concatenate([q, v])
-    ddp.problem.x0 = x
+    solver.problem.x0 = x
     
-    xs_init = list(ddp.xs[1:]) + [ddp.xs[-1]]
+    xs_init = list(solver.xs[1:]) + [solver.xs[-1]]
     xs_init[0] = x
-    us_init = list(ddp.us[1:]) + [ddp.us[-1]] 
+    us_init = list(solver.us[1:]) + [solver.us[-1]] 
     
     # Update OCP 
     if(TASK_PHASE == 1):
-        for k in range( ddp.problem.T ):
-            ddp.problem.runningModels[k].differential.costs.costs["translation"].active = True
-            ddp.problem.runningModels[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-            ddp.problem.runningModels[k].differential.costs.costs["translation"].weight = 30.
-        ddp.problem.terminalModel.differential.costs.costs["translation"].active = True
-        ddp.problem.terminalModel.differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-        ddp.problem.terminalModel.differential.costs.costs["translation"].weight = 30.
+        for k in range( solver.problem.T ):
+            solver.problem.runningModels[k].differential.costs.costs["translation"].active = True
+            solver.problem.runningModels[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
+            solver.problem.runningModels[k].differential.costs.costs["translation"].weight = 30.
+        solver.problem.terminalModel.differential.costs.costs["translation"].active = True
+        solver.problem.terminalModel.differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
+        solver.problem.terminalModel.differential.costs.costs["translation"].weight = 30.
             
-    ddp.solve(xs_init, us_init, maxiter=nb_iter, isFeasible=False)
+    solver.solve(xs_init, us_init, maxiter=nb_iter, isFeasible=False)
     solve_time = time.time()
     
-    return ddp.us[0], ddp.xs[1], ddp.K[0], solve_time - t, ddp.iter, ddp.KKT
+    return solver.us[0], solver.xs[1], solver.K[0], solve_time - t, solver.iter, solver.KKT
 
   
 
@@ -86,15 +88,22 @@ class KukaCircleSSQP:
         self.OCP_TO_CTRL_RATIO = int(self.dt_ocp/self.dt_ctrl)
         
         # Create OCP 
-        self.ddp = OptimalControlProblemClassical(robot, self.config).initialize(self.x0, callbacks=False)
-        self.ddp.regMax = 1e6
-        self.ddp.reg_max = 1e6
-        self.ddp.termination_tol = self.config['solver_termination_tolerance'] 
+        problem = OptimalControlProblemClassical(robot, self.config).initialize(self.x0)
+        # Initialize the solver
+        if(config['SOLVER'] == 'sqp'):
+            logger.warning("Using the SQP solver.")
+            self.solver = mim_solvers.SolverSQP(problem)
+        elif(config['SOLVER'] == 'fddp'):
+            logger.warning("Using the FDDP solver.")
+            self.solver = mim_solvers.SolverFDDP(problem)
+        self.solver.regMax = 1e6
+        self.solver.reg_max = 1e6
+        self.solver.termination_tol = self.config['solver_termination_tolerance']
         
         # Allocate MPC data
-        self.K = self.ddp.K[0]
-        self.x_des = self.ddp.xs[0]
-        self.tau_ff = self.ddp.us[0]
+        self.K = self.solver.K[0]
+        self.x_des = self.solver.xs[0]
+        self.tau_ff = self.solver.us[0]
         self.tau = self.tau_ff.copy() ; self.tau_riccati = np.zeros(self.tau.shape)
 
         # Initialize torque measurements 
@@ -142,11 +151,11 @@ class KukaCircleSSQP:
     def warmup(self, thread):
         self.nb_iter = 100        
         self.u0 = pin_utils.get_u_grav(self.q0, self.robot.model, np.zeros(self.robot.model.nq))
-        self.ddp.xs = [self.x0 for i in range(self.config['N_h']+1)]
-        self.ddp.us = [self.u0 for i in range(self.config['N_h'])]
+        self.solver.xs = [self.x0 for i in range(self.config['N_h']+1)]
+        self.solver.us = [self.u0 for i in range(self.config['N_h'])]
         self.tau_ff, self.x_des, self.K, self.t_child, self.ddp_iter, self.KKT = solveOCP(self.joint_positions, 
                                                                                           self.joint_velocities, 
-                                                                                          self.ddp, 
+                                                                                          self.solver, 
                                                                                           self.nb_iter,
                                                                                           self.target_position,
                                                                                           self.TASK_PHASE)
@@ -195,7 +204,7 @@ class KukaCircleSSQP:
         # # # # # # #  
         self.tau_ff, self.x_des, self.K, self.t_child, self.ddp_iter, self.KKT = solveOCP(q, 
                                                                                           v, 
-                                                                                          self.ddp,
+                                                                                          self.solver,
                                                                                           self.nb_iter,
                                                                                           self.target_position,
                                                                                           self.TASK_PHASE)

@@ -1,42 +1,44 @@
 import numpy as np
 import pinocchio as pin 
+import mim_solvers
 
 import time
 
-from classical_mpc.ocp import OptimalControlProblemClassicalWithConstraints
-from core_mpc import pin_utils
-from core_mpc.misc_utils import CustomLogger, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT
+from croco_mpc_utils.ocp_constraints import OptimalControlProblemClassicalWithConstraints
+import croco_mpc_utils.pinocchio_utils as pin_utils
+
+from croco_mpc_utils.utils import CustomLogger, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT
 logger = CustomLogger(__name__, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT).logger
 
 
 
 # @profile
-def solveOCP(q, v, ddp, max_sqp_iter, max_qp_iter, target_reach, TASK_PHASE):
+def solveOCP(q, v, solver, max_sqp_iter, max_qp_iter, target_reach, TASK_PHASE):
     t = time.time()
     # Update initial state + warm-start
     x = np.concatenate([q, v])
-    ddp.problem.x0 = x
+    solver.problem.x0 = x
     
-    xs_init = list(ddp.xs[1:]) + [ddp.xs[-1]]
+    xs_init = list(solver.xs[1:]) + [solver.xs[-1]]
     xs_init[0] = x
-    us_init = list(ddp.us[1:]) + [ddp.us[-1]] 
+    us_init = list(solver.us[1:]) + [solver.us[-1]] 
     
     # Update OCP 
     if(TASK_PHASE == 1):
         # Updates nodes between node_id and terminal node 
-        for k in range( ddp.problem.T ):
-            ddp.problem.runningModels[k].differential.costs.costs["translation"].active = True
-            ddp.problem.runningModels[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-            ddp.problem.runningModels[k].differential.costs.costs["translation"].weight = 25.
-        ddp.problem.terminalModel.differential.costs.costs["translation"].active = True
-        ddp.problem.terminalModel.differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-        ddp.problem.terminalModel.differential.costs.costs["translation"].weight = 25.
+        for k in range( solver.problem.T ):
+            solver.problem.runningModels[k].differential.costs.costs["translation"].active = True
+            solver.problem.runningModels[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
+            solver.problem.runningModels[k].differential.costs.costs["translation"].weight = 25.
+        solver.problem.terminalModel.differential.costs.costs["translation"].active = True
+        solver.problem.terminalModel.differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
+        solver.problem.terminalModel.differential.costs.costs["translation"].weight = 25.
 
-    ddp.max_qp_iters = max_qp_iter
-    ddp.solve(xs_init, us_init, maxiter=max_sqp_iter, isFeasible=False)
+    solver.max_qp_iters = max_qp_iter
+    solver.solve(xs_init, us_init, maxiter=max_sqp_iter, isFeasible=False)
     solve_time = time.time()
     
-    return  ddp.us[0], ddp.xs[1], ddp.K[0], solve_time - t, ddp.iter, ddp.cost, ddp.constraint_norm, ddp.gap_norm, ddp.qp_iters, ddp.KKT_norm
+    return  solver.us[0], solver.xs[1], solver.K[0], solve_time - t, solver.iter, solver.cost, solver.constraint_norm, solver.gap_norm, solver.qp_iters, solver.KKT_norm
 
 
 
@@ -86,16 +88,32 @@ class KukaCircleCSSQP:
         self.OCP_TO_CTRL_RATIO = int(self.dt_ocp/self.dt_ctrl)
 
         # Create OCP 
-        self.ddp = OptimalControlProblemClassicalWithConstraints(robot, self.config).initialize(self.x0, callbacks=False)
-        self.ddp.regMax = 1e6
-        self.ddp.reg_max = 1e6
-        self.ddp.termination_tol = self.config['solver_termination_tolerance'] 
+        problem = OptimalControlProblemClassicalWithConstraints(robot, self.config).initialize(self.x0)
+        # Initialize the solver
+        if(config['SOLVER'] == 'proxqp'):
+            logger.warning("Using the ProxQP solver.")
+            self.solver = mim_solvers.SolverProxQP(problem)
+        elif(config['SOLVER'] == 'cssqp'):
+            logger.warning("Using the CSSQP solver.")
+            self.solver = mim_solvers.SolverCSQP(problem)
+        self.solver.with_callbacks  = self.config['with_callbacks']
+        self.solver.use_filter_ls   = self.config['use_filter_ls']
+        self.solver.filter_size     = self.config['filter_size']
+        self.solver.warm_start      = self.config['warm_start']
+        self.solver.termination_tol = self.config['solver_termination_tolerance']
+        self.solver.max_qp_iters    = self.config['max_qp_iter']
+        self.solver.eps_abs         = self.config['qp_termination_tol_abs']
+        self.solver.eps_rel         = self.config['qp_termination_tol_rel']
+        self.solver.warm_start_y    = self.config['warm_start_y']
+        self.solver.reset_rho       = self.config['reset_rho']  
+        self.solver.regMax = 1e6
+        self.solver.reg_max = 1e6
         
 
         # Allocate MPC data
-        self.K = self.ddp.K[0]
-        self.x_des = self.ddp.xs[0]
-        self.tau_ff = self.ddp.us[0]
+        self.K = self.solver.K[0]
+        self.x_des = self.solver.xs[0]
+        self.tau_ff = self.solver.us[0]
         self.tau = self.tau_ff.copy() ; self.tau_riccati = np.zeros(self.tau.shape)
 
         # Initialize torque measurements 
@@ -152,11 +170,11 @@ class KukaCircleCSSQP:
         self.max_sqp_iter = 10  
         self.max_qp_iter  = 100   
         self.u0 = pin_utils.get_u_grav(self.q0, self.robot.model, np.zeros(self.robot.model.nq))
-        self.ddp.xs = [self.x0 for i in range(self.config['N_h']+1)]
-        self.ddp.us = [self.u0 for i in range(self.config['N_h'])]
+        self.solver.xs = [self.x0 for i in range(self.config['N_h']+1)]
+        self.solver.us = [self.u0 for i in range(self.config['N_h'])]
         self.tau_ff, self.x_des, self.K, self.t_child, self.ddp_iter, self.cost, self.constraint_norm, self.gap_norm, self.qp_iters, self.KKT = solveOCP(self.joint_positions, 
                                                                                           self.joint_velocities, 
-                                                                                          self.ddp, 
+                                                                                          self.solver, 
                                                                                           self.max_sqp_iter, 
                                                                                           self.max_qp_iter, 
                                                                                           self.target_position,
@@ -204,7 +222,7 @@ class KukaCircleCSSQP:
         # # # # # # #  
         self.tau_ff, self.x_des, self.K, self.t_child, self.ddp_iter, self.cost, self.constraint_norm, self.gap_norm, self.qp_iters, self.KKT = solveOCP(q, 
                                                                                           v, 
-                                                                                          self.ddp, 
+                                                                                          self.solver, 
                                                                                           self.max_sqp_iter, 
                                                                                           self.max_qp_iter, 
                                                                                           self.target_position,

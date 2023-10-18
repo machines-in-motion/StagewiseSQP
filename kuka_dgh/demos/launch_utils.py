@@ -1,5 +1,15 @@
 import yaml
 
+from croco_mpc_utils import utils
+
+from croco_mpc_utils.utils import CustomLogger, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT
+logger = CustomLogger(__name__, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT).logger
+
+
+# # # # # # # # # # # # # # #
+# EXPERIMENT LOADING UTILS  #
+# # # # # # # # # # # # # # #
+
 SUPPORTED_EXPERIMENTS = ['reach_ssqp',
                          'circle_ssqp', 
                          'circle_cssqp', 
@@ -9,16 +19,33 @@ SUPPORTED_EXPERIMENTS = ['reach_ssqp',
 DGM_PARAMS_PATH = "/home/skleff/ws/workspace/install/robot_properties_kuka/lib/python3.8/site-packages/robot_properties_kuka/robot_properties_kuka/dynamic_graph_manager/dgm_parameters_iiwa.yaml"
 
 
-def load_config_file_and_import_controller(EXP_NAME):
-    # Check that exp name is valid
+def is_valid_exp_name(EXP_NAME):
+    '''
+    Check that exp name is valid
+    '''
     try: 
         assert(EXP_NAME in SUPPORTED_EXPERIMENTS)
     except NameError:
-        print("Error : config file name must be in "+str(SUPPORTED_EXPERIMENTS))
-    # Load config file
-    with open('config/'+EXP_NAME+".yml") as f:
+        logger.error("Error : config file name must be in "+str(SUPPORTED_EXPERIMENTS))
+        
+        
+def load_config_file(EXP_NAME):
+    '''
+    Load YAML config file corresponding to an experiment name
+    '''
+    is_valid_exp_name(EXP_NAME)
+    config_path = 'config/'+EXP_NAME+".yml"
+    logger.debug("Opening config file "+str(config_path))
+    with open(config_path) as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
-    # Import corresponding controller
+    return data
+
+
+def import_mpc_controller(EXP_NAME):
+    '''
+    Imports the MPC controller class corresponding to an experiment name
+    '''
+    is_valid_exp_name(EXP_NAME)
     if(EXP_NAME == 'reach_ssqp'):     
         from controllers.reach_ssqp   import KukaReachSSQP   as MPCController
     elif(EXP_NAME == 'circle_ssqp'):  
@@ -29,19 +56,33 @@ def load_config_file_and_import_controller(EXP_NAME):
         from controllers.square_cssqp import KukaSquareCSSQP as MPCController
     elif(EXP_NAME == 'plane_cssqp'):  
         from controllers.plane_cssqp  import KukaPlaneCSSQP  as MPCController
-    return data, MPCController
+    logger.debug("Imported MPC controller for experiment : "+str(EXP_NAME))
+    return MPCController
+
 
 def get_log_config(EXP_NAME):
+    '''
+    Returns the log configuration for an experiment name
+    '''
+    is_valid_exp_name(EXP_NAME)
     if(EXP_NAME == 'reach_ssqp'):     
-        return SSQP_LOGS_REACH
+        log_config = SSQP_LOGS_REACH
     elif(EXP_NAME == 'circle_ssqp'):  
-        return SSQP_LOGS_CIRCLE
+        log_config = SSQP_LOGS_CIRCLE
     elif(EXP_NAME == 'circle_cssqp'): 
-        return CSSQP_LOGS_CIRCLE
+        log_config = CSSQP_LOGS_CIRCLE
     elif(EXP_NAME == 'square_cssqp'): 
-        return CSSQP_LOGS_SQUARE
+        log_config = CSSQP_LOGS_SQUARE
     elif(EXP_NAME == 'plane_cssqp'):  
-        return CSSQP_LOGS_PLANE
+        log_config = CSSQP_LOGS_PLANE
+    logger.debug("Data log fields : "+str(log_config))
+    return log_config
+
+
+
+# # # # # # # # # # # # 
+# DATA LOGGING UTILS  #
+# # # # # # # # # # # # 
 
 LOGS_NONE = []
 

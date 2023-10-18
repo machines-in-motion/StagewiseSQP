@@ -1,53 +1,39 @@
-# Circle tracking task with constraints
+# Circle tracking task with end-effector constraints
 
 
 # MPC & sim parameters
-simu_freq: 1000         # Simulation frequency in Hz
-plan_freq: 100         # Planning frequency (Hz)
-T_tot: 1000.            # Simulation duration (s)
-# Simulation options
-RICCATI: False
-# Task phases
-T_CIRCLE: 2.
+ctrl_freq: 100         # Control frequency
+RICCATI: False 
+
+
 # OCP 
 dt: 0.02                                             # OCP integration step 
 N_h: 25                                              # Horizon length in nodes
+maxiter: 2                                           # Max number of iterations 
+solver_termination_tolerance: 0.0000001              # Tolerance on KKT residual 
 q0: [0., 1.0471975511965976, 0., -1.1344640137963142, 0.2,  0.7853981633974483, 0.]               # Initial robot joint configuration
 dq0: [0.,0.,0.,0.,0.,0.,0.]                         # Initial robot joint velocity
 
+T_REACH: 0.
+T_CIRCLE: 2.
 
 # CSSQP solver parameters
-USE_PROXQP: False
-maxiter: 2                                          # Max number of iterations in DDP
+SOLVER: 'cssqp'
 with_callbacks: False
 use_filter_ls: True
-filter_size: 1
-termination_tol: 0.0000001
+filter_size: 2
 warm_start: True
-max_qp_iters: 50    #125 
+max_qp_iter: 50    #125 
 qp_termination_tol_abs: 0.00001
 qp_termination_tol_rel: 0.00001
-
 warm_start_y: False 
 reset_rho: False
+
 
 # Constraints terms
 # to select from the list : 'stateBox', 'ctrlBox', 'translationBox', 'None'
 WHICH_CONSTRAINTS: ['translationBox']
 
-# 'stateBox'
-# stateLowerLimit: [-2.96706, -2.0944 , -2.96706, -2.0944 , -2.96706, -2.0944 , -3.05433,
-#                   -1.48353, -1.48353, -1.74533, -1.309  , -2.26893, -2.35619, -2.35619] #'DEFAULT'
-# stateUpperLimit: [2.96706, 2.0944 , 2.96706, 2.0944 , 2.96706, 2.0944 , 3.05433,
-#                   1.48353, 1.48353, 1.74533, 1.309  , 2.26893, 2.35619, 2.35619] #'DEFAULT'
-
-stateLowerLimit: [-2.96706, -2.0944 , -2.96706, -2.0944 , -2.96706, -2.0944 , -3.05433,
-                  -1.48353, -1.48353, -1.74533, -1.309  , -2.26893, -2.35619, -2.35619] #'DEFAULT'
-stateUpperLimit: [2.96706, 2.0944 , 2.96706, 2.0944 , 2.96706, 2.0944 , 3.05433,
-                  1.48353, 1.48353, 1.74533, 1.309  , 2.26893, 2.35619, 2.35619] #'DEFAULT'
-# 'ctrlBox'
-# ctrlLimit: [320., 320., 176., 176., 110.,  40.,  40.] #'DEFAULT'
-ctrlLimit: [100, 100, 50, 50, 20, 10, 10]
 
 # 'translation'
 eeLowerLimit: [-10.,-10, 0.]
@@ -69,10 +55,9 @@ stateRegRef: 'DEFAULT'  # 'DEFAULT' = [q0, v0]
 
 
  # 'ctrlReg', 'ctrlRegGrav' : torque regularization 
-ctrlRegWeights: [1., 1., 1., 1., 1., 1., 1.]
-ctrlRegWeight: 0.0001
-ctrlRegWeightTerminal: 0.0001
-ctrlRegRef: 'DEFAULT' # DEFAULT = g(q) | NOT used for 'ctrlRegGrav' cost
+ctrlRegGravWeights: [1., 1., 1., 1., 1., 1., 1.]
+ctrlRegGravWeight: 0.0001
+ctrlRegGravWeightTerminal: 0.0001
 
 
  # 'translation' : end-effector frame translation 
@@ -80,29 +65,8 @@ frameTranslationWeights:  [1., 1., 1.]
 frameTranslationWeight: 1.
 frameTranslationWeightTerminal: 10. 
 alpha_quadflatlog: 0.3
-# frameTranslationRef: [-0.5, -0.2, 0.8]
 frameTranslationRef: [0.6, -0., .5]
 frameTranslationFrameName: 'contact'  
-
-
- # 'velocity' : end-effector frame velocity (translation + rotation)
-frameVelocityWeights:  [1., 1., 1., 0., 0., 0.]
-frameVelocityWeight: 0.1
-frameVelocityWeightTerminal: 10.
-frameVelocityRef: [0., 0., 0., 0., 0., 0.]    
-frameVelocityFrameName: 'contact'  
-
-
- # 'stateLim' : state limits
-stateLimWeights: [1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]
-stateLimWeight: 100.
-stateLimWeightTerminal: 100.
-coef_xlim: 0.9
-
- # 'ctrlLim' : torque limits
-ctrlLimWeights: [1., 1., 1., 1., 1., 1., 1.]
-ctrlLimWeight: 10.
-coef_ulim: 1.
 
 # armature
 armature: [0., 0., 0., 0., 0., 0., 0.]
