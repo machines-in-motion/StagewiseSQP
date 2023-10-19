@@ -8,7 +8,7 @@ RICCATI: False
 
 
 # General
-SOLVER: 'sqp' # 'fddp'
+SOLVER: 'fddp' # 'fddp'
 dt: 0.05                                             # OCP integration step 
 N_h: 10                                              # Horizon length in nodes
 maxiter: 1                                           # Max number of iterations in DDP

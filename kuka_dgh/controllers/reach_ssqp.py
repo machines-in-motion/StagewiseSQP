@@ -35,7 +35,7 @@ def solveOCP(q, v, solver, nb_iter, target_position):
 
 class KukaReachSSQP:
 
-    def __init__(self, head, robot, config, run_sim):
+    def __init__(self, head, iiwa_config, config, run_sim):
         """
         Input:
             head        : thread head
@@ -43,7 +43,7 @@ class KukaReachSSQP:
             config      : MPC config yaml file
             run_sim     : boolean sim or real
         """
-        self.robot   = robot
+        self.robot   = iiwa_config.buildRobotWrapper()
         self.head    = head
         self.RUN_SIM = run_sim
         self.joint_positions  = head.get_sensor('joint_positions')
@@ -79,7 +79,7 @@ class KukaReachSSQP:
         self.OCP_TO_CTRL_RATIO = int(self.dt_ocp/self.dt_ctrl)
 
         # Create OCP 
-        problem = OptimalControlProblemClassical(robot, self.config).initialize(self.x0)
+        problem = OptimalControlProblemClassical(self.robot, self.config).initialize(self.x0)
         # Initialize the solver
         if(config['SOLVER'] == 'sqp'):
             logger.warning("Using the SQP solver.")

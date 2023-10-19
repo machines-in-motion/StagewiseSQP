@@ -20,7 +20,7 @@ import launch_utils
 # Choose experiment, load config and import controller  #  
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 SIM           = True
-EXP_NAME      = 'square_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
+EXP_NAME      = 'reach_ssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
 config        = launch_utils.load_config_file(EXP_NAME)
 MPCController = launch_utils.import_mpc_controller(EXP_NAME)
     
@@ -30,7 +30,8 @@ MPCController = launch_utils.import_mpc_controller(EXP_NAME)
 # # # # # # # # # # # #
 # Import robot model  #
 # # # # # # # # # # # #
-pin_robot = IiwaConfig.buildRobotWrapper()
+iiwa_config = IiwaConfig()
+pin_robot   = iiwa_config.buildRobotWrapper()
 
 
 
@@ -41,10 +42,9 @@ pin_robot = IiwaConfig.buildRobotWrapper()
 # # # # # # # # # # # # #
 if SIM:
     # Sim env + set initial state 
-    config['T_tot'] = 40              
+    config['T_tot'] = 15              
     env = BulletEnvWithGround(p.GUI)
-    robot_simulator = env.add_robot(IiwaRobot())
-    robot_simulator.pin_robot = pin_robot
+    robot_simulator = env.add_robot(IiwaRobot(iiwa_config))
     q_init = np.asarray(config['q0'] )
     v_init = np.asarray(config['dq0'])
     robot_simulator.reset_state(q_init, v_init)
@@ -56,12 +56,13 @@ if SIM:
 # !!!!!!!!!!!!!!!!
 else:
     config['T_tot'] = 400              
-    path = IiwaConfig.paths['dgm_yaml']  
+    path = iiwa_config.paths['dgm_yaml']  
+    print("Reading DGM YAML file at : "+str(path))
     head = dynamic_graph_manager_cpp_bindings.DGMHead(path)
     target = None
     env = None
 
-ctrl = MPCController(head, pin_robot, config, run_sim=SIM)
+ctrl = MPCController(head, iiwa_config, config, run_sim=SIM)
 
 thread_head = ThreadHead(
     1./config['ctrl_freq'],                                         # dt.

@@ -138,6 +138,21 @@ if(EXP_NAME == 'square_cssqp'):
                  'ub'], 
                 ['r', 'b', 'g', 'k', 'k'], 
                 linestyle=['solid', 'solid', 'dotted', 'dotted', 'dotted'])
+elif(EXP_NAME == 'plane_cssqp'):
+    ee_lb = np.array([config['eeLowerLimit']]*N) 
+    ee_ub = np.array([config['eeUpperLimit']]*N) 
+    s.plot_ee_pos([p_mea, 
+                   p_des,
+                   target_position,
+                   ee_lb,
+                   ee_ub],  
+                ['Measured', 
+                 'Predicted',
+                 'Reference',
+                 'lb',
+                 'ub'], 
+                ['r', 'b', 'g', 'k', 'k'], 
+                linestyle=['solid', 'solid', 'dotted', 'dotted', 'dotted'])
 else:
     s.plot_ee_pos([p_mea, 
                    p_des,

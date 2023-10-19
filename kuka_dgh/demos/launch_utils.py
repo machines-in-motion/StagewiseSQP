@@ -16,8 +16,6 @@ SUPPORTED_EXPERIMENTS = ['reach_ssqp',
                          'square_cssqp', 
                          'plane_cssqp']
 
-DGM_PARAMS_PATH = "/home/skleff/ws/workspace/install/robot_properties_kuka/lib/python3.8/site-packages/robot_properties_kuka/robot_properties_kuka/dynamic_graph_manager/dgm_parameters_iiwa.yaml"
-
 
 def is_valid_exp_name(EXP_NAME):
     '''
