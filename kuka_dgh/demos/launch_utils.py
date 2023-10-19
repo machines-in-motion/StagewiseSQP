@@ -153,12 +153,14 @@ CSSQP_LOGS_SQUARE = ['KKT',
                      'x_des',
                      'tau',
                      'tau_ff',
-                     'tau_gravity',
+                     'tau_gravity', 
                      'joint_torques_measured',
                      'joint_cmd_torques',
                      'target_position_x',
                      'target_position_y',
-                     'target_position_z']
+                     'target_position_z',
+                     'lb',
+                     'ub']
 
 CSSQP_LOGS_PLANE = ['KKT', 
                     'ddp_iter',

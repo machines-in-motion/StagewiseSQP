@@ -21,7 +21,7 @@ def solveOCP(q, v, solver, max_sqp_iter, max_qp_iter, target_reach, ee_lb, ee_ub
     xs_init = list(solver.xs[1:]) + [solver.xs[-1]]
     xs_init[0] = x
     us_init = list(solver.us[1:]) + [solver.us[-1]] 
-    
+        
     # Update OCP 
     if(TASK_PHASE == 1):
         # Updates nodes between node_id and terminal node 
@@ -29,14 +29,13 @@ def solveOCP(q, v, solver, max_sqp_iter, max_qp_iter, target_reach, ee_lb, ee_ub
             solver.problem.runningModels[k].differential.costs.costs["translation"].active = True
             solver.problem.runningModels[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
             solver.problem.runningModels[k].differential.costs.costs["translation"].weight = 50.
-            print(solver.problem.runningModels[k].differential.constraints)
-            print(solver.problem.runningModels[k].differential.constraints.constraints.keys())
-            solver.problem.runningModels[k].differential.constraints.constraints['translationBox'].lb = ee_lb
-            solver.problem.runningModels[k].differential.constraints.constraints['translationBox'].un = ee_ub
+            if(k > 0):    
+                solver.problem.runningModels[k].differential.constraints.constraints['translationBox'].constraint.updateBounds(ee_lb, ee_ub)
         solver.problem.terminalModel.differential.costs.costs["translation"].active = True
         solver.problem.terminalModel.differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
         solver.problem.terminalModel.differential.costs.costs["translation"].weight = 50.                
-                
+        solver.problem.terminalModel.differential.constraints.constraints['translationBox'].constraint.updateBounds(ee_lb, ee_ub)
+        
     solver.max_qp_iters = max_qp_iter
     solver.solve(xs_init, us_init, maxiter=max_sqp_iter, isFeasible=False)
     solve_time = time.time()
@@ -89,16 +88,18 @@ class KukaSquareCSSQP:
         self.dt_ocp  = self.config['dt']
         self.dt_ctrl = 1./self.config['ctrl_freq']
         self.OCP_TO_CTRL_RATIO = int(self.dt_ocp/self.dt_ctrl)
-
+        self.u0 = pin_utils.get_u_grav(self.q0, self.robot.model, np.zeros(self.robot.model.nq))
         # Create OCP 
         problem = OptimalControlProblemClassicalWithConstraints(robot, self.config).initialize(self.x0)
+
         # Initialize the solver
         if(config['SOLVER'] == 'proxqp'):
             logger.warning("Using the ProxQP solver.")
             self.solver = mim_solvers.SolverProxQP(problem)
         elif(config['SOLVER'] == 'cssqp'):
-            logger.warning("Using the CSSQP solver.")
+            logger.warning("Using the CSSQP solver.")            
             self.solver = mim_solvers.SolverCSQP(problem)
+            
         self.solver.with_callbacks  = self.config['with_callbacks']
         self.solver.use_filter_ls   = self.config['use_filter_ls']
         self.solver.filter_size     = self.config['filter_size']
@@ -111,7 +112,6 @@ class KukaSquareCSSQP:
         self.solver.reset_rho       = self.config['reset_rho']  
         self.solver.regMax = 1e6
         self.solver.reg_max = 1e6
-        
 
         # Allocate MPC data
         self.K = self.solver.K[0]
@@ -236,31 +236,18 @@ class KukaSquareCSSQP:
         if time_to_circle == self.CIRCLE_DURATION + self.CIRCLE_DURATION // 2:
             print("ADD LOWER CONSTRAINT")
             self.lb = np.array([-np.inf, -np.inf, self.lb_square[2]])
-            # cmodels = self.solver.cmodels
-            # lb_square_tmp = np.array([-np.inf, -np.inf, self.lb_square[2]])
-            # for _ , m in enumerate(cmodels[1:]):
-            #     m.lb = lb_square_tmp
 
         if time_to_circle == 3 * self.CIRCLE_DURATION:
             print("ADD RIGHT CONSTRAINT")  # (when facing the robot)
-            # cmodels = self.solver.cmodels
             self.ub = np.array([np.inf, self.ub_square[1], np.inf])
-            # for _ , m in enumerate(cmodels[1:]):
-            #     m.ub = ub_square_tmp
-
+            
         if time_to_circle == 4 * self.CIRCLE_DURATION :
             print("ADD UPPER CONSTRAINT")  
             self.ub = self.ub_square
-            # cmodels = self.solver.cmodels
-            # for _ , m in enumerate(cmodels[1:]):
-            #     m.ub = self.ub_square
 
         if time_to_circle == 5 * self.CIRCLE_DURATION :
             print("ADD LEFT CONSTRAINT")  # (when facing the robot)
             self.lb = self.lb_square
-            # cmodels = self.solver.cmodels
-            # for _ , m in enumerate(cmodels[1:]):
-            #     m.lb = self.lb_square
 
         if(0 <= time_to_circle):
             self.TASK_PHASE = 1
@@ -275,7 +262,7 @@ class KukaSquareCSSQP:
 
         # # # # # # #  
         # Solve OCP #
-        # # # # # # #  
+        # # # # # # # 
         self.tau_ff, self.x_des, self.K, self.t_child, self.ddp_iter, self.cost, self.constraint_norm, self.gap_norm, self.qp_iters, self.KKT = solveOCP(q, 
                                                                                           v, 
                                                                                           self.solver, 

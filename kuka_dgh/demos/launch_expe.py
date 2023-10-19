@@ -41,7 +41,7 @@ pin_robot = IiwaConfig.buildRobotWrapper()
 # # # # # # # # # # # # #
 if SIM:
     # Sim env + set initial state 
-    config['T_tot'] = 15              
+    config['T_tot'] = 40              
     env = BulletEnvWithGround(p.GUI)
     robot_simulator = env.add_robot(IiwaRobot())
     robot_simulator.pin_robot = pin_robot

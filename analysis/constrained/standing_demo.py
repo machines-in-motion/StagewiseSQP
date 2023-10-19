@@ -149,7 +149,7 @@ for t in range(N_ocp+1):
 
 # Create shooting problem
 ocp = crocoddyl.ShootingProblem(x0, running_models[:-1], running_models[-1])
-
+fwoeihfe
 # Create solver , warm-start and solve
 if(FRICTION_CSTR):
     solver = mim_solvers.SolverCSQP(ocp)
