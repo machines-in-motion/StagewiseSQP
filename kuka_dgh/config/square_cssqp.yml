@@ -48,7 +48,7 @@ WHICH_COSTS: ['translation', 'ctrlRegGrav', 'stateReg']
 
 # Cost function weights and activations
  # 'stateReg' : state regularization  
-stateRegWeights: [10., 5, 1., 1., 1., 1., 1., 5., 5., 5., 5., 5., 5., 5.]
+stateRegWeights: [20., 20., 20., 10., 10., 10, 10., 2., 2., 2., 2., 2., 2., 2.]
 stateRegWeight: 0.01
 stateRegWeightTerminal: 0.01
 stateRegRef: 'DEFAULT'  # 'DEFAULT' = [q0, v0]
@@ -62,9 +62,9 @@ ctrlRegGravWeightTerminal: 0.0001
 
  # 'translation' : end-effector frame translation 
 frameTranslationWeights:  [1., 1., 1.]
-frameTranslationWeight: 1.
+frameTranslationWeight: 5.
 frameTranslationWeightTerminal: 10. 
-alpha_quadflatlog: 0.3
+# alpha_quadflatlog: 0.3
 frameTranslationRef: [0.6, -0., .5]
 frameTranslationFrameName: 'contact'  
 

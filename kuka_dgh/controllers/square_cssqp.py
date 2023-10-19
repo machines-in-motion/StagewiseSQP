@@ -28,12 +28,12 @@ def solveOCP(q, v, solver, max_sqp_iter, max_qp_iter, target_reach, ee_lb, ee_ub
         for k in range( solver.problem.T ):
             solver.problem.runningModels[k].differential.costs.costs["translation"].active = True
             solver.problem.runningModels[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-            solver.problem.runningModels[k].differential.costs.costs["translation"].weight = 50.
+            solver.problem.runningModels[k].differential.costs.costs["translation"].weight = 20. # 50.
             if(k > 0):    
                 solver.problem.runningModels[k].differential.constraints.constraints['translationBox'].constraint.updateBounds(ee_lb, ee_ub)
         solver.problem.terminalModel.differential.costs.costs["translation"].active = True
         solver.problem.terminalModel.differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-        solver.problem.terminalModel.differential.costs.costs["translation"].weight = 50.                
+        solver.problem.terminalModel.differential.costs.costs["translation"].weight = 20. #50.                
         solver.problem.terminalModel.differential.constraints.constraints['translationBox'].constraint.updateBounds(ee_lb, ee_ub)
         
     solver.max_qp_iters = max_qp_iter

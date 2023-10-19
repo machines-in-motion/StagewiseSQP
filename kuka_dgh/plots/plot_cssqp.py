@@ -8,10 +8,11 @@ from demos import launch_utils
 
 from robot_properties_kuka.config import IiwaConfig
 
-pinrobot = IiwaConfig.buildRobotWrapper()
-model    = pinrobot.model
-data     = model.createData()
-frameId  = model.getFrameId('contact')
+iiwa_config = IiwaConfig()
+pinrobot    = iiwa_config.buildRobotWrapper()
+model       = pinrobot.model
+data        = model.createData()
+frameId     = model.getFrameId('contact')
 nq = model.nq ; nv = model.nv
 # Overwrite effort limit as in DGM
 model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
@@ -19,7 +20,7 @@ model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
 
 
 # Load config file
-SIM           = True
+SIM           = False
 EXP_NAME      = 'square_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
 config        = launch_utils.load_config_file(EXP_NAME)
 
@@ -33,7 +34,7 @@ if(SIM):
     
 else:
     data_path = '/tmp/'
-    data_name = ''
+    data_name = 'square_cssqp_REAL_2023-10-19T16:56:24.153726_cssqp'
     
 r = DataReader(data_path+data_name+'.mds')
 N = r.data['absolute_time'].shape[0]
