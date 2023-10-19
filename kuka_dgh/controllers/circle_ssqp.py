@@ -36,7 +36,7 @@ def solveOCP(q, v, solver, nb_iter, target_reach, TASK_PHASE):
     solver.solve(xs_init, us_init, maxiter=nb_iter, isFeasible=False)
     solve_time = time.time()
     
-    return solver.us[0], solver.xs[1], solver.K[0], solve_time - t, solver.iter, solver.KKT
+    return solver.us[0], solver.xs[1], solver.K[0], solve_time - t, solver.iter, solver.KKT, solver.cost
 
   
 
@@ -146,21 +146,20 @@ class KukaCircleSSQP:
         logger.debug("Start of circle phase in ctrl cycles = "+str(self.T_CIRCLE))
         logger.debug("OCP to ctrl time ratio = "+str(self.OCP_TO_CTRL_RATIO))
         self.cumulative_cost = 0
-        
+        self.cost = 0.
         
     def warmup(self, thread):
         self.nb_iter = 100        
         self.u0 = pin_utils.get_u_grav(self.q0, self.robot.model, np.zeros(self.robot.model.nq))
         self.solver.xs = [self.x0 for i in range(self.config['N_h']+1)]
         self.solver.us = [self.u0 for i in range(self.config['N_h'])]
-        self.tau_ff, self.x_des, self.K, self.t_child, self.ddp_iter, self.KKT = solveOCP(self.joint_positions, 
+        self.tau_ff, self.x_des, self.K, self.t_child, self.ddp_iter, self.KKT, self.cost = solveOCP(self.joint_positions, 
                                                                                           self.joint_velocities, 
                                                                                           self.solver, 
                                                                                           self.nb_iter,
                                                                                           self.target_position,
                                                                                           self.TASK_PHASE)
         self.nb_iter = self.config['maxiter']
-
 
 
     def run(self, thread):        
@@ -202,13 +201,13 @@ class KukaCircleSSQP:
         # # # # # # #  
         # Solve OCP #
         # # # # # # #  
-        self.tau_ff, self.x_des, self.K, self.t_child, self.ddp_iter, self.KKT = solveOCP(q, 
+        self.tau_ff, self.x_des, self.K, self.t_child, self.ddp_iter, self.KKT, self.cost = solveOCP(q, 
                                                                                           v, 
                                                                                           self.solver,
                                                                                           self.nb_iter,
                                                                                           self.target_position,
                                                                                           self.TASK_PHASE)
-
+        
         # # # # # # # # 
         # Send policy #
         # # # # # # # #

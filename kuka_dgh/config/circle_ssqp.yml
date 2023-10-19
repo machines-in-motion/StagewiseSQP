@@ -3,7 +3,7 @@
 
 
 # MPC & sim parameters
-ctrl_freq: 1000         # Control frequency
+ctrl_freq: 500         # Control frequency
 RICCATI: False 
 
 
@@ -11,7 +11,7 @@ RICCATI: False
 SOLVER: 'sqp' # 'fddp'
 dt: 0.05                                             # OCP integration step 
 N_h: 10                                              # Horizon length in nodes
-maxiter: 1                                           # Max number of iterations 
+maxiter: 5                                           # Max number of iterations 
 solver_termination_tolerance: 0.0001                 # Tolerance on KKT residual 
 q0: [0., 1.0471975511965976, 0., -1.1344640137963142, 0.2,  0.7853981633974483, 0.]               # Initial robot joint configuration
 dq0: [0.,0.,0.,0.,0.,0.,0.]                         # Initial robot joint velocity
@@ -23,11 +23,11 @@ T_CIRCLE: 2.
 # Cost function composition (a.k.a which terms will be actually used in the OCP)
 # to select from the list : 'stateReg', 'ctrlReg', 'ctrlRegGrav', 'stateLim', 'ctrlLim'
 #                           'force', 'friction', 'translation', 'velocity', 'placement'
-WHICH_COSTS: ['translation', 'ctrlRegGrav', 'stateReg', 'stateLim'] 
+WHICH_COSTS: ['translation', 'ctrlRegGrav', 'stateReg'] 
 
 # Cost function weights and activations
  # 'stateReg' : state regularization  
-stateRegWeights: [10., 5, 5., 1., 1., 1., 1., 5., 5., 5., 5., 5., 5., 5.]
+stateRegWeights: [20., 20., 20., 10., 10., 10, 10., 2., 2., 2., 2., 2., 2., 2.]
 stateRegWeight: 0.01
 stateRegWeightTerminal: 0.01
 stateRegRef: 'DEFAULT'  # 'DEFAULT' = [q0, v0]
@@ -41,32 +41,13 @@ ctrlRegGravWeightTerminal: 0.0001
 
  # 'translation' : end-effector frame translation 
 frameTranslationWeights:  [1., 1., 1.]
-frameTranslationWeight: 1.
+frameTranslationWeight: 5.
 frameTranslationWeightTerminal: 10. 
-alpha_quadflatlog: 0.3
+# alpha_quadflatlog: 0.3
 # frameTranslationRef: [-0.5, -0.2, 0.8]
 frameTranslationRef: [0.8, 0., .5]
 frameTranslationFrameName: 'contact'  
 
-
- # 'velocity' : end-effector frame velocity (translation + rotation)
-frameVelocityWeights:  [1., 1., 1., 0., 0., 0.]
-frameVelocityWeight: 0.1
-frameVelocityWeightTerminal: 10.
-frameVelocityRef: [0., 0., 0., 0., 0., 0.]    
-frameVelocityFrameName: 'contact'  
-
-
- # 'stateLim' : state limits
-stateLimWeights: [1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]
-stateLimWeight: 100.
-stateLimWeightTerminal: 100.
-coef_xlim: 0.9
-
- # 'ctrlLim' : torque limits
-ctrlLimWeights: [1., 1., 1., 1., 1., 1., 1.]
-ctrlLimWeight: 10.
-coef_ulim: 1.
 
 # armature
 armature: [0., 0., 0., 0., 0., 0., 0.]

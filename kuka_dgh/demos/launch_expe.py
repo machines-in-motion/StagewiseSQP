@@ -19,8 +19,8 @@ import launch_utils
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Choose experiment, load config and import controller  #  
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-SIM           = True
-EXP_NAME      = 'reach_ssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
+SIM           = False
+EXP_NAME      = 'circle_ssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
 config        = launch_utils.load_config_file(EXP_NAME)
 MPCController = launch_utils.import_mpc_controller(EXP_NAME)
     
@@ -57,7 +57,6 @@ if SIM:
 else:
     config['T_tot'] = 400              
     path = iiwa_config.paths['dgm_yaml']  
-    print("Reading DGM YAML file at : "+str(path))
     head = dynamic_graph_manager_cpp_bindings.DGMHead(path)
     target = None
     env = None

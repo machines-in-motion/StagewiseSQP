@@ -1,7 +1,5 @@
 import yaml
 
-from croco_mpc_utils import utils
-
 from croco_mpc_utils.utils import CustomLogger, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT
 logger = CustomLogger(__name__, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT).logger
 
@@ -96,6 +94,7 @@ SSQP_LOGS_REACH = ['KKT',
                    'tau',
                    'tau_ff',
                    'tau_gravity',
+                   'cost',
                    'joint_torques_measured',
                    'joint_cmd_torques',
                    'target_position']
@@ -104,10 +103,12 @@ SSQP_LOGS_CIRCLE = ['KKT',
                     'ddp_iter',
                     't_child',
                     'joint_positions',
+                    'joint_velocities',
                     'x_des',
                     'tau',
                     'tau_ff',
                     'tau_gravity',
+                    'cost',
                     'joint_torques_measured',
                     'joint_cmd_torques',
                     'target_position_x',
