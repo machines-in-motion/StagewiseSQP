@@ -80,8 +80,8 @@ thread_head.switch_controllers(ctrl)
 # # # # # # # # #
 # Data logging  #
 # # # # # # # # # <<<<<<<<<<<<< Choose data save path & log config here (cf. launch_utils)
-prefix     = "/tmp/"
-suffix     = "_"+config['SOLVER']
+prefix     = "/home/skleff/data_sqp_paper_croc2/constrained/square/"
+suffix     = "_"+config['SOLVER']+'_best_filter=3'
 LOG_FIELDS = launch_utils.get_log_config(EXP_NAME) 
 # print(LOG_FIELDS)
 # LOG_FIELDS = launch_utils.LOGS_NONE 

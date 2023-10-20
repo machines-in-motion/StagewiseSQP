@@ -30,11 +30,11 @@ s = SimpleDataPlotter()
 
 if(SIM):
     data_path = '/tmp/'
-    data_name = 'square_cssqp_SIM_2023-10-19T11:25:25.900417_cssqp' 
+    data_name = 'square_cssqp_SIM_2023-10-20T15:16:51.581037_cssqp' 
     
 else:
-    data_path = '/tmp/'
-    data_name = 'square_cssqp_REAL_2023-10-19T16:56:24.153726_cssqp'
+    data_path = '/home/skleff/data_sqp_paper_croc2/constrained/square/'
+    data_name = 'square_cssqp_REAL_2023-10-20T16:50:58.864366_cssqp_best_filter=3'
     
 r = DataReader(data_path+data_name+'.mds')
 N = r.data['absolute_time'].shape[0]
