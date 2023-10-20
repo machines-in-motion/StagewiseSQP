@@ -133,8 +133,25 @@ class KukaPlaneCSSQP:
         self.qp_iters        = 0
         self.KKT             = np.inf
 
-
+        self.ee_lb = self.config['eeLowerLimit']
+        self.ee_ub = self.config['eeUpperLimit']
+        
     def warmup(self, thread):
+        # Set bounds around initial state to avoid jump at the beginning 
+        q = self.joint_positions
+        pin.framesForwardKinematics(self.robot.model, self.robot.data, q)
+        self.frameId = self.robot.model.getFrameId(self.config['frameTranslationFrameName'])
+        self.ee_offset = self.robot.data.oMf[self.frameId].translation.copy() - np.asarray(self.config['frameTranslationRef']) 
+        self.ee_lb  = self.config['eeLowerLimit'] + self.ee_offset
+        self.ee_ub  = self.config['eeUpperLimit'] + self.ee_offset
+        self.target_position = self.config['frameTranslationRef'] + self.ee_offset
+        for i in range(self.Nh):
+            if(i > 0):
+                self.solver.problem.runningModels[i].differential.constraints.constraints['translationBox'].constraint.updateBounds(self.ee_lb, self.ee_ub)
+            self.solver.problem.runningModels[i].differential.costs.costs['translation'].cost.residual.reference = self.target_position
+        self.solver.problem.terminalModel.differential.constraints.constraints['translationBox'].constraint.updateBounds(self.ee_lb, self.ee_ub)
+        self.solver.problem.terminalModel.differential.costs.costs['translation'].cost.residual.reference = self.target_position
+        
         self.max_sqp_iter = 10  
         self.max_qp_iter  = 100   
         self.u0 = pin_utils.get_u_grav(self.q0, self.robot.model, np.zeros(self.robot.model.nq))
@@ -149,6 +166,8 @@ class KukaPlaneCSSQP:
         self.max_sqp_iter = self.config['maxiter']
         self.max_qp_iter  = self.config['max_qp_iter']
 
+
+        
     def run(self, thread):        
         # # # # # # # # # 
         # Read sensors  #

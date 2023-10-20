@@ -21,20 +21,20 @@ model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
 
 # Load config file
 SIM           = False
-EXP_NAME      = 'square_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
+EXP_NAME      = 'plane_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
 config        = launch_utils.load_config_file(EXP_NAME)
 
 
 # Create data Plottger
-s = SimpleDataPlotter()
+s = SimpleDataPlotter(dt=1./config['ctrl_freq'])
 
 if(SIM):
     data_path = '/home/skleff/data_sqp_paper_croc2/constrained/square/'
     data_name = 'square_cssqp_SIM_2023-10-20T17:25:45.051546_cssqp_best_filter=3' 
     
 else:
-    data_path = '/home/skleff/data_sqp_paper_croc2/constrained/square/'
-    data_name = 'square_cssqp_REAL_2023-10-20T17:30:47.360692_cssqp_best_filter=3'
+    data_path = '/home/skleff/data_sqp_paper_croc2/constrained/plane/'
+    data_name = 'plane_cssqp_REAL_2023-10-20T18:50:47.895330_cssqp'
     
 r = DataReader(data_path+data_name+'.mds')
 N = r.data['absolute_time'].shape[0]
@@ -119,14 +119,17 @@ else:
 
 p_mea = get_p_(r.data['joint_positions'], pinrobot.model, pinrobot.model.getFrameId('contact'))
 p_des = get_p_(r.data['x_des'][:,:nq], pinrobot.model, pinrobot.model.getFrameId('contact'))
-target_position = np.zeros((N,3))
-target_position[:,0] = r.data['target_position_x'][:,0]
-target_position[:,1] = r.data['target_position_y'][:,0]
-target_position[:,2] = r.data['target_position_z'][:,0]
+if(EXP_NAME == 'plane_cssqp'):
+    target_position = r.data['target_position']
+else:
+    target_position = np.zeros((N,3))
+    target_position[:,0] = r.data['target_position_x'][:,0]
+    target_position[:,1] = r.data['target_position_y'][:,0]
+    target_position[:,2] = r.data['target_position_z'][:,0]
 
 if(EXP_NAME == 'square_cssqp'):
-    ee_lb = r.data['lb'] #np.array([r.data['lb']]*N) 
-    ee_ub = r.data['ub'] #np.array([r.data['ub']]*N) 
+    ee_lb = r.data['lb'] 
+    ee_ub = r.data['ub'] 
     s.plot_ee_pos([p_mea, 
                    p_des,
                    target_position,
@@ -140,13 +143,11 @@ if(EXP_NAME == 'square_cssqp'):
                 ['r', 'b', 'g', 'k', 'k'], 
                 linestyle=['solid', 'solid', 'dotted', 'dotted', 'dotted'])
 elif(EXP_NAME == 'plane_cssqp'):
-    ee_lb = np.array([config['eeLowerLimit']]*N) 
-    ee_ub = np.array([config['eeUpperLimit']]*N) 
-    s.plot_ee_pos([p_mea, 
+    _, ax = s.plot_ee_pos([p_mea, 
                    p_des,
                    target_position,
-                   ee_lb,
-                   ee_ub],  
+                   r.data['ee_lb'],
+                   r.data['ee_ub']],  
                 ['Measured', 
                  'Predicted',
                  'Reference',
@@ -154,6 +155,7 @@ elif(EXP_NAME == 'plane_cssqp'):
                  'ub'], 
                 ['r', 'b', 'g', 'k', 'k'], 
                 linestyle=['solid', 'solid', 'dotted', 'dotted', 'dotted'])
+    ax[-1].set_ylim(0., 0.4)
 else:
     s.plot_ee_pos([p_mea, 
                    p_des,

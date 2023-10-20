@@ -20,7 +20,7 @@ import launch_utils
 # Choose experiment, load config and import controller  #  
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 SIM           = False
-EXP_NAME      = 'square_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
+EXP_NAME      = 'plane_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
 config        = launch_utils.load_config_file(EXP_NAME)
 MPCController = launch_utils.import_mpc_controller(EXP_NAME)
     
@@ -80,8 +80,8 @@ thread_head.switch_controllers(ctrl)
 # # # # # # # # #
 # Data logging  #
 # # # # # # # # # <<<<<<<<<<<<< Choose data save path & log config here (cf. launch_utils)
-prefix     = "/home/skleff/data_sqp_paper_croc2/constrained/square/"
-suffix     = "_"+config['SOLVER']+'_best_filter=3'
+prefix     = "/home/skleff/data_sqp_paper_croc2/constrained/plane/"
+suffix     = "_"+config['SOLVER'] #+'_LINE'
 LOG_FIELDS = launch_utils.get_log_config(EXP_NAME) 
 # print(LOG_FIELDS)
 # LOG_FIELDS = launch_utils.LOGS_NONE 
@@ -103,6 +103,6 @@ if SIM:
     thread_head.stop_logging()
 else:
     thread_head.start()
-    thread_head.start_logging(40, prefix+EXP_NAME+"_REAL_"+str(datetime.now().isoformat())+suffix+".mds", LOG_FIELDS=LOG_FIELDS)
+    thread_head.start_logging(30, prefix+EXP_NAME+"_REAL_"+str(datetime.now().isoformat())+suffix+".mds", LOG_FIELDS=LOG_FIELDS)
     
 thread_head.plot_timing() # <<<<<<<<<<<<< Comment out to skip timings plot

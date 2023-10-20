@@ -178,6 +178,6 @@ CSSQP_LOGS_PLANE = ['KKT',
                     'tau_gravity',
                     'joint_torques_measured',
                     'joint_cmd_torques',
-                    'target_position_x',
-                    'target_position_y',
-                    'target_position_z']
+                    'ee_lb', 
+                    'ee_ub',
+                    'target_position']
