@@ -64,8 +64,7 @@ ctrlRegGravWeightTerminal: 0.0001
 frameTranslationWeights:  [1., 1., 1.]
 frameTranslationWeight: 5.
 frameTranslationWeightTerminal: 10. 
-# alpha_quadflatlog: 0.3
-frameTranslationRef: [0.6, -0., .5]
+frameTranslationRef: [0.4, -0., .25]
 frameTranslationFrameName: 'contact'  
 
 # armature

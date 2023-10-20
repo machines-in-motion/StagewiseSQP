@@ -29,12 +29,12 @@ config        = launch_utils.load_config_file(EXP_NAME)
 s = SimpleDataPlotter()
 
 if(SIM):
-    data_path = '/tmp/'
-    data_name = 'square_cssqp_SIM_2023-10-20T15:16:51.581037_cssqp' 
+    data_path = '/home/skleff/data_sqp_paper_croc2/constrained/square/'
+    data_name = 'square_cssqp_SIM_2023-10-20T17:25:45.051546_cssqp_best_filter=3' 
     
 else:
     data_path = '/home/skleff/data_sqp_paper_croc2/constrained/square/'
-    data_name = 'square_cssqp_REAL_2023-10-20T16:50:58.864366_cssqp_best_filter=3'
+    data_name = 'square_cssqp_REAL_2023-10-20T17:30:47.360692_cssqp_best_filter=3'
     
 r = DataReader(data_path+data_name+'.mds')
 N = r.data['absolute_time'].shape[0]

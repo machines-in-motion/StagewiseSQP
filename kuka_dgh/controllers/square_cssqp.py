@@ -28,12 +28,12 @@ def solveOCP(q, v, solver, max_sqp_iter, max_qp_iter, target_reach, ee_lb, ee_ub
         for k in range( solver.problem.T ):
             solver.problem.runningModels[k].differential.costs.costs["translation"].active = True
             solver.problem.runningModels[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-            solver.problem.runningModels[k].differential.costs.costs["translation"].weight = 20. # 50.
+            solver.problem.runningModels[k].differential.costs.costs["translation"].weight = 50. 
             if(k > 0):    
                 solver.problem.runningModels[k].differential.constraints.constraints['translationBox'].constraint.updateBounds(ee_lb, ee_ub)
         solver.problem.terminalModel.differential.costs.costs["translation"].active = True
         solver.problem.terminalModel.differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-        solver.problem.terminalModel.differential.costs.costs["translation"].weight = 20. #50.                
+        solver.problem.terminalModel.differential.costs.costs["translation"].weight = 50.               
         solver.problem.terminalModel.differential.constraints.constraints['translationBox'].constraint.updateBounds(ee_lb, ee_ub)
         
     solver.max_qp_iters = max_qp_iter
@@ -133,7 +133,7 @@ class KukaSquareCSSQP:
             self.joint_torques_measured = -self.joint_torques_total 
 
 
-        # self.target_position = np.asarray(self.config['contactPosition']) + np.asarray(self.config['oPc_offset'])
+        self.frameId = self.robot.model.getFrameId(self.config['frameTranslationFrameName'])
         # Circle trajectory 
         N_total_pos = int((self.config['T_tot'] - self.config['T_REACH'])/self.dt_ctrl + self.Nh*self.OCP_TO_CTRL_RATIO)
         N_circle    = int((self.config['T_tot'] - self.config['T_CIRCLE'])/self.dt_ctrl + self.Nh*self.OCP_TO_CTRL_RATIO )
@@ -227,6 +227,7 @@ class KukaSquareCSSQP:
         time_to_circle  = int(thread.ti - self.T_CIRCLE)   
 
         if(time_to_circle == 0): 
+            self.target_position_offset = self.robot.data.oMf[self.frameId].translation.copy() - self.pdes.copy()
             print("Entering circle phase")
 
         if time_to_circle % self.CIRCLE_DURATION == 0:
@@ -235,26 +236,26 @@ class KukaSquareCSSQP:
 
         if time_to_circle == self.CIRCLE_DURATION + self.CIRCLE_DURATION // 2:
             print("ADD LOWER CONSTRAINT")
-            self.lb = np.array([-np.inf, -np.inf, self.lb_square[2]])
+            self.lb = np.array([-np.inf, -np.inf, self.lb_square[2]]) + self.target_position_offset
 
         if time_to_circle == 3 * self.CIRCLE_DURATION:
             print("ADD RIGHT CONSTRAINT")  # (when facing the robot)
-            self.ub = np.array([np.inf, self.ub_square[1], np.inf])
+            self.ub = np.array([np.inf, self.ub_square[1], np.inf]) + self.target_position_offset
             
         if time_to_circle == 4 * self.CIRCLE_DURATION :
             print("ADD UPPER CONSTRAINT")  
-            self.ub = self.ub_square
+            self.ub = self.ub_square + self.target_position_offset
 
         if time_to_circle == 5 * self.CIRCLE_DURATION :
             print("ADD LEFT CONSTRAINT")  # (when facing the robot)
-            self.lb = self.lb_square
+            self.lb = self.lb_square + self.target_position_offset
 
         if(0 <= time_to_circle):
             self.TASK_PHASE = 1
             # set position refs over current horizon
             tf  = time_to_circle + (self.Nh+1)*self.OCP_TO_CTRL_RATIO
             # Target in (x,y)  = circle trajectory 
-            self.target_position = self.target_position_traj[time_to_circle:tf:self.OCP_TO_CTRL_RATIO,:]
+            self.target_position = self.target_position_traj[time_to_circle:tf:self.OCP_TO_CTRL_RATIO,:] + self.target_position_offset
             # Record target signals
             self.target_position_x = self.target_position[:,0] 
             self.target_position_y = self.target_position[:,1] 
