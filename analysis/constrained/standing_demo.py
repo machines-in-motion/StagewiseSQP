@@ -12,18 +12,18 @@ import mim_solvers
 
 pinRef        = pin.LOCAL_WORLD_ALIGNED
 FORCE_CSTR    = False
-FRICTION_CSTR = False
+FRICTION_CSTR = True
 MU = 0.8
 PLOT = False
 PLAY = False
-SAVE = True
+SAVE = False
 
 SOLVE_OCP = False
 
 
 PLOT_1 = False
 PLOT_2 = False 
-PLOT_3 = False
+PLOT_3 = True
 PLOT_4 = True
 
 robot_name = 'solo12'
@@ -149,7 +149,7 @@ for t in range(N_ocp+1):
 
 # Create shooting problem
 ocp = crocoddyl.ShootingProblem(x0, running_models[:-1], running_models[-1])
-fwoeihfe
+
 # Create solver , warm-start and solve
 if(FRICTION_CSTR):
     solver = mim_solvers.SolverCSQP(ocp)
@@ -466,45 +466,36 @@ else:
     # Current paper plot : FL and HL force ratio
     if(PLOT_3):
         time_lin = np.linspace(0, T, solver.problem.T)
-        fig, axs = plt.subplots(1, 2, figsize=(19.2,10.8), constrained_layout=True)
-        for i, ct_frame_name in enumerate(['FL_FOOT_contact', 'HL_FOOT_contact']):
+        fig, axs = plt.subplots(2, 2, figsize=(19.2,10.8), constrained_layout=True)
+        names = ['FL', 'HL', 'FR', 'HR']
+        coord = [(0,0), (1,0), (0,1), (1,1)]
+        MAXs  = [5.3, 5.3, 1.2, 1.2]
+        for i, name in enumerate(names):
+            ct_frame_name = name +'_FOOT_contact'
             forces1 = np.array(unconstrained_sol[ct_frame_name])
             forces2 = np.array(constrained_sol[ct_frame_name])
             # Plot unconstrained forces
             f1 = np.sqrt( ( forces1[:, 0]**2 + forces1[:, 1]**2 ) / forces1[:, 2]**2 )
             f2 = np.sqrt( ( forces2[:, 0]**2 + forces2[:, 1]**2 ) / forces2[:, 2]**2 )
-            axs[i].plot(time_lin, f1, color='g', linewidth=4, label='Unconstrained', alpha=0.5) 
-            axs[i].plot(time_lin, f2, color='b', linewidth=4, label='Constrained', alpha=0.5) 
+            axs[coord[i]].plot(time_lin, f1, color='g', linewidth=4, label='Unconstrained', alpha=0.5) 
+            axs[coord[i]].plot(time_lin, f2, color='b', linewidth=4, label='Constrained', alpha=0.5) 
             # Add friction cone constraints 
-            axs[i].plot(time_lin, [MU]*solver.problem.T, color='k', linestyle='--', linewidth=4, label='Friction cone ('+r"$\mu$"+'='+str(MU)+')', alpha=0.5)
-            axs[i].tick_params(axis = 'y', labelsize=18)
-            # if(i != 3):
-                # axs[i%2, i//2].xaxis.set_tick_params(labelbottom=False)
-            axs[i].grid()
-            # axs[i%2, i//2].set_ylim(0., 5.5)
-            # axs[i].set_ylim(0., 1)
-            # axs[i].yaxis.set_major_locator(plt.MaxNLocator(2))
-            # axs[i].yaxis.set_major_formatter(plt.FormatStrFormatter('%.0f'))
+            axs[coord[i]].plot(time_lin, [MU]*solver.problem.T, color='k', linestyle='--', linewidth=4, label='Friction cone ('+r"$\mu$"+'='+str(MU)+')', alpha=0.5)
+            axs[coord[i]].grid()
+            MAX = MAXs[i]
+            axs[coord[i]].axhspan(0.8, MAX, -MAX, MAX, color='gray', alpha=0.2, lw=0)
+            axs[coord[i]].set_xlim(0., 5)
+            axs[coord[i]].set_ylim(0., MAX)
+            axs[coord[i]].tick_params(axis = 'x', labelsize=22)
+            axs[coord[i]].tick_params(axis = 'y', labelsize=22)
+            axs[coord[i]].set_ylabel(name+' force ratio', fontsize=22)
 
-        axs[0].set_ylabel('FL force ratio', fontsize=22)
-        axs[1].set_ylabel('HL force ratio', fontsize=22)
-
-        handles, labels = axs[0].get_legend_handles_labels()
-        fig.legend(handles, labels, loc='upper left', prop={'size': 22}) 
-        # axs[-1, 2].legend(loc='upper left', bbox_to_anchor=(-1., 0.885), prop={'size': 22})
-
+        handles, labels = axs[0,0].get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.03, 1.), prop={'size': 26}) 
         fig.align_ylabels(axs[:])
         fig.align_xlabels(axs[:])
-        
-        axs[0].tick_params(axis = 'x', labelsize=18)
-        axs[1].tick_params(axis = 'x', labelsize=18)
-
-        # axs[0].text(2., 6, 'HL', fontdict={'size':30})
-        # axs[1].text(2., 6, 'FL', fontdict={'size':30})
-
-
-        axs[0].set_xlabel('Time (s)', fontsize=22)
-        axs[1].set_xlabel('Time (s)', fontsize=22)
+        axs[-1,0].set_xlabel('Time (s)', fontsize=26)
+        axs[-1,1].set_xlabel('Time (s)', fontsize=26)
         # fig.savefig('/home/skleff/data_paper_CSSQP/solo_standing_friction_normalized.pdf', bbox_inches="tight")
 
     # Only FL
