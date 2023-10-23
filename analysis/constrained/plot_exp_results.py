@@ -36,6 +36,7 @@ rs = []
 if('circle_no_cstr' in PLOTS):
     # Circle without constraint
     print("Extract circle_no_cstr data...")
+    # r1 = DataReader('/home/skleff/data_paper_CSSQP/circle_no_cstr/no_constraint_1683299184.3249779.mds') 
     r1 = DataReader('/home/skleff/data_paper_CSSQP/circle_no_cstr/no_constraint_1683299184.3249779.mds') 
     rs.append(r1)
     N = r1.data['tau'].shape[0] ; Ns.append(N)

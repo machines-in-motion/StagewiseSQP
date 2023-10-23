@@ -127,7 +127,8 @@ class KukaCircleSSQP:
         # absolute desired position
         self.pdes = np.asarray(self.config['frameTranslationRef']) 
     
-        radius = 0.15 ; omega = 3.
+        # radius = 0.15 ; omega = 3.
+        radius = 0.3 ; omega = 2.
         self.target_position_traj[0:N_circle, :] = [np.array([self.pdes[0],
                                                               self.pdes[1] + radius * np.sin(i*self.dt_ctrl*omega), 
                                                               self.pdes[2] + radius * (1-np.cos(i*self.dt_ctrl*omega)) ]) for i in range(N_circle)]

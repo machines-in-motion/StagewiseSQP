@@ -33,9 +33,8 @@ if(SIM):
     data_name = 'circle_ssqp_SIM_2023-10-18T14:17:41.165916_sqp' 
     
 else:
-    data_path = '/tmp/'
-    # data_name = 'circle_ssqp_REAL_2023-10-19T16:06:29.419149_sqp'
-    data_name = 'circle_ssqp_REAL_2023-10-19T16:41:31.062488_sqp'
+    data_path = '/home/skleff/data_sqp_paper_croc2/unconstrained/'
+    data_name = 'circle_ssqp_REAL_2023-10-23T15:45:07.463648_fddp'
     
 r       = DataReader(data_path+data_name+'.mds')
 N       = r.data['absolute_time'].shape[0]

@@ -11,9 +11,8 @@ from croco_mpc_utils.utils import CustomLogger, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FOR
 logger = CustomLogger(__name__, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT).logger
 
 
-
 # @profile
-def solveOCP(q, v, solver, max_sqp_iter, max_qp_iter, target_reach, TASK_PHASE):
+def solveOCP(q, v, solver, max_sqp_iter, max_qp_iter, target_reach, ee_lb, ee_ub, TASK_PHASE):
     t = time.time()
     # Update initial state + warm-start
     x = np.concatenate([q, v])
@@ -22,18 +21,21 @@ def solveOCP(q, v, solver, max_sqp_iter, max_qp_iter, target_reach, TASK_PHASE):
     xs_init = list(solver.xs[1:]) + [solver.xs[-1]]
     xs_init[0] = x
     us_init = list(solver.us[1:]) + [solver.us[-1]] 
-    
+        
     # Update OCP 
     if(TASK_PHASE == 1):
         # Updates nodes between node_id and terminal node 
         for k in range( solver.problem.T ):
             solver.problem.runningModels[k].differential.costs.costs["translation"].active = True
             solver.problem.runningModels[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-            solver.problem.runningModels[k].differential.costs.costs["translation"].weight = 30.
+            solver.problem.runningModels[k].differential.costs.costs["translation"].weight = 50. 
+            if(k > 0):    
+                solver.problem.runningModels[k].differential.constraints.constraints['translationBox'].constraint.updateBounds(ee_lb, ee_ub)
         solver.problem.terminalModel.differential.costs.costs["translation"].active = True
         solver.problem.terminalModel.differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-        solver.problem.terminalModel.differential.costs.costs["translation"].weight = 30.
-
+        solver.problem.terminalModel.differential.costs.costs["translation"].weight = 50.               
+        solver.problem.terminalModel.differential.constraints.constraints['translationBox'].constraint.updateBounds(ee_lb, ee_ub)
+        
     solver.max_qp_iters = max_qp_iter
     solver.solve(xs_init, us_init, maxiter=max_sqp_iter, isFeasible=False)
     solve_time = time.time()
@@ -43,7 +45,7 @@ def solveOCP(q, v, solver, max_sqp_iter, max_qp_iter, target_reach, TASK_PHASE):
 
 
 
-class KukaCircleCSSQP:
+class KukaLineCSSQP:
 
     def __init__(self, head, iiwa_config, config, run_sim):
         """
@@ -86,16 +88,18 @@ class KukaCircleCSSQP:
         self.dt_ocp  = self.config['dt']
         self.dt_ctrl = 1./self.config['ctrl_freq']
         self.OCP_TO_CTRL_RATIO = int(self.dt_ocp/self.dt_ctrl)
-
+        self.u0 = pin_utils.get_u_grav(self.q0, self.robot.model, np.zeros(self.robot.model.nq))
         # Create OCP 
         problem = OptimalControlProblemClassicalWithConstraints(self.robot, self.config).initialize(self.x0)
+
         # Initialize the solver
         if(config['SOLVER'] == 'proxqp'):
             logger.warning("Using the ProxQP solver.")
             self.solver = mim_solvers.SolverProxQP(problem)
         elif(config['SOLVER'] == 'cssqp'):
-            logger.warning("Using the CSSQP solver.")
+            logger.warning("Using the CSSQP solver.")            
             self.solver = mim_solvers.SolverCSQP(problem)
+            
         self.solver.with_callbacks  = self.config['with_callbacks']
         self.solver.use_filter_ls   = self.config['use_filter_ls']
         self.solver.filter_size     = self.config['filter_size']
@@ -108,7 +112,6 @@ class KukaCircleCSSQP:
         self.solver.reset_rho       = self.config['reset_rho']  
         self.solver.regMax = 1e6
         self.solver.reg_max = 1e6
-        
 
         # Allocate MPC data
         self.K = self.solver.K[0]
@@ -130,30 +133,54 @@ class KukaCircleCSSQP:
             self.joint_torques_measured = -self.joint_torques_total 
 
 
+        self.frameId = self.robot.model.getFrameId(self.config['frameTranslationFrameName'])
         # Circle trajectory 
         N_total_pos = int((self.config['T_tot'] - self.config['T_REACH'])/self.dt_ctrl + self.Nh*self.OCP_TO_CTRL_RATIO)
         N_circle    = int((self.config['T_tot'] - self.config['T_CIRCLE'])/self.dt_ctrl + self.Nh*self.OCP_TO_CTRL_RATIO )
         self.target_position_traj = np.zeros( (N_total_pos, 3) )
         # absolute desired position
-        self.pdes = np.asarray(self.config['frameTranslationRef']) 
-    
-        radius = 0.3 ; omega = 2.
+        self.pdes = np.array([0.6, -0., .2]) # np.asarray(self.config['frameTranslationRef']) 
+        radius = 0.4 ; omega = 1.
         self.target_position_traj[0:N_circle, :] = [np.array([self.pdes[0],
-                                                              self.pdes[1] + radius * np.sin(i*self.dt_ctrl*omega), 
-                                                              self.pdes[2] + radius * (1-np.cos(i*self.dt_ctrl*omega)) ]) for i in range(N_circle)]
+                                                              self.pdes[1] + 1.*radius * np.sin(i*self.dt_ctrl*omega), 
+                                                              self.pdes[2] + 1.*radius * (1-np.cos(i*self.dt_ctrl*omega)) ]) for i in range(N_circle)]
         self.target_position_traj[N_circle:, :] = self.target_position_traj[N_circle-1,:]
+        # plt.plot(self.target_position_traj[:,1], self.target_position_traj[:,2], label='pos')
+        self.center_x = self.pdes[0]
+        self.center_y = self.pdes[1] 
+        self.center_z = self.pdes[2] + 1.*radius
+        self.radius2 = radius/np.sqrt(2)
+        # plt.plot(self.center_y + self.radius2, self.center_z + self.radius2, marker='o', label='pos')
+        # plt.plot(self.center_y - self.radius2, self.center_z + self.radius2, marker='o', label='pos')
+        # plt.plot(self.center_y + self.radius2, self.center_z - self.radius2, marker='o', label='pos')
+        # plt.plot(self.center_y - self.radius2, self.center_z - self.radius2, marker='o', label='pos')
+        # plt.plot(center_y - radius2, center_z, marker='o', label='pos')
+        # plt.plot(center_y - radius2, center_z, marker='o', label='pos')
+
+        # # plt.plot(self.pdes[1]+radius2, self.pdes[2], marker='o', label='pos')
+        # plt.plot(self.pdes[1]-radius2, self.pdes[2], marker='o', label='pos')
+        # # plt.plot(self.pdes[1]-radius2, self.pdes[2]+2*radius2, marker='o', label='pos')
+        # plt.plot(self.pdes[1]+radius2, self.pdes[2]+2*radius2, marker='o', label='pos')
+        # plt.show()
         # Targets over one horizon (initially = absolute target position)
         self.target_position = np.zeros((self.Nh+1, 3)) 
         self.target_position[:,:] = self.pdes.copy() 
         self.target_position_x = self.target_position[:,0] 
         self.target_position_y = self.target_position[:,1] 
         self.target_position_z = self.target_position[:,2]
-
-        self.TASK_PHASE      = 0
+        
+        self.lb_square = np.array([-np.inf, self.center_y - self.radius2, self.center_z - self.radius2])
+        self.ub_square = np.array([np.inf, self.center_y + self.radius2, self.center_z + self.radius2])
+        self.lb = np.array([-np.inf]*3)
+        self.ub = np.array([np.inf]*3)
+        
+        self.TASK_PHASE = 0
         self.NH_SIMU   = int(self.Nh*self.dt_ocp/self.dt_ctrl)
         self.T_CIRCLE  = int(self.config['T_CIRCLE']/self.dt_ctrl)
-        logger.debug("Size of MPC horizon in ctrl cycles = "+str(self.NH_SIMU))
-        logger.debug("Start of circle phase in ctrl cycles = "+str(self.T_CIRCLE))
+        self.CIRCLE_DURATION = int(2 * np.pi/self.dt_ctrl)
+        self.count_circle = 0
+        logger.debug("Size of MPC horizon in simu cycles = "+str(self.NH_SIMU))
+        logger.debug("Start of circle phase in simu cycles = "+str(self.T_CIRCLE))
         logger.debug("OCP to ctrl time ratio = "+str(self.OCP_TO_CTRL_RATIO))
 
         # Solver logs
@@ -164,7 +191,6 @@ class KukaCircleCSSQP:
         self.constraint_norm = np.inf
         self.qp_iters        = 0
         self.KKT             = np.inf
-
 
     def warmup(self, thread):
         self.max_sqp_iter = 10  
@@ -178,6 +204,8 @@ class KukaCircleCSSQP:
                                                                                           self.max_sqp_iter, 
                                                                                           self.max_qp_iter, 
                                                                                           self.target_position,
+                                                                                          self.lb,
+                                                                                          self.ub,
                                                                                           self.TASK_PHASE)
         self.cumulative_cost += self.cost
         self.max_sqp_iter = self.config['maxiter']
@@ -199,19 +227,27 @@ class KukaCircleCSSQP:
         # # # # # # # # # 
         time_to_circle  = int(thread.ti - self.T_CIRCLE)   
 
-
         if(time_to_circle == 0): 
+            self.target_position_offset = self.robot.data.oMf[self.frameId].translation.copy() - self.pdes.copy()
             print("Entering circle phase")
-        # If circle tracking phase enters the MPC horizon, start updating models from the end with tracking models      
-        if(0 <= time_to_circle and time_to_circle <= self.NH_SIMU):
-            self.TASK_PHASE = 1
 
+        if time_to_circle % self.CIRCLE_DURATION == 0:
+            self.count_circle += 1
+            print("CIRCLE number " + str(self.count_circle))
 
+        if time_to_circle == self.CIRCLE_DURATION:
+            print("ADD LINE CONSTRAINT")
+            # self.lb = np.array([-np.inf, -1e-8, -np.inf]) + self.target_position_offset
+            # self.ub = np.array([np.inf, 1e-8, np.inf]) + self.target_position_offset
+            self.lb = np.array([self.pdes[0]-1e-8, self.pdes[1]-1e-8, -np.inf]) + self.target_position_offset
+            self.ub = np.array([self.pdes[0]+1e-8, self.pdes[1]+1e-8, np.inf]) + self.target_position_offset
+            
         if(0 <= time_to_circle):
+            self.TASK_PHASE = 1
             # set position refs over current horizon
             tf  = time_to_circle + (self.Nh+1)*self.OCP_TO_CTRL_RATIO
             # Target in (x,y)  = circle trajectory 
-            self.target_position = self.target_position_traj[time_to_circle:tf:self.OCP_TO_CTRL_RATIO,:]
+            self.target_position = self.target_position_traj[time_to_circle:tf:self.OCP_TO_CTRL_RATIO,:] + self.target_position_offset
             # Record target signals
             self.target_position_x = self.target_position[:,0] 
             self.target_position_y = self.target_position[:,1] 
@@ -219,13 +255,15 @@ class KukaCircleCSSQP:
 
         # # # # # # #  
         # Solve OCP #
-        # # # # # # #  
+        # # # # # # # 
         self.tau_ff, self.x_des, self.K, self.t_child, self.ddp_iter, self.cost, self.constraint_norm, self.gap_norm, self.qp_iters, self.KKT = solveOCP(q, 
                                                                                           v, 
                                                                                           self.solver, 
                                                                                           self.max_sqp_iter, 
                                                                                           self.max_qp_iter, 
                                                                                           self.target_position,
+                                                                                          self.lb,
+                                                                                          self.ub,
                                                                                           self.TASK_PHASE)
 
         # # # # # # # # 

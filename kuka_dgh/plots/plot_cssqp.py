@@ -21,7 +21,7 @@ model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
 
 # Load config file
 SIM           = False
-EXP_NAME      = 'plane_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
+EXP_NAME      = 'circle_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
 config        = launch_utils.load_config_file(EXP_NAME)
 
 
@@ -33,8 +33,8 @@ if(SIM):
     data_name = 'square_cssqp_SIM_2023-10-20T17:25:45.051546_cssqp_best_filter=3' 
     
 else:
-    data_path = '/home/skleff/data_sqp_paper_croc2/constrained/plane/'
-    data_name = 'plane_cssqp_REAL_2023-10-20T18:50:47.895330_cssqp'
+    data_path = '/home/skleff/data_sqp_paper_croc2/constrained/circle/'
+    data_name = 'circle_cssqp_REAL_2023-10-23T15:47:09.350083_cssqp'
     
 r = DataReader(data_path+data_name+'.mds')
 N = r.data['absolute_time'].shape[0]
@@ -127,7 +127,7 @@ else:
     target_position[:,1] = r.data['target_position_y'][:,0]
     target_position[:,2] = r.data['target_position_z'][:,0]
 
-if(EXP_NAME == 'square_cssqp'):
+if(EXP_NAME == 'square_cssqp' or EXP_NAME == 'line_cssqp'):
     ee_lb = r.data['lb'] 
     ee_ub = r.data['ub'] 
     s.plot_ee_pos([p_mea, 
@@ -141,7 +141,8 @@ if(EXP_NAME == 'square_cssqp'):
                  'lb',
                  'ub'], 
                 ['r', 'b', 'g', 'k', 'k'], 
-                linestyle=['solid', 'solid', 'dotted', 'dotted', 'dotted'])
+                linestyle=['solid', 'solid', 'dotted', 'dotted', 'dotted'],
+                ylims=[[-0.8,-0.5,0],[+0.8,+0.5,1.5]])
 elif(EXP_NAME == 'plane_cssqp'):
     _, ax = s.plot_ee_pos([p_mea, 
                    p_des,

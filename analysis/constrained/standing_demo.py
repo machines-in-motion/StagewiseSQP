@@ -24,7 +24,7 @@ SOLVE_OCP = False
 PLOT_1 = False
 PLOT_2 = False 
 PLOT_3 = True
-PLOT_4 = True
+PLOT_4 = False
 
 robot_name = 'solo12'
 ee_frame_names = ['FL_FOOT', 'FR_FOOT', 'HL_FOOT', 'HR_FOOT']
@@ -466,10 +466,10 @@ else:
     # Current paper plot : FL and HL force ratio
     if(PLOT_3):
         time_lin = np.linspace(0, T, solver.problem.T)
-        fig, axs = plt.subplots(2, 2, figsize=(19.2,10.8), constrained_layout=True)
-        names = ['FL', 'HL', 'FR', 'HR']
-        coord = [(0,0), (1,0), (0,1), (1,1)]
-        MAXs  = [5.3, 5.3, 1.2, 1.2]
+        fig, axs = plt.subplots(2, 1, figsize=(19.2,10.8), constrained_layout=True)
+        names = ['FL', 'HL']#, 'FR', 'HR']
+        coord = [0, 1] #(0,0), (1,0), (0,1), (1,1)]
+        MAXs  = [5.3, 5.3] #, 1.2, 1.2]
         for i, name in enumerate(names):
             ct_frame_name = name +'_FOOT_contact'
             forces1 = np.array(unconstrained_sol[ct_frame_name])
@@ -477,10 +477,10 @@ else:
             # Plot unconstrained forces
             f1 = np.sqrt( ( forces1[:, 0]**2 + forces1[:, 1]**2 ) / forces1[:, 2]**2 )
             f2 = np.sqrt( ( forces2[:, 0]**2 + forces2[:, 1]**2 ) / forces2[:, 2]**2 )
-            axs[coord[i]].plot(time_lin, f1, color='g', linewidth=4, label='Unconstrained', alpha=0.5) 
-            axs[coord[i]].plot(time_lin, f2, color='b', linewidth=4, label='Constrained', alpha=0.5) 
+            axs[coord[i]].plot(time_lin, f1, color='g', linewidth=8, label='Unconstrained', alpha=0.5) 
+            axs[coord[i]].plot(time_lin, f2, color='b', linewidth=8, label='Constrained', alpha=0.5) 
             # Add friction cone constraints 
-            axs[coord[i]].plot(time_lin, [MU]*solver.problem.T, color='k', linestyle='--', linewidth=4, label='Friction cone ('+r"$\mu$"+'='+str(MU)+')', alpha=0.5)
+            axs[coord[i]].plot(time_lin, [MU]*solver.problem.T, color='k', linestyle='--', linewidth=8, label='Friction cone ('+r"$\mu$"+'='+str(MU)+')', alpha=0.5)
             axs[coord[i]].grid()
             MAX = MAXs[i]
             axs[coord[i]].axhspan(0.8, MAX, -MAX, MAX, color='gray', alpha=0.2, lw=0)
@@ -488,15 +488,14 @@ else:
             axs[coord[i]].set_ylim(0., MAX)
             axs[coord[i]].tick_params(axis = 'x', labelsize=22)
             axs[coord[i]].tick_params(axis = 'y', labelsize=22)
-            axs[coord[i]].set_ylabel(name+' force ratio', fontsize=22)
+            axs[coord[i]].set_ylabel(name+' force ratio', fontsize=30)
 
-        handles, labels = axs[0,0].get_legend_handles_labels()
-        fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.03, 1.), prop={'size': 26}) 
+        handles, labels = axs[0].get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.04, 1.), prop={'size': 30}) 
         fig.align_ylabels(axs[:])
         fig.align_xlabels(axs[:])
-        axs[-1,0].set_xlabel('Time (s)', fontsize=26)
-        axs[-1,1].set_xlabel('Time (s)', fontsize=26)
-        # fig.savefig('/home/skleff/data_paper_CSSQP/solo_standing_friction_normalized.pdf', bbox_inches="tight")
+        axs[-1].set_xlabel('Time (s)', fontsize=30)
+        fig.savefig('/home/skleff/data_sqp_paper_croc2/solo_standing_friction_normalized.pdf', bbox_inches="tight")
 
     # Only FL
     if(PLOT_4):

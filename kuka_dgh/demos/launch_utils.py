@@ -12,7 +12,8 @@ SUPPORTED_EXPERIMENTS = ['reach_ssqp',
                          'circle_ssqp', 
                          'circle_cssqp', 
                          'square_cssqp', 
-                         'plane_cssqp']
+                         'plane_cssqp',
+                         'line_cssqp']
 
 
 def is_valid_exp_name(EXP_NAME):
@@ -52,6 +53,8 @@ def import_mpc_controller(EXP_NAME):
         from controllers.square_cssqp import KukaSquareCSSQP as MPCController
     elif(EXP_NAME == 'plane_cssqp'):  
         from controllers.plane_cssqp  import KukaPlaneCSSQP  as MPCController
+    elif(EXP_NAME == 'line_cssqp'):  
+        from controllers.line_cssqp  import KukaLineCSSQP  as MPCController
     logger.debug("Imported MPC controller for experiment : "+str(EXP_NAME))
     return MPCController
 
@@ -71,6 +74,8 @@ def get_log_config(EXP_NAME):
         log_config = CSSQP_LOGS_SQUARE
     elif(EXP_NAME == 'plane_cssqp'):  
         log_config = CSSQP_LOGS_PLANE
+    elif(EXP_NAME == 'line_cssqp'):  
+        log_config = CSSQP_LOGS_LINE
     logger.debug("Data log fields : "+str(log_config))
     return log_config
 
@@ -181,3 +186,24 @@ CSSQP_LOGS_PLANE = ['KKT',
                     'ee_lb', 
                     'ee_ub',
                     'target_position']
+
+CSSQP_LOGS_LINE = ['KKT', 
+                   'ddp_iter',
+                   't_child',
+                   'qp_iters',
+                   'cost',
+                   'gap_norm',
+                   'constraint_norm',
+                   'joint_positions',
+                   'joint_velocities',
+                   'x_des',
+                   'tau',
+                   'tau_ff',
+                   'tau_gravity',
+                   'joint_torques_measured',
+                   'joint_cmd_torques',
+                   'lb', 
+                   'ub',
+                   'target_position_x',
+                   'target_position_y',
+                   'target_position_z']
