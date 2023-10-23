@@ -156,27 +156,6 @@ def plot_joint_traj(fig0, ax0, jmea, label):
     ax0.grid(True) 
     return fig0, ax0
 
-
-# if('circle_no_cstr' in PLOTS):
-#     # Circle no constraint
-#     p_mea = get_p_(r1.data['joint_positions'][N_start:N], pinrobot.model, pinrobot.model.getFrameId('contact'))
-#     fig0, ax0 = plot_endeff_yz(p_mea, target_position) 
-#     ax0.set_xlim(-0.33, +0.33)
-#     ax0.set_ylim(0.15, 0.8)
-#     ax0.plot(p_mea[0,1], p_mea[0,2], 'ro', markersize=16)
-#     ax0.text(0., 0.1, '$x_0$', fontdict={'size':26})
-#     # handles, labels = ax0.get_legend_handles_labels()
-#     # fig0.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-#     # fig0.savefig('/home/skleff/data_paper_CSSQP/no_cstr_circle_plot.pdf', bbox_inches="tight")
-#     # Joint pos
-#     jmea = r1.data['joint_positions'][N_start:N, 0]
-#     fig1, ax1 = plot_joint_traj(jmea) 
-#     ax1.set_ylim(-2., 2.)
-#     # handles, labels = ax.get_legend_handles_labels()
-#     # fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-#     # fig.savefig('/home/skleff/data_paper_CSSQP/no_cstr_q1_plot.pdf', bbox_inches="tight")
-
-
 # Circle joint pos constraint
 if('circle_cssqp_joint' in PLOTS and 'circle_ssqp' in PLOTS):
     # Circle
@@ -205,7 +184,7 @@ if('circle_cssqp_joint' in PLOTS and 'circle_ssqp' in PLOTS):
     fig_q, ax_q = plt.subplots(1, 1, figsize=(19.2,10.8))
     # Constraint 
     ax_q.plot(xdata, jlb, color='k', linewidth=LINEWIDTH, linestyle='--', label='Constraint', alpha=0.6)
-    ax_q.plot(xdata, jub, color='k', linewidth=LINEWIDTH, linestyle='--')
+    ax_q.plot(xdata, jub, color='k', linewidth=LINEWIDTH, linestyle='--', alpha=0.6)
     MAX = 100
     ax_q.axhspan(jub[0], MAX, -MAX, MAX, color='gray', alpha=0.2, lw=0)      
     ax_q.axhspan(-MAX, jlb[0], -MAX, MAX, color='gray', alpha=0.2, lw=0)    
