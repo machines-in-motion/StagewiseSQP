@@ -84,7 +84,8 @@ def create_kuka_problem(x0):
     Create shooting problem for kuka reaching task
     '''
     print("Create kuka problem ...")
-    robot = IiwaConfig.buildRobotWrapper()
+    iiwa_config = IiwaConfig()
+    robot       = iiwa_config.buildRobotWrapper()
     model = robot.model
     nq = model.nq; nv = model.nv
     # State and actuation model
@@ -170,7 +171,7 @@ def create_quadrotor_problem(x0):
 
 
 # Solver params
-MAXITER     = 100 
+MAXITER     = 500 
 TOL         = 1e-4 
 CALLBACKS   = False
 FILTER_SIZE = MAXITER
@@ -179,9 +180,9 @@ FILTER_SIZE = MAXITER
 SEED = 1 ; np.random.seed(SEED)
 N_samples = 100
 names = [
-    #    'Pendulum'] # maxiter = 500
-         'Kuka'] # maxiter = 100
-        #  'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
+       'Pendulum'] # maxiter = 500
+        #  'Kuka'] # maxiter = 100
+        # #  'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
         #  'Quadrotor'] # maxiter = 200
 
 N_pb = len(names)
@@ -252,7 +253,8 @@ for k,name in enumerate(names):
 # Initial state samples
 pendulum_x0_samples  = np.zeros((N_samples, 4))
 cartpole_x0_samples  = np.zeros((N_samples, 4))
-kuka                 = IiwaConfig.buildRobotWrapper()
+iiwa_config          = IiwaConfig()
+kuka                 = iiwa_config.buildRobotWrapper()
 kuka_x0_samples      = np.zeros((N_samples, kuka.model.nq + kuka.model.nv))
 quadrotor            = example_robot_data.load('hector') 
 humanoid             = example_robot_data.load('talos')
@@ -424,7 +426,7 @@ for k in range(N_pb):
     handles0, labels0 = ax0.get_legend_handles_labels()
     fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
     # Save, show , clean
-    # fig0.savefig('/home/skleff/data_paper_CSSQP/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
+    fig0.savefig('/home/skleff/data_sqp_paper_croc2/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
 
 
 # # Plot CV
