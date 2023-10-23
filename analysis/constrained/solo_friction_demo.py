@@ -4,11 +4,11 @@ import numpy as np
 import example_robot_data 
 from robot_properties_solo.solo12wrapper import Solo12Config
 import pinocchio as pin
-import standing_utils
-# import sobec
+import solo_friction_utils as solo_friction_utils
 
 import sys
 import mim_solvers
+
 
 pinRef        = pin.LOCAL_WORLD_ALIGNED
 FORCE_CSTR    = False
@@ -25,6 +25,7 @@ PLOT_1 = False
 PLOT_2 = False 
 PLOT_3 = True
 PLOT_4 = False
+
 
 robot_name = 'solo12'
 ee_frame_names = ['FL_FOOT', 'FR_FOOT', 'HL_FOOT', 'HR_FOOT']
@@ -132,12 +133,12 @@ for t in range(N_ocp+1):
         if(FORCE_CSTR):
             clip_force_min = np.array([-np.inf, -np.inf, -np.inf]*4)
             clip_force_max = np.array([np.inf, np.inf, np.inf]*4)
-            residualForce = standing_utils.ResidualForce3D(state, actuation.nu)
+            residualForce = solo_friction_utils.ResidualForce3D(state, actuation.nu)
             constraintForce = crocoddyl.ConstraintModelResidual(state, residualForce, clip_force_min, clip_force_max)
             constraintModelManager.addConstraint("force", constraintForce)
             n_cstr += 12
         if(FRICTION_CSTR):
-            residualFriction = standing_utils.ResidualFrictionCone(state, MU, actuation.nu)
+            residualFriction = solo_friction_utils.ResidualFrictionCone(state, MU, actuation.nu)
             constraintFriction = crocoddyl.ConstraintModelResidual(state, residualFriction, np.array([0.]*4), np.array([np.inf]*4))
             constraintModelManager.addConstraint("friction", constraintFriction)
             n_cstr += 4
@@ -174,7 +175,7 @@ if(SOLVE_OCP):
     xs = [x0]*(solver.problem.T + 1)
     us = solver.problem.quasiStatic([x0]*solver.problem.T) #[np.zeros(actuation.nu)]*solver.problem.T #solver.us #solver.problem.quasiStatic([x0]*solver.problem.T)
     solver.solve(xs, us, max_iter)   
-    solution = standing_utils.get_solution_trajectories(solver, rmodel, rdata, supportFeetIds, pinRefFrame=pinRef)
+    solution = solo_friction_utils.get_solution_trajectories(solver, rmodel, rdata, supportFeetIds, pinRefFrame=pinRef)
     q_sol = solution['jointPos']
     centroidal_sol = solution['centroidal']
     import pickle 
@@ -292,29 +293,29 @@ if(SOLVE_OCP):
         for contact_idx, contactLoc in enumerate(supportFeePos):
             t = contactLoc
             # debris box
-            standing_utils.addViewerBox(
+            solo_friction_utils.addViewerBox(
                 viz, 'world/debris'+str(contact_idx), 
                 2*s, 2*s, 0., [1., .2, .2, .5]
                 )
-            standing_utils.applyViewerConfiguration(
+            solo_friction_utils.applyViewerConfiguration(
                 viz, 'world/debris'+str(contact_idx), 
                 [t[0], t[1], t[2]-0.017, 1, 0, 0, 0]
                 )
-            standing_utils.applyViewerConfiguration(
+            solo_friction_utils.applyViewerConfiguration(
                 viz, 'world/debris_center'+str(contact_idx), 
                 [t[0], t[1], t[2]-0.017, 1, 0, 0, 0]
                 ) 
 
 
-        arrow1 = standing_utils.Arrow(viz.viewer, "force_1", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
-        arrow2 = standing_utils.Arrow(viz.viewer, "force_2", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
-        arrow3 = standing_utils.Arrow(viz.viewer, "force_3", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
-        arrow4 = standing_utils.Arrow(viz.viewer, "force_4", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+        arrow1 = solo_friction_utils.Arrow(viz.viewer, "force_1", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+        arrow2 = solo_friction_utils.Arrow(viz.viewer, "force_2", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+        arrow3 = solo_friction_utils.Arrow(viz.viewer, "force_3", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
+        arrow4 = solo_friction_utils.Arrow(viz.viewer, "force_4", location=[0,0,0], vector=[0,0,0.01], length_scale=0.05)
 
-        cone1 = standing_utils.Cone(viz.viewer, "friction_cone_1", location=supportFeePos[0], mu=MU)
-        cone2 = standing_utils.Cone(viz.viewer, "friction_cone_2", location=supportFeePos[1], mu=MU)
-        cone3 = standing_utils.Cone(viz.viewer, "friction_cone_3", location=supportFeePos[2], mu=MU)
-        cone4 = standing_utils.Cone(viz.viewer, "friction_cone_4", location=supportFeePos[3], mu=MU)
+        cone1 = solo_friction_utils.Cone(viz.viewer, "friction_cone_1", location=supportFeePos[0], mu=MU)
+        cone2 = solo_friction_utils.Cone(viz.viewer, "friction_cone_2", location=supportFeePos[1], mu=MU)
+        cone3 = solo_friction_utils.Cone(viz.viewer, "friction_cone_3", location=supportFeePos[2], mu=MU)
+        cone4 = solo_friction_utils.Cone(viz.viewer, "friction_cone_4", location=supportFeePos[3], mu=MU)
 
         arrows = [arrow1, arrow2, arrow3, arrow4]
         forces = []

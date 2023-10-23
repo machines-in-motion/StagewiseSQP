@@ -32,12 +32,12 @@ reset_rho: False
 # Constraints terms
 # to select from the list : 'stateBox', 'ctrlBox', 'translationBox', 'None'
 
-# #### FOR THE JOINT CONSTRAINT
-WHICH_CONSTRAINTS: ['stateBox']
-stateLowerLimit: [-0.05, -2.0944 , -2.96706, -2.0944 , -2.96706, -2.0944 , -3.05433,
-                  -1.48353, -1.48353, -1.74533, -1.309  , -2.26893, -2.35619, -2.35619] #'DEFAULT'
-stateUpperLimit: [0.05, 2.0944 , 2.96706, 2.0944 , 2.96706, 2.0944 , 3.05433,
-                  1.48353, 1.48353, 1.74533, 1.309  , 2.26893, 2.35619, 2.35619] #'DEFAULT'
+# # #### FOR THE JOINT CONSTRAINT
+# WHICH_CONSTRAINTS: ['stateBox']
+# stateLowerLimit: [-0.05, -2.0944 , -2.96706, -2.0944 , -2.96706, -2.0944 , -3.05433,
+#                   -1.48353, -1.48353, -1.74533, -1.309  , -2.26893, -2.35619, -2.35619] #'DEFAULT'
+# stateUpperLimit: [0.05, 2.0944 , 2.96706, 2.0944 , 2.96706, 2.0944 , 3.05433,
+#                   1.48353, 1.48353, 1.74533, 1.309  , 2.26893, 2.35619, 2.35619] #'DEFAULT'
 
 #### FOR THE HALF-PLANE CONSTRAINT
 WHICH_CONSTRAINTS: ['translationBox']
@@ -45,6 +45,8 @@ eeLowerLimit: [-10., 0., 0.]
 eeUpperLimit: [10., 10., 10.]
 eeConstraintFrameName: 'contact'
 
+# #### NO CONSTRAINT 
+# WHICH_CONSTRAINTS: ['None']
 
 # Cost function terms
 # to select from the list : 'stateReg', 'ctrlReg', 'ctrlRegGrav', 'stateLim', 'ctrlLim'

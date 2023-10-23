@@ -29,10 +29,10 @@ def solveOCP(q, v, solver, max_sqp_iter, max_qp_iter, target_reach, TASK_PHASE):
         for k in range( solver.problem.T ):
             solver.problem.runningModels[k].differential.costs.costs["translation"].active = True
             solver.problem.runningModels[k].differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-            solver.problem.runningModels[k].differential.costs.costs["translation"].weight = 30.
+            solver.problem.runningModels[k].differential.costs.costs["translation"].weight = 50.
         solver.problem.terminalModel.differential.costs.costs["translation"].active = True
         solver.problem.terminalModel.differential.costs.costs["translation"].cost.residual.reference = target_reach[k]
-        solver.problem.terminalModel.differential.costs.costs["translation"].weight = 30.
+        solver.problem.terminalModel.differential.costs.costs["translation"].weight = 50.
 
     solver.max_qp_iters = max_qp_iter
     solver.solve(xs_init, us_init, maxiter=max_sqp_iter, isFeasible=False)

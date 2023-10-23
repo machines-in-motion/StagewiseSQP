@@ -1,4 +1,5 @@
 import yaml
+import os
 
 from croco_mpc_utils.utils import CustomLogger, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT
 logger = CustomLogger(__name__, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT).logger
@@ -26,12 +27,12 @@ def is_valid_exp_name(EXP_NAME):
         logger.error("Error : config file name must be in "+str(SUPPORTED_EXPERIMENTS))
         
         
-def load_config_file(EXP_NAME):
+def load_config_file(EXP_NAME, path_prefix=''):
     '''
     Load YAML config file corresponding to an experiment name
     '''
     is_valid_exp_name(EXP_NAME)
-    config_path = 'config/'+EXP_NAME+".yml"
+    config_path = os.path.join(path_prefix, 'config/'+EXP_NAME+".yml")
     logger.debug("Opening config file "+str(config_path))
     with open(config_path) as f:
         data = yaml.load(f, Loader=yaml.FullLoader)

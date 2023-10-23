@@ -1,6 +1,12 @@
 import pinocchio as pin
 import numpy as np
-import meshcat
+try:
+    import meshcat
+    import meshcat.geometry as g
+    import meshcat.transformations as tf
+except:
+    print("You need to install meshcat.")
+    
 import crocoddyl
 
 
@@ -165,9 +171,7 @@ def get_solution_trajectories(solver, rmodel, rdata, supportFeetIds, pinRefFrame
     return sol    
 
 
-import numpy as np
-import meshcat.geometry as g
-import meshcat.transformations as tf
+
 
 class Arrow(object):
     def __init__(self, meshcat_vis, name, 

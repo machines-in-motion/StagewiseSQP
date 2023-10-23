@@ -21,7 +21,7 @@ model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
 
 # Load config file
 SIM           = False
-EXP_NAME      = 'circle_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
+EXP_NAME      = 'square_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
 config        = launch_utils.load_config_file(EXP_NAME)
 
 
@@ -33,8 +33,8 @@ if(SIM):
     data_name = 'square_cssqp_SIM_2023-10-20T17:25:45.051546_cssqp_best_filter=3' 
     
 else:
-    data_path = '/home/skleff/data_sqp_paper_croc2/constrained/circle/'
-    data_name = 'circle_cssqp_REAL_2023-10-23T15:47:09.350083_cssqp'
+    data_path = '/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/square/paper/'
+    data_name = 'square_cssqp_REAL_2023-10-23T17:54:23.590863_cssqp'
     
 r = DataReader(data_path+data_name+'.mds')
 N = r.data['absolute_time'].shape[0]

@@ -20,7 +20,7 @@ import launch_utils
 # Choose experiment, load config and import controller  #  
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 SIM           = False
-EXP_NAME      = 'circle_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
+EXP_NAME      = 'square_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
 config        = launch_utils.load_config_file(EXP_NAME)
 MPCController = launch_utils.import_mpc_controller(EXP_NAME)
     
@@ -80,7 +80,8 @@ thread_head.switch_controllers(ctrl)
 # # # # # # # # #
 # Data logging  #
 # # # # # # # # # <<<<<<<<<<<<< Choose data save path & log config here (cf. launch_utils)
-prefix     = "/home/skleff/data_sqp_paper_croc2/constrained/circle/"
+# prefix     = "/home/skleff/data_sqp_paper_croc2/constrained/circle/"
+prefix     = "/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/square/paper/"
 suffix     = "_"+config['SOLVER'] #+'_UNCONSTRAINED'
 LOG_FIELDS = launch_utils.get_log_config(EXP_NAME) 
 # print(LOG_FIELDS)
@@ -103,6 +104,6 @@ if SIM:
     thread_head.stop_logging()
 else:
     thread_head.start()
-    thread_head.start_logging(30, prefix+EXP_NAME+"_REAL_"+str(datetime.now().isoformat())+suffix+".mds", LOG_FIELDS=LOG_FIELDS)
+    thread_head.start_logging(50, prefix+EXP_NAME+"_REAL_"+str(datetime.now().isoformat())+suffix+".mds", LOG_FIELDS=LOG_FIELDS)
     
 thread_head.plot_timing() # <<<<<<<<<<<<< Comment out to skip timings plot
