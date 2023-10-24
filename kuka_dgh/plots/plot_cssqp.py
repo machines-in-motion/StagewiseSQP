@@ -122,7 +122,6 @@ p_des = get_p_(r.data['x_des'][:,:nq], pinrobot.model, pinrobot.model.getFrameId
 if(EXP_NAME == 'plane_cssqp'):
     target_position = r.data['target_position']
 else:
-else:
     target_position = np.zeros((N,3))
     target_position[:,0] = r.data['target_position_x'][:,0]
     target_position[:,1] = r.data['target_position_y'][:,0]
