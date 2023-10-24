@@ -91,7 +91,7 @@ from matplotlib.ticker import FuncFormatter
 from matplotlib import pyplot as plt
 
 def sci_format(x,lim):
-    return '{:.1e}'.format(x)
+    return '{:1.0e}'.format(x)
 
 major_formatter = FuncFormatter(sci_format)
 # ax.xaxis.set_major_formatter(major_formatter)
@@ -103,7 +103,7 @@ ax[0].plot(time_lin, r2.data['KKT'][N_START:N], label='FDDP',linewidth=LINEWIDTH
 ax[0].plot(time_lin, (N-N_START)*[config['solver_termination_tolerance']], label= 'Tolerance', linestyle='--', color='r', linewidth=LINEWIDTH, alpha=0.5)
 ax[0].set_ylim(0, 5e-4)
 ax[0].grid(linewidth=1)
-ax[0].set_ylabel('KKT residual norm', fontsize=26)
+ax[0].set_ylabel('KKT residual norm', fontsize=22)
 ax[0].tick_params(axis = 'y', labelsize=22)
 # ax[0].tick_params(axis = 'x', labelsize=22)
 ax[0].tick_params(labelbottom=False) 
@@ -117,10 +117,10 @@ ax[1].plot(time_lin, (N-N_START)*[config['maxiter']], label= 'Max. # iter.', lin
 ax[1].set_ylim(0, 6)
 ax[1].set_yticks([0, 1, 2, 3, 4, 5])
 ax[1].grid(linewidth=1)
-ax[1].set_ylabel('# iterations', fontsize=26)
+ax[1].set_ylabel('Number of iterations', fontsize=22)
 ax[1].tick_params(axis = 'y', labelsize=22)
 ax[1].tick_params(axis = 'x', labelsize=22)
-ax[1].set_xlabel('Time (s)', fontsize=26)
+ax[1].set_xlabel('Time (s)', fontsize=22)
 ax[1].set_xlim(time_lin[0], time_lin[-1])
 
 # Cost
