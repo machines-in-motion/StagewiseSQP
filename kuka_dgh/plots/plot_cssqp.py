@@ -33,8 +33,8 @@ if(SIM):
     data_name = 'square_cssqp_SIM_2023-10-20T17:25:45.051546_cssqp_best_filter=3' 
     
 else:
-    data_path = '/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/square/paper/'
-    data_name = 'square_cssqp_REAL_2023-10-23T17:54:23.590863_cssqp'
+    data_path = '/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/line/'
+    data_name = 'line_cssqp_REAL_2023-10-23T15:13:37.129836_cssqp'
     
 r = DataReader(data_path+data_name+'.mds')
 N = r.data['absolute_time'].shape[0]
@@ -121,6 +121,7 @@ p_mea = get_p_(r.data['joint_positions'], pinrobot.model, pinrobot.model.getFram
 p_des = get_p_(r.data['x_des'][:,:nq], pinrobot.model, pinrobot.model.getFrameId('contact'))
 if(EXP_NAME == 'plane_cssqp'):
     target_position = r.data['target_position']
+else:
 else:
     target_position = np.zeros((N,3))
     target_position[:,0] = r.data['target_position_x'][:,0]
