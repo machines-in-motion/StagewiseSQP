@@ -26,13 +26,13 @@ model.effortLimit = np.array([100, 100, 50, 50, 20, 10, 10])
 
 
 # Load config file & create data plotter 
-EXP_NAME  = 'line_cssqp'                                       # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
+EXP_NAME  = 'plane_cssqp'                                       # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
 config    = launch_utils.load_config_file(EXP_NAME)
 
 s         = SimpleDataPlotter(dt=1./config['ctrl_freq'])
-data_path = '/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/line/'
-# data_name = 'line_cssqp_REAL_2023-10-23T15:15:34.911408_cssqp_PUSH'
-data_name = 'line_cssqp_REAL_2023-10-23T15:13:37.129836_cssqp' # <<<<<<<<<<<<< Choose data file here 
+data_path = '/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/plane/'
+# data_name = 'plane_cssqp_REAL_2023-10-20T18:39:32.202714_cssqp_PUSH_PLANE1'
+data_name = 'plane_cssqp_REAL_2023-10-20T18:44:04.018319_cssqp_PUSH_PLANE2' # <<<<<<<<<<<<< Choose data file here 
 
 r         = DataReader(data_path+data_name+'.mds')
 N         = r.data['absolute_time'].shape[0]
@@ -44,13 +44,8 @@ logger.warning("N_START = "+str(N_START))
 
 # Extract measured, target positions and constraint bounds
 p_mea      = get_p_(r.data['joint_positions'][N_START:N], pinrobot.model, pinrobot.model.getFrameId('contact'))
-p_ref      = np.zeros((N-N_START,3))
-p_ref[:,0] = r.data['target_position_x'][N_START:N,0]
-p_ref[:,1] = r.data['target_position_y'][N_START:N,0]
-p_ref[:,2] = r.data['target_position_z'][N_START:N,0]
-p_lb      = r.data['lb'][-1] 
-p_ub      = r.data['ub'][-1]
-
+p_ref = r.data['target_position'][N_START:N]
+p_des = get_p_(r.data['x_des'][N_START:N,:nq], pinrobot.model, pinrobot.model.getFrameId('contact'))
 
 
 # Split trajectories 
@@ -63,8 +58,9 @@ logger.warning("time lin size (split) : "+str(time_lin_split.shape))
 
 p_mea_split = p_mea[::SPLIT]
 p_ref_split = p_ref[::SPLIT]
-p_lb_split = r.data['lb'][::SPLIT]
-p_ub_split = r.data['ub'][::SPLIT]
+p_des_split = p_des[::SPLIT]
+p_lb_split = r.data['ee_lb'][N_START:N][::SPLIT]
+p_ub_split = r.data['ee_ub'][N_START:N][::SPLIT]
 cstr_split = r.data['constraint_norm'][N_START:N][::SPLIT]
 
 # print(cstr_split)
@@ -89,7 +85,7 @@ LINEWIDTH = 6
 ax[0].grid(linewidth=1)
 ax[0].set_ylabel('Z (m)', fontsize=22)
 ax[0].tick_params(axis = 'y', labelsize=22)
-ax[0].set_ylim(0.1, 1.2)
+ax[0].set_ylim(0.2, 0.25)
 ax[0].tick_params(labelbottom=False) 
 # ax[0].set_yticks([0, 1, 2, 3, 4, 5])
 
@@ -104,18 +100,21 @@ ax[1].set_ylim(0, 1e-4)
 ax[1].yaxis.set_major_formatter(major_formatter)
 
 # Target z
-ax[0].plot(time_lin_split, p_ref_split[:,2], color='y', linewidth=LINEWIDTH, linestyle='-', label='Reference', alpha=1.) 
+ax[0].plot(time_lin_split, p_lb_split[:,2], color='k', linewidth=LINEWIDTH, linestyle='--', label='Constraint', alpha=0.6) 
+ax[0].plot(time_lin_split, p_ub_split[:,2], color='k', linewidth=LINEWIDTH, linestyle='--', alpha=0.6) 
 
 # plt.show()
 
 
 # Measured z
-line_mea, = ax[0].plot(time_lin_split[0:1], p_mea_split[0:1,2], animated=True, color='b', linewidth=6, label='Measured', alpha=0.6)
+line_mea, = ax[0].plot(time_lin_split[0:1], p_mea_split[0:1,2], animated=True, color='y', linewidth=6, label='Measured', alpha=0.6)
+line_pred, = ax[0].plot(time_lin_split[0:1], p_des_split[0:1,2], animated=True, color='b', linewidth=6, label='Predicted', alpha=0.6)
 # Constraint norm
 line_cstr, = ax[1].plot(time_lin_split[0:1], cstr_split[0:1], animated=True, color='g', linewidth=6, label='Constraint norm', alpha=0.6)
 # Stack animation objects
 objects = [
            line_mea, 
+           line_pred,
            line_cstr,
             ] 
 ax[0].legend(loc="upper left", framealpha=0.95, fontsize=26) 
@@ -151,7 +150,8 @@ def animate(t):
     
     mask = time_lin_split < t
     objects[0].set_data(time_lin_split[mask], p_mea_split[mask,2])
-    objects[1].set_data(time_lin_split[mask], cstr_split[mask])
+    objects[1].set_data(time_lin_split[mask], p_des_split[mask,2])
+    objects[2].set_data(time_lin_split[mask], cstr_split[mask])
     return objects
 
 # Create FuncAnimation object and plt.show() to show the updated animation
@@ -163,7 +163,7 @@ t0 = time.time()
 time_lin = np.linspace(0, T, N_FRAMES)
 ani = FuncAnimation(fig, animate, frames=time_lin, repeat=False, interval = SKIP, init_func = init, blit=True)
 folder = '/home/skleff/Videos/'
-ani.save(folder + 'line_cssqp_dynamic_plot.mp4') #, fps=PPS)
+ani.save(folder + 'plane_cssqp_dynamic_plot_push2.mp4') #, fps=PPS)
 
 
 print("COMPUTE TIME = ", time.time() - t0)
