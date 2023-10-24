@@ -145,8 +145,8 @@ def animate(t):
     if(t >= T_LINE):
         objects[1].set_data(np.array([0, 1]), np.array([p_lb[2], p_lb[2]])) 
         xy = np.array([[-MAX_XY  , -MAX_XY    ],
-                       [-MAX_XY  ,  0.26706195],
-                       [ MAX_XY  ,  0.26706195],
+                       [-MAX_XY  ,  p_lb[2]],
+                       [ MAX_XY  ,  p_lb[2]],
                        [ MAX_XY  , -MAX_XY    ],
                        [-MAX_XY  , -MAX_XY    ]])
         objects[2].set_xy(xy)

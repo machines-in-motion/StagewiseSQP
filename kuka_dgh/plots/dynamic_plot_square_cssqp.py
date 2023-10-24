@@ -30,8 +30,10 @@ EXP_NAME  = 'square_cssqp'                                       # <<<<<<<<<<<<<
 config    = launch_utils.load_config_file(EXP_NAME)
 
 s         = SimpleDataPlotter(dt=1./config['ctrl_freq'])
-data_path = '/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/square/paper/'
-data_name = 'square_cssqp_REAL_2023-10-23T17:54:23.590863_cssqp' # <<<<<<<<<<<<< Choose data file here 
+# data_path = '/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/square/paper/'
+# data_name = 'square_cssqp_REAL_2023-10-23T17:54:23.590863_cssqp' # <<<<<<<<<<<<< Choose data file here
+data_path = '/tmp/' 
+data_name = 'square_cssqp_REAL_2023-10-24T17:02:05.517926_cssqp'
 
 r         = DataReader(data_path+data_name+'.mds')
 N         = r.data['absolute_time'].shape[0]
@@ -135,7 +137,7 @@ T_UPPER = 27.05
 T_LEFT  = 35.02 
 
 
-
+# wegweg
 def init():
     """
     This init function defines the initial plot parameter
@@ -156,33 +158,33 @@ def animate(t):
     if(t >= T_LOWER):
         objects[1].set_data(np.array([0, 1]), np.array([p_lb[2], p_lb[2]])) 
         xy = np.array([[-MAX_XY  , -MAX_XY    ],
-                       [-MAX_XY  ,  0.26706195],
-                       [ MAX_XY  ,  0.26706195],
+                       [-MAX_XY  ,  p_lb[2]],
+                       [ MAX_XY  ,  p_lb[2]],
                        [ MAX_XY  , -MAX_XY    ],
                        [-MAX_XY  , -MAX_XY    ]])
         objects[2].set_xy(xy)
     if(t >= T_RIGHT): 
         objects[3].set_data(np.array([p_ub[1], p_ub[1]]), np.array([0, 1]))
-        xy = np.array([[ 0.28377327 , -MAX_XY ],
-                       [ 0.28377327 ,  MAX_XY ],
+        xy = np.array([[ p_ub[1] , -MAX_XY ],
+                       [ p_ub[1] ,  MAX_XY ],
                        [ MAX_XY     ,  MAX_XY ],
                        [ MAX_XY     , -MAX_XY ],
-                       [ 0.28377327 , -MAX_XY ]])
+                       [ p_ub[1] , -MAX_XY ]])
         objects[4].set_xy(xy)
     if(t >= T_UPPER): 
         objects[5].set_data(np.array([0, 1]), np.array([p_ub[2], p_ub[2]])) 
-        xy = np.array([[-MAX_XY , 0.8327474],
+        xy = np.array([[-MAX_XY , p_ub[2]],
                        [-MAX_XY , MAX_XY   ],
                        [ MAX_XY , MAX_XY   ],
-                       [ MAX_XY , 0.8327474],
-                       [-MAX_XY , 0.8327474]])
+                       [ MAX_XY , p_ub[2]],
+                       [-MAX_XY , p_ub[2]]])
         objects[6].set_xy(xy)
     if(t >= T_LEFT): 
         objects[7].set_data(np.array([p_lb[1], p_lb[1]]), np.array([0, 1]))  
         xy = np.array([[-MAX_XY     , -MAX_XY],
                        [-MAX_XY     ,  MAX_XY],
-                       [-0.28191215 ,  MAX_XY],
-                       [-0.28191215 , -MAX_XY],
+                       [-p_lb[1] ,  MAX_XY],
+                       [-p_lb[1] , -MAX_XY],
                        [-MAX_XY     , -MAX_XY]]) 
         objects[8].set_xy(xy)
         
