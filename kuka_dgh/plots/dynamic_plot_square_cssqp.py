@@ -32,8 +32,8 @@ config    = launch_utils.load_config_file(EXP_NAME)
 s         = SimpleDataPlotter(dt=1./config['ctrl_freq'])
 # data_path = '/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/square/paper/'
 # data_name = 'square_cssqp_REAL_2023-10-23T17:54:23.590863_cssqp' # <<<<<<<<<<<<< Choose data file here
-data_path = '/tmp/' 
-data_name = 'square_cssqp_REAL_2023-10-24T17:02:05.517926_cssqp'
+# data_path = '/tmp/' 
+# data_name = 'square_cssqp_REAL_2023-10-24T17:02:05.517926_cssqp'
 
 r         = DataReader(data_path+data_name+'.mds')
 N         = r.data['absolute_time'].shape[0]
