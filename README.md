@@ -1,17 +1,20 @@
 # Stagewise implementation of SQPs for OCP
 
-This is the repository that contains the python implementations of the sparse SQP designed for optimal control. The code base was used to generate the results discussed in the paper referenced before. 
+This is the repository that contains the code to generate the benchmarks of [paper]. It includes trajectory optimization scripts and the MPC scipts used in our hardware experiments. 
 
 ## Quick Overview of the code
 
-The two main solver variants in this repository are the
+The two main solver variants used in this repository are available in our optimal control solver library [mim_solvers](https://github.com/machines-in-motion/mim_solvers/tree/main) :
 1. **Stagewise SQP (SSQP)** : solver that is designed to solve unconstrained optimal control problems quickly. The implementation of the algorithm is in `python/sqp_ocp/solvers/ssqp.py` .
 2. **Constrained Stagewise SQP (CSSQP)** : solver that can handle constraints for OCPs by exploiting sparsity.  The implementation of the algorithm is in `python/sqp_ocp/solvers/cssqp.py` .
 
-Both these solvers are implementated by using Crocoddyl as the base software. Consquently, one can continue constructing problems as before using Crocoddyl and can choose to use these solvers to solve the problem. Examples of how to use the solvers are in the examples directory.
+## Dependencies
+- [mim_solvers](https://github.com/machines-in-motion/mim_solvers/tree/main) : C++/Python implementations of the aforementioned solvers
+- [crocoddyl](https://github.com/loco-3d/crocoddyl/tree/master) (>= 2.0) : library of tools for optimal control  
+- [croco_mpc_utils](https://github.com/machines-in-motion/croco_mpc_utils.git) : helpers for easy & modular prototyping using Crocoddyl
+- [pinocchio](https://github.com/stack-of-tasks/pinocchio) : rigid-body dynamics computations
 
-## Code Update  
-You need to compile [our branch of Crocoddyl 1.9](https://github.com/machines-in-motion/crocoddyl/tree/gnms) for now in order to reproduce our benchmarks and experiments. We will release soon a C++ implementation of these solvers compatible with Crocoddyl 2.0 in [mim_solvers](https://github.com/machines-in-motion/mim_solvers/tree/main). Please keep track of this repo for updates ! 
+TODO: separate dependencies for hardware experiments and for reproducing the benchmarks
 
 ## Maintainers 
 

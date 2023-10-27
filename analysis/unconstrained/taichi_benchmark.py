@@ -14,6 +14,7 @@ import crocoddyl
 import pinocchio as pin
 
 import example_robot_data
+import mim_solvers
 
 def create_humanoid_taichi_problem(target):
     '''
@@ -50,9 +51,9 @@ def create_humanoid_taichi_problem(target):
     # Create two contact models used along the motion
     contactModel1Foot = crocoddyl.ContactModelMultiple(state, actuation.nu)
     contactModel2Feet = crocoddyl.ContactModelMultiple(state, actuation.nu)
-    supportContactModelLeft = crocoddyl.ContactModel6D(state, leftFootId, pin.SE3.Identity(), actuation.nu,
+    supportContactModelLeft = crocoddyl.ContactModel6D(state, leftFootId, pin.SE3.Identity(), pin.LOCAL, actuation.nu,
                                                     np.array([0, 40]))
-    supportContactModelRight = crocoddyl.ContactModel6D(state, rightFootId, pin.SE3.Identity(), actuation.nu,
+    supportContactModelRight = crocoddyl.ContactModel6D(state, rightFootId, pin.SE3.Identity(), pin.LOCAL, actuation.nu,
                                                         np.array([0, 40]))
     contactModel1Foot.addContact(rightFoot + "_contact", supportContactModelRight)
     contactModel2Feet.addContact(leftFoot + "_contact", supportContactModelLeft)
@@ -176,7 +177,7 @@ for k,name in enumerate(names):
     pb = create_humanoid_taichi_problem(humanoid_x0) 
     
     # Create solver DDP (SS)
-    solverddp = crocoddyl.SolverDDP(pb)
+    solverddp = mim_solvers.SolverDDP(pb)
     solverddp.xs = [solverddp.problem.x0] * (solverddp.problem.T + 1)  
     solverddp.us = solverddp.problem.quasiStatic([solverddp.problem.x0] * solverddp.problem.T)
     solverddp.termination_tolerance = TOL
@@ -184,7 +185,7 @@ for k,name in enumerate(names):
     solversDDP.append(solverddp)
     
     # Create solver FDDP (MS)
-    solverfddp = crocoddyl.SolverFDDP(pb)
+    solverfddp = mim_solvers.SolverFDDP(pb)
     solverfddp.xs = [solverfddp.problem.x0] * (solverfddp.problem.T + 1)  
     solverfddp.us = solverfddp.problem.quasiStatic([solverfddp.problem.x0] * solverfddp.problem.T)
     solverfddp.termination_tolerance = TOL
@@ -192,7 +193,7 @@ for k,name in enumerate(names):
     solversFDDP.append(solverfddp)
 
     # Create solver FDDP_filter (MS)
-    solverfddp_filter = crocoddyl.SolverFDDP(pb)
+    solverfddp_filter = mim_solvers.SolverFDDP(pb)
     solverfddp_filter.xs = [solverfddp_filter.problem.x0] * (solverfddp_filter.problem.T + 1)  
     solverfddp_filter.us = solverfddp_filter.problem.quasiStatic([solverfddp_filter.problem.x0] * solverfddp_filter.problem.T)
     solverfddp_filter.termination_tolerance = TOL
@@ -202,7 +203,7 @@ for k,name in enumerate(names):
     solversFDDP_filter.append(solverfddp_filter)
 
     # Create solver SQP (MS)
-    solverSQP = crocoddyl.SolverGNMS(pb)
+    solverSQP = mim_solvers.SolverSQP(pb)
     solverSQP.xs = [solverSQP.problem.x0] * (solverSQP.problem.T + 1)  
     solverSQP.us = solverSQP.problem.quasiStatic([solverSQP.problem.x0] * solverSQP.problem.T)
     solverSQP.termination_tol = TOL
@@ -384,7 +385,7 @@ for k in range(N_pb):
     handles0, labels0 = ax0.get_legend_handles_labels()
     fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
     # Save, show , clean
-# fig0.savefig('/home/skleff/data_paper_CSSQP/bench_taichi_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+'.pdf', bbox_inches="tight")
+fig0.savefig('/home/skleff/data_sqp_paper_croc2/bench_taichi_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+'.pdf', bbox_inches="tight")
 
 plt.show()
 plt.close('all')
