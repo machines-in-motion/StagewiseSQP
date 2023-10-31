@@ -13,6 +13,8 @@ dt: 0.05                                             # OCP integration step
 N_h: 10                                              # Horizon length in nodes
 maxiter: 5                                           # Max number of iterations 
 solver_termination_tolerance: 0.0001                 # Tolerance on KKT residual 
+use_filter_line_search: True 
+filter_size: 5
 q0: [0., 1.0471975511965976, 0., -1.1344640137963142, 0.2,  0.7853981633974483, 0.]               # Initial robot joint configuration
 dq0: [0.,0.,0.,0.,0.,0.,0.]                         # Initial robot joint velocity
 

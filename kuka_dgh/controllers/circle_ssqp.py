@@ -96,9 +96,11 @@ class KukaCircleSSQP:
         elif(config['SOLVER'] == 'fddp'):
             logger.warning("Using the FDDP solver.")
             self.solver = mim_solvers.SolverFDDP(problem)
-        self.solver.regMax = 1e6
-        self.solver.reg_max = 1e6
-        self.solver.termination_tol = self.config['solver_termination_tolerance']
+        self.solver.regMax                 = 1e6
+        self.solver.reg_max                = 1e6
+        self.solver.termination_tol        = self.config['solver_termination_tolerance']
+        self.solver.use_filter_line_search = self.config['use_filter_line_search']
+        self.solver.filter_size            = self.config['filter_size']
         
         # Allocate MPC data
         self.K = self.solver.K[0]
