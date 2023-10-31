@@ -33,9 +33,10 @@ if(SIM):
     data_name = 'circle_ssqp_SIM_2023-10-18T14:17:41.165916_sqp' 
     
 else:
-    data_path = '/home/skleff/data_sqp_paper_croc2/unconstrained/'
+    data_path = 'data/unconstrained/'
+    # data_name = 'circle_ssqp_REAL_2023-10-23T15:42:18.612802_sqp'
     data_name = 'circle_ssqp_REAL_2023-10-23T15:45:07.463648_fddp'
-    
+                
 r       = DataReader(data_path+data_name+'.mds')
 N       = r.data['absolute_time'].shape[0]
 print("Total number of control cycles = ", N)
@@ -130,7 +131,7 @@ total_cost_list       = []
 N_START = int(config['T_CIRCLE']*config['ctrl_freq'])
 for index in range(N_START, N):
     state_mea = np.concatenate([r.data['joint_positions'][index,:], r.data['joint_velocities'][index,:]])
-    tau_mea   = r.data['tau_ff'][index, :] + r.data['tau_gravity'][index,:]
+    tau_mea   = r.data['tau_ff'][index, :]
     state_ref = np.array([0., 1.0471975511965976, 0., -1.1344640137963142, 0.2,  0.7853981633974483, 0, 0.,0.,0.,0.,0.,0.,0.])
     tau_ref   = r.data['tau_gravity'][index,:]
     
