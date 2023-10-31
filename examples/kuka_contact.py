@@ -106,12 +106,12 @@ qp_iters = 1000
 sqp_ites = 10
 eps_abs = 1e-8
 eps_rel = 0
-termination_tol = 1e-2
+termination_tolerance = 1e-2
 
 
 ddppy.eps_abs = eps_abs
 ddppy.eps_rel = eps_rel
-ddppy.termination_tol = termination_tol
+ddppy.termination_tolerance = termination_tolerance
 ddppy.verbose = True
 ddppy.solve(xs, us, qp_iters)
 

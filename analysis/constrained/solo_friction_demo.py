@@ -18,17 +18,17 @@ FRICTION_CSTR = True
 MU = 0.8     # friction coefficient
 
 SOLVE_OCP     = False   # solve the OCP 
-SAVE_OCP_SOL  = False   # save OCP solution
+SAVE_OCP_SOL  = True   # save OCP solution
 
 PLOT_OCP_SOL  = False   # plot OCP solution
 
-PLAY_OCP_SOL  = True    # animate OCP solution 
-SAVE_VIDEO    = True    # save the animation as mp4
+PLAY_OCP_SOL  = False    # animate OCP solution 
+SAVE_VIDEO    = False    # save the animation as mp4
 
 # Force plots (paper-ready)
 PLOT_1     = False
-PLOT_2     = False 
-PLOT_3     = False # <<<< plot used in the paper
+PLOT_2     = True # <<<< plot used in the paper (HL and FL)
+PLOT_3     = False 
 SAVE_PLOTS = False # save the plots
 
 robot_name = 'solo12'
@@ -169,7 +169,7 @@ if(FRICTION_CSTR):
 else:
     solver = mim_solvers.SolverSQP(ocp)
     max_iter = 500
-    solver.termination_tol = 1e-4
+    solver.termination_tolerance = 1e-4
     solver.with_callbacks = True
     solver.use_filter_ls = True
     solver.filter_size = max_iter

@@ -32,7 +32,7 @@ class CSSQP(StagewiseQP, QPSolvers):
 
         self.mu1 = 1e1
         self.mu2 = 1e1
-        self.termination_tol = 1e-8
+        self.termination_tolerance = 1e-8
         self.use_heuristic_ls = use_heuristic_ls
 
     def models(self):
@@ -195,7 +195,7 @@ class CSSQP(StagewiseQP, QPSolvers):
                         self.setCandidate(self.xs_try, self.us_try, False)
                         break
 
-            if self.KKT < self.termination_tol:
+            if self.KKT < self.termination_tolerance:
                 if self.verbose:
                     print("Converged")
                 break

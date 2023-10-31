@@ -79,7 +79,7 @@ for k,name in enumerate(names):
     solverSQP = crocoddyl.SolverSQP(pb)
     solverSQP.xs = [solverSQP.problem.x0] * (solverSQP.problem.T + 1)  
     solverSQP.us = solverSQP.problem.quasiStatic([solverSQP.problem.x0] * solverSQP.problem.T)
-    solverSQP.termination_tol        = TOL
+    solverSQP.termination_tolerance  = TOL
     solverSQP.use_filter_line_search = True
     solverSQP.filter_size            = MAXITER
     solverSQP.with_callbacks         = CALLBACKS

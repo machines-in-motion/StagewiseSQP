@@ -171,8 +171,8 @@ ddp0.VERBOSE = True
 ddp1.with_callbacks = True
 
 # Set tolerance 
-ddp0.termination_tol = 1e-8
-ddp1.termination_tol = 1e-8
+ddp0.termination_tolerance = 1e-8
+ddp1.termination_tolerance = 1e-8
 
 # Set filter size
 ddp0.filter_size = 10

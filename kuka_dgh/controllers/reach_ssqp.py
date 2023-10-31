@@ -89,7 +89,7 @@ class KukaReachSSQP:
             self.solver = mim_solvers.SolverFDDP(problem)
         self.solver.regMax = 1e6
         self.solver.reg_max = 1e6
-        self.solver.termination_tol = self.config['solver_termination_tolerance']
+        self.solver.termination_tolerance = self.config['solver_termination_tolerance']
 
     
         

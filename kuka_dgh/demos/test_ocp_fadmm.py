@@ -39,7 +39,7 @@ sqp_ites = 100
 ddp.with_callbacks = True
 ddp.use_filter_ls = True
 ddp.filter_size = 10
-ddp.termination_tol = 1e-3
+ddp.termination_tolerance = 1e-3
 ddp.warm_start = True
 ddp.max_qp_iters = qp_iters
 

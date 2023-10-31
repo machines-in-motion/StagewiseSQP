@@ -755,7 +755,7 @@ class WholeBodyDDPSolver:
             return ocp
             # self.solver = crocoddyl.SolverFDDP(ocp)#CSSQPCPP(ocp, VERBOSE=True)
             # # self.solver.with_callbacks = True
-            # self.solver.termination_tol = 1e-4
+            # self.solver.termination_tolerance = 1e-4
             # self.solver.setCallbacks([crocoddyl.CallbackLogger(),
             #                         crocoddyl.CallbackVerbose()])     
     
