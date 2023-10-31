@@ -101,7 +101,7 @@ class KukaSquareCSSQP:
             self.solver = mim_solvers.SolverCSQP(problem)
             
         self.solver.with_callbacks  = self.config['with_callbacks']
-        self.solver.use_filter_ls   = self.config['use_filter_ls']
+        self.solver.use_filter_line_search   = self.config['use_filter_line_search']
         self.solver.filter_size     = self.config['filter_size']
         self.solver.warm_start      = self.config['warm_start']
         self.solver.termination_tolerance = self.config['solver_termination_tolerance']
