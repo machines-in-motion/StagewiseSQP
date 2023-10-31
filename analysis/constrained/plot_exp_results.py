@@ -33,9 +33,9 @@ config        = launch_utils.load_config_file(EXP_NAME, path_prefix=KUKA_DGH_PAT
 
 PLOTS = [
             'circle_ssqp',
-            'circle_cssqp_joint',
+            # 'circle_cssqp_joint',
             
-            # 'circle_cssqp_ee',
+            'circle_cssqp_ee',
             
             # 'square_cssqp',
             
@@ -77,8 +77,9 @@ if('circle_cssqp_joint' in PLOTS):
 # Cicle with EE half-plane constraint (paper only)
 if('circle_cssqp_ee' in PLOTS):
     print("Extract circle_cssqp_ee data...")
-    # r3 = DataReader(DATA_PATH+'/constrained/circle/ee_cstr/circle_cssqp_REAL_2023-10-23T16:23:11.176689_cssqp.mds')  
-    r3 = DataReader(DATA_PATH+'/constrained/circle/ee_cstr/circle_cssqp_REAL_2023-10-23T17:22:23.308797_cssqp.mds')  
+    # r3 = DataReader(DATA_PATH+'/constrained/circle/ee_cstr/no_filter/circle_cssqp_REAL_2023-10-23T16:23:11.176689_cssqp.mds')  
+    # r3 = DataReader(DATA_PATH+'/constrained/circle/ee_cstr/no_filter/circle_cssqp_REAL_2023-10-23T17:22:23.308797_cssqp.mds')  
+    r3 = DataReader(DATA_PATH+'/constrained/circle/ee_cstr/circle_cssqp_REAL_2023-10-31T18:24:51.498595_cssqp.mds')  
     rs.append(r3) 
     T_START         = 5.
     N = r3.data['absolute_time'].shape[0]
