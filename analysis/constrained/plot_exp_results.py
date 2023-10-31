@@ -55,7 +55,8 @@ SAVE_PATH = '/tmp' # <<<<<<< EDIT SAVE PATH HERE
 # Circle without constraint (paper only)
 if('circle_ssqp' in PLOTS):
     logger.info("Extract circle_no_cstr data...")
-    r1 = DataReader(DATA_PATH+'/constrained/circle/joint_cstr/circle_cssqp_REAL_2023-10-23T16:53:14.202764_cssqp_UNCONSTRAINED.mds') 
+    # r1 = DataReader(DATA_PATH+'/constrained/circle/joint_cstr/no_filter/circle_cssqp_REAL_2023-10-23T16:53:14.202764_cssqp_UNCONSTRAINED.mds') 
+    r1 = DataReader(DATA_PATH+'/constrained/circle/joint_cstr/circle_cssqp_REAL_2023-10-31T18:00:11.433182_cssqp_UNCONSTRAINED.mds') 
     rs.append(r1)
     T_START         = 5.
     N = r1.data['absolute_time'].shape[0]
@@ -65,7 +66,8 @@ if('circle_ssqp' in PLOTS):
 # Cicle with joint 1 position constraint
 if('circle_cssqp_joint' in PLOTS):
     logger.info("Extract circle_cssqp_joint data...") 
-    r2 = DataReader(DATA_PATH+'/constrained/circle/joint_cstr/circle_cssqp_REAL_2023-10-23T15:47:09.350083_cssqp.mds')   
+    # r2 = DataReader(DATA_PATH+'/constrained/circle/joint_cstr/no_filter/circle_cssqp_REAL_2023-10-23T15:47:09.350083_cssqp.mds')   
+    r2 = DataReader(DATA_PATH+'/constrained/circle/joint_cstr/circle_cssqp_REAL_2023-10-31T18:08:55.365409_cssqp.mds')   
     rs.append(r2) 
     T_START         = 5.
     N = r2.data['absolute_time'].shape[0]
@@ -189,7 +191,7 @@ if('circle_cssqp_joint' in PLOTS and 'circle_ssqp' in PLOTS):
     ax_q.axhspan(jub[0], MAX, -MAX, MAX, color='gray', alpha=0.2, lw=0)      
     ax_q.axhspan(-MAX, jlb[0], -MAX, MAX, color='gray', alpha=0.2, lw=0)    
     plot_joint_traj(fig_q, ax_q, jmea2, 'Constrained')  
-    ax_q.set_ylim(-0.75, 0.75)
+    ax_q.set_ylim(-0.5, 0.75)
     ax_q.set_xlim(0., (N-N_START)/config['ctrl_freq'])
     ax_q.plot(xdata, jmea1, color='g', linewidth=LINEWIDTH, label='Unconstrained', alpha=0.5) 
     handles, labels = ax_q.get_legend_handles_labels()
