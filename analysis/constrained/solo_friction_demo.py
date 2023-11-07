@@ -161,7 +161,7 @@ if(FRICTION_CSTR):
     solver.max_qp_iters = 1000
     max_iter = 500
     solver.with_callbacks = True
-    solver.use_filter_ls = True
+    solver.use_filter_line_search = True
     solver.filter_size = max_iter
     solver.termination_tolerance = 1e-4
     solver.eps_abs = 1e-6
@@ -171,9 +171,8 @@ else:
     max_iter = 500
     solver.termination_tolerance = 1e-4
     solver.with_callbacks = True
-    solver.use_filter_ls = True
+    solver.use_filter_line_search = True
     solver.filter_size = max_iter
-solver.KKT = True
 
 # Solve OCP (optionally dump solution in a file)
 if(SOLVE_OCP):   

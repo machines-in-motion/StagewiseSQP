@@ -190,6 +190,7 @@ for k,name in enumerate(names):
     solverfddp.xs = [solverfddp.problem.x0] * (solverfddp.problem.T + 1)  
     solverfddp.us = solverfddp.problem.quasiStatic([solverfddp.problem.x0] * solverfddp.problem.T)
     solverfddp.termination_tolerance = TOL
+    solverfddp.use_filter_line_search = False
     if(CALLBACKS): solverfddp.setCallbacks([crocoddyl.CallbackVerbose()])
     solversFDDP.append(solverfddp)
 
