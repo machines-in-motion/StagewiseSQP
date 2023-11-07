@@ -166,7 +166,7 @@ KKT_COND  = True
 
 solverSQP = crocoddyl.SolverSQP(problem)
 # solverSQP = CSSQPCPP(problem)
-# solverSQP.termination_tol = TOL
+# solverSQP.termination_tolerance = TOL
 # solverSQP.VERBOSE = CALLBACKS
 solverSQP.termination_tolerance = TOL
 solverSQP.with_callbacks = CALLBACKS

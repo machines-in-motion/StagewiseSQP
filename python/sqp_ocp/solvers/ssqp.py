@@ -32,7 +32,7 @@ class SSQP(SolverAbstract):
         self.regMax = 1e9
         self.regMin = 1e-9
         self.mu = 1e0
-        self.termination_tol = 1e-8
+        self.termination_tolerance = 1e-8
         self.use_heuristic_ls = use_heuristic_ls
 
         self.VERBOSE = VERBOSE
@@ -261,7 +261,7 @@ class SSQP(SolverAbstract):
             # print("grad norm", self.x_grad_norm + self.u_grad_norm)
             # if abs(self.merit - self.merit_old) < 1e-4:
             # if self.x_grad_norm + self.u_grad_norm < 1e-4:
-            if self.KKT < self.termination_tol:
+            if self.KKT < self.termination_tolerance:
                 if(self.VERBOSE):
                     print("KKT condition reached")
                     print("Terminated", "Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm, "step length", alpha)

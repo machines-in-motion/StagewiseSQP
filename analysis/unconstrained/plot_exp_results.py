@@ -35,11 +35,13 @@ DATA_PATH = os.path.join(KUKA_DGH_PATH, 'data')
 SAVE_PATH = '/tmp' # <<<<<<< EDIT SAVE PATH HERE
 
 logger.info("Extract SQP data...")
-r1 = DataReader(DATA_PATH+'/unconstrained/circle_ssqp_REAL_2023-10-23T15:42:18.612802_sqp.mds') 
+r1 = DataReader(DATA_PATH+'/unconstrained/circle_ssqp_REAL_2023-10-31T16:45:47.050199_sqp.mds') 
+# r1 = DataReader(DATA_PATH+'/unconstrained/circle_ssqp_REAL_2023-10-23T15:42:18.612802_sqp.mds') 
 # r1 = DataReader(DATA_PATH+'/unconstrained/old/circle_ssqp_REAL_2023-10-19T16:41:31.062488_sqp.mds')  # old data
 
 logger.info("Extract FDDP data...")
-r2 = DataReader(DATA_PATH+'/unconstrained/circle_ssqp_REAL_2023-10-23T15:45:07.463648_fddp.mds') 
+r2 = DataReader(DATA_PATH+'/unconstrained/circle_ssqp_REAL_2023-10-31T17:06:02.992743_fddp.mds') 
+# r2 = DataReader(DATA_PATH+'/unconstrained/circle_ssqp_REAL_2023-10-23T15:45:07.463648_fddp.mds') 
 # r2 = DataReader(DATA_PATH+'/unconstrained/old/circle_ssqp_REAL_2023-10-19T16:39:49.624312_fddp.mds') # old data
 N       = min(r1.data['absolute_time'].shape[0], r2.data['absolute_time'].shape[0])
 N_START = int(config['T_CIRCLE']*config['ctrl_freq'])

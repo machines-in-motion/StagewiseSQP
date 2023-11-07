@@ -32,12 +32,12 @@ EXP_NAME      = 'square_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launc
 config        = launch_utils.load_config_file(EXP_NAME, path_prefix=KUKA_DGH_PATH)
 
 PLOTS = [
-            'circle_ssqp',
-            'circle_cssqp_joint',
+            # 'circle_ssqp',
+            # 'circle_cssqp_joint',
             
             # 'circle_cssqp_ee',
             
-            # 'square_cssqp',
+            'square_cssqp',
             
             # 'line_cssqp',
             # 'plane_cssqp'
@@ -55,7 +55,8 @@ SAVE_PATH = '/tmp' # <<<<<<< EDIT SAVE PATH HERE
 # Circle without constraint (paper only)
 if('circle_ssqp' in PLOTS):
     logger.info("Extract circle_no_cstr data...")
-    r1 = DataReader(DATA_PATH+'/constrained/circle/joint_cstr/circle_cssqp_REAL_2023-10-23T16:53:14.202764_cssqp_UNCONSTRAINED.mds') 
+    # r1 = DataReader(DATA_PATH+'/constrained/circle/joint_cstr/no_filter/circle_cssqp_REAL_2023-10-23T16:53:14.202764_cssqp_UNCONSTRAINED.mds') 
+    r1 = DataReader(DATA_PATH+'/constrained/circle/joint_cstr/circle_cssqp_REAL_2023-10-31T18:00:11.433182_cssqp_UNCONSTRAINED.mds') 
     rs.append(r1)
     T_START         = 5.
     N = r1.data['absolute_time'].shape[0]
@@ -65,7 +66,8 @@ if('circle_ssqp' in PLOTS):
 # Cicle with joint 1 position constraint
 if('circle_cssqp_joint' in PLOTS):
     logger.info("Extract circle_cssqp_joint data...") 
-    r2 = DataReader(DATA_PATH+'/constrained/circle/joint_cstr/circle_cssqp_REAL_2023-10-23T15:47:09.350083_cssqp.mds')   
+    # r2 = DataReader(DATA_PATH+'/constrained/circle/joint_cstr/no_filter/circle_cssqp_REAL_2023-10-23T15:47:09.350083_cssqp.mds')   
+    r2 = DataReader(DATA_PATH+'/constrained/circle/joint_cstr/circle_cssqp_REAL_2023-10-31T18:08:55.365409_cssqp.mds')   
     rs.append(r2) 
     T_START         = 5.
     N = r2.data['absolute_time'].shape[0]
@@ -75,8 +77,9 @@ if('circle_cssqp_joint' in PLOTS):
 # Cicle with EE half-plane constraint (paper only)
 if('circle_cssqp_ee' in PLOTS):
     print("Extract circle_cssqp_ee data...")
-    # r3 = DataReader(DATA_PATH+'/constrained/circle/ee_cstr/circle_cssqp_REAL_2023-10-23T16:23:11.176689_cssqp.mds')  
-    r3 = DataReader(DATA_PATH+'/constrained/circle/ee_cstr/circle_cssqp_REAL_2023-10-23T17:22:23.308797_cssqp.mds')  
+    # r3 = DataReader(DATA_PATH+'/constrained/circle/ee_cstr/no_filter/circle_cssqp_REAL_2023-10-23T16:23:11.176689_cssqp.mds')  
+    # r3 = DataReader(DATA_PATH+'/constrained/circle/ee_cstr/no_filter/circle_cssqp_REAL_2023-10-23T17:22:23.308797_cssqp.mds')  
+    r3 = DataReader(DATA_PATH+'/constrained/circle/ee_cstr/circle_cssqp_REAL_2023-10-31T18:24:51.498595_cssqp.mds')  
     rs.append(r3) 
     T_START         = 5.
     N = r3.data['absolute_time'].shape[0]
@@ -87,7 +90,8 @@ if('circle_cssqp_ee' in PLOTS):
 if('square_cssqp' in PLOTS):
     print("Extract square_cssqp data...")  
     # r4 = DataReader(DATA_PATH+'/constrained/square/video/square_cssqp_REAL_2023-10-20T17:55:11.345520_cssqp.mds')  
-    r4 = DataReader(DATA_PATH+'/constrained/square/paper/square_cssqp_REAL_2023-10-23T17:54:23.590863_cssqp.mds')  
+    # r4 = DataReader(DATA_PATH+'/constrained/square/paper/no_filter/square_cssqp_REAL_2023-10-23T17:54:23.590863_cssqp.mds')
+    r4 = DataReader(DATA_PATH+'/constrained/square/paper/square_cssqp_REAL_2023-10-31T18:32:00.153558_cssqp.mds')
     rs.append(r4) 
     T_START         = 33.
     N = r4.data['absolute_time'].shape[0]
@@ -189,7 +193,7 @@ if('circle_cssqp_joint' in PLOTS and 'circle_ssqp' in PLOTS):
     ax_q.axhspan(jub[0], MAX, -MAX, MAX, color='gray', alpha=0.2, lw=0)      
     ax_q.axhspan(-MAX, jlb[0], -MAX, MAX, color='gray', alpha=0.2, lw=0)    
     plot_joint_traj(fig_q, ax_q, jmea2, 'Constrained')  
-    ax_q.set_ylim(-0.75, 0.75)
+    ax_q.set_ylim(-0.5, 0.75)
     ax_q.set_xlim(0., (N-N_START)/config['ctrl_freq'])
     ax_q.plot(xdata, jmea1, color='g', linewidth=LINEWIDTH, label='Unconstrained', alpha=0.5) 
     handles, labels = ax_q.get_legend_handles_labels()

@@ -33,8 +33,8 @@ if(SIM):
     data_name = 'square_cssqp_SIM_2023-10-20T17:25:45.051546_cssqp_best_filter=3' 
     
 else:
-    data_path = '/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/line/'
-    data_name = 'line_cssqp_REAL_2023-10-23T15:13:37.129836_cssqp'
+    data_path = '/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/square/paper/no_filter/'
+    data_name = 'square_cssqp_REAL_2023-10-23T17:54:23.590863_cssqp' 
     
 r = DataReader(data_path+data_name+'.mds')
 N = r.data['absolute_time'].shape[0]

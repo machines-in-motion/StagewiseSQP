@@ -33,10 +33,10 @@ if(SIM):
     data_name = 'circle_ssqp_SIM_2023-10-18T14:17:41.165916_sqp' 
     
 else:
-    data_path = 'data/unconstrained/'
-    # data_name = 'circle_ssqp_REAL_2023-10-23T15:42:18.612802_sqp'
-    data_name = 'circle_ssqp_REAL_2023-10-23T15:45:07.463648_fddp'
-                
+    data_path = 'data/unconstrained/new/'
+    data_name = 'circle_ssqp_REAL_2023-10-31T17:06:02.992743_fddp' 
+    # data_name = 'circle_ssqp_REAL_2023-10-31T16:45:47.050199_sqp' 
+
 r       = DataReader(data_path+data_name+'.mds')
 N       = r.data['absolute_time'].shape[0]
 print("Total number of control cycles = ", N)

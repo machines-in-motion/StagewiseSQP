@@ -175,6 +175,7 @@ MAXITER     = 500
 TOL         = 1e-4 
 CALLBACKS   = False
 FILTER_SIZE = MAXITER
+SAVE        = False # Save figure 
 
 # Benchmark params
 SEED = 1 ; np.random.seed(SEED)
@@ -242,7 +243,7 @@ for k,name in enumerate(names):
     solverSQP = mim_solvers.SolverSQP(pb)
     solverSQP.xs = [solverSQP.problem.x0] * (solverSQP.problem.T + 1)  
     solverSQP.us = solverSQP.problem.quasiStatic([solverSQP.problem.x0] * solverSQP.problem.T)
-    solverSQP.termination_tol        = TOL
+    solverSQP.termination_tolerance  = TOL
     solverSQP.use_filter_line_search = True
     solverSQP.filter_size            = MAXITER
     solverSQP.with_callbacks         = CALLBACKS
@@ -426,7 +427,8 @@ for k in range(N_pb):
     handles0, labels0 = ax0.get_legend_handles_labels()
     fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
     # Save, show , clean
-    fig0.savefig('/home/skleff/data_sqp_paper_croc2/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
+    if(SAVE):
+        fig0.savefig('/home/skleff/data_sqp_paper_croc2/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
 
 
 # # Plot CV

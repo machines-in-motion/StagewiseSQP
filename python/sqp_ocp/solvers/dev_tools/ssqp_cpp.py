@@ -15,7 +15,7 @@ class SSQPCPP(SolverFDDP):
         
         SolverFDDP.__init__(self, shootingProblem)
         self.mu = 1e0
-        self.termination_tol = 1e-8
+        self.termination_tolerance = 1e-8
         self.VERBOSE = VERBOSE
         self.use_filter_ls = use_filter_ls
         self.filter_size = 10 #maxiter
@@ -37,7 +37,7 @@ class SSQPCPP(SolverFDDP):
             self.KKT_check()
             if(self.VERBOSE):
                 print("KKT ", self.KKT)
-            if self.KKT < self.termination_tol:
+            if self.KKT < self.termination_tolerance:
                 if(self.VERBOSE):
                     print("Terminated -- KKT condition reached")
                     print("Total merit", self.merit, "Total cost", self.cost, "gap norms", self.gap_norm)
