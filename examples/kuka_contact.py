@@ -1,17 +1,8 @@
-### Kuka reaching with force constraints
-
-import pathlib
-import os
-python_path = pathlib.Path('.').absolute().parent/'python'
-os.sys.path.insert(1, str(python_path))
-
 import crocoddyl
-import pinocchio
+import pinocchio as pin
 import numpy as np
-np.set_printoptions(precision=4, linewidth=180)
+import mim_solvers
 import pin_utils, ocp_utils
-from sqp_ocp.constraint_model import Force6DConstraintModel, NoConstraintModel
-from sqp_ocp.solvers import CSSQP
 
 # # # # # # # # # # # # #
 ### LOAD ROBOT MODEL  ###
@@ -49,7 +40,8 @@ contactModel = crocoddyl.ContactModelMultiple(state, actuation.nu)
 contact_frame_id = model.getFrameId("contact")
 contact_position = robot.data.oMf[contact_frame_id].copy()
 baumgarte_gains  = np.array([0., 50.])
-contact3d = crocoddyl.ContactModel6D(state, contact_frame_id, contact_position, baumgarte_gains) 
+pinRef           = pin.LOCAL_WORLD_ALIGNED
+contact3d = crocoddyl.ContactModel6D(state, contact_frame_id, contact_position, pinRef, nu, baumgarte_gains) 
 
 # Populate contact model with contacts
 contactModel.addContact("contact", contact3d, active=True)
@@ -64,7 +56,7 @@ xResidual = crocoddyl.ResidualModelState(state, x0)
 xRegCost = crocoddyl.CostModelResidual(state, xResidual)
   # End-effector frame force cost
 desired_wrench = np.array([20., 0., -100., 0., 0., 0.])
-frameForceResidual = crocoddyl.ResidualModelContactForce(state, contact_frame_id, pinocchio.Force(desired_wrench), 6, actuation.nu)
+frameForceResidual = crocoddyl.ResidualModelContactForce(state, contact_frame_id, pin.Force(desired_wrench), 6, actuation.nu)
 contactForceCost = crocoddyl.CostModelResidual(state, frameForceResidual)
 
 # Populate cost models with cost terms
@@ -73,9 +65,21 @@ runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
 runningCostModel.addCost("force", contactForceCost, 10.)
 terminalCostModel.addCost("stateReg", xRegCost, 1e-2)
 
+# Constraint model
+Fmin = np.array([0., -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
+Fmax = np.array([0., np.inf, np.inf, np.inf, np.inf, np.inf])
+
+forceResidual = crocoddyl.ResidualModelContactForce(state, contact_frame_id, pin.Force(np.zeros(6)), 6, actuation.nu)
+forcebound_contraint = crocoddyl.ConstraintModelResidual(
+    state, forceResidual, Fmin, Fmax
+)
+constraints = crocoddyl.ConstraintModelManager(state, nu)
+constraints.addConstraint("force_constraint", forcebound_contraint)
+terminal_constraint = crocoddyl.ConstraintModelManager(state, nu)
+
 # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
-running_DAM = crocoddyl.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel, runningCostModel, inv_damping=0., enable_force=True)
-terminal_DAM = crocoddyl.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel, terminalCostModel, inv_damping=0., enable_force=True)
+running_DAM = crocoddyl.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel, runningCostModel, constraints, inv_damping=0., enable_force=True)
+terminal_DAM = crocoddyl.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel, terminalCostModel, terminal_constraint, inv_damping=0., enable_force=True)
 
 # Create Integrated Action Model (IAM), i.e. Euler integration of continuous dynamics and cost
 dt = 1e-2
@@ -87,44 +91,24 @@ T = 10
 problem = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
 
 
-# Constraint model
 
 
-Fmin = np.array([0., -np.inf, -np.inf, -np.inf, -np.inf, -np.inf])
-Fmax = np.array([0., np.inf, np.inf, np.inf, np.inf, np.inf])
-constraintModels = [Force6DConstraintModel(state, nu, Fmin, Fmax, "force")] * T + [NoConstraintModel(state, nu, "none")]
 
+# Define Solver
+solver = mim_solvers.SolverCSQP(problem)
+solver.termination_tolerance = 1e-2
+solver.with_callbacks = True
 
-ddppy = CSSQP(problem, constraintModels, "StagewiseQP")
-
+# Warm start
 xs = [x0 for i in range(T+1)]
-us = ddppy.problem.quasiStatic(xs[:-1])
+us = solver.problem.quasiStatic(xs[:-1])
 
 # Solve
-
-qp_iters = 1000
 sqp_ites = 10
-eps_abs = 1e-8
-eps_rel = 0
-termination_tolerance = 1e-2
+solver.solve(xs, us, sqp_ites)
 
-
-ddppy.eps_abs = eps_abs
-ddppy.eps_rel = eps_rel
-ddppy.termination_tolerance = termination_tolerance
-ddppy.verbose = True
-ddppy.solve(xs, us, qp_iters)
-
-print(100*"*")
 
 # Extract DDP data and plot
 ddp_data = {}
-ddp_data = ocp_utils.extract_ocp_data(ddppy, ee_frame_name='contact', ct_frame_name='contact')
-
+ddp_data = ocp_utils.extract_ocp_data(solver, ee_frame_name='contact', ct_frame_name='contact')
 ocp_utils.plot_ocp_results(ddp_data, which_plots='all', labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
-
-
-
-# Display solution in Gepetto Viewer
-display = crocoddyl.GepettoDisplay(robot, frameNames=['contact'])
-display.displayFromSolver(ddppy, factor=1)
