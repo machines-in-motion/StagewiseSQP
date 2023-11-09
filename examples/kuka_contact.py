@@ -2,15 +2,15 @@ import crocoddyl
 import pinocchio as pin
 import numpy as np
 import mim_solvers
-import pin_utils, ocp_utils
+from croco_mpc_utils.ocp_data import OCPDataHandlerClassical
 
 # # # # # # # # # # # # #
 ### LOAD ROBOT MODEL  ###
 # # # # # # # # # # # # #
 
 # Or use robot_properties_kuka 
-from robot_properties_kuka.config import IiwaConfig
-robot = IiwaConfig.buildRobotWrapper()
+from mim_robots.robot_loader import load_pinocchio_wrapper
+robot = load_pinocchio_wrapper('iiwa')
 
 model = robot.model
 nq = model.nq; nv = model.nv; nu = nq; nx = nq+nv
@@ -48,13 +48,13 @@ contactModel.addContact("contact", contact3d, active=True)
 
 
 # Create cost terms 
-  # Control regularization cost
+# Control regularization cost
 uResidual = crocoddyl.ResidualModelContactControlGrav(state)
 uRegCost = crocoddyl.CostModelResidual(state, uResidual)
-  # State regularization cost
+# State regularization cost
 xResidual = crocoddyl.ResidualModelState(state, x0)
 xRegCost = crocoddyl.CostModelResidual(state, xResidual)
-  # End-effector frame force cost
+# End-effector frame force cost
 desired_wrench = np.array([20., 0., -100., 0., 0., 0.])
 frameForceResidual = crocoddyl.ResidualModelContactForce(state, contact_frame_id, pin.Force(desired_wrench), 6, actuation.nu)
 contactForceCost = crocoddyl.CostModelResidual(state, frameForceResidual)
@@ -109,6 +109,6 @@ solver.solve(xs, us, sqp_ites)
 
 
 # Extract DDP data and plot
-ddp_data = {}
-ddp_data = ocp_utils.extract_ocp_data(solver, ee_frame_name='contact', ct_frame_name='contact')
-ocp_utils.plot_ocp_results(ddp_data, which_plots='all', labels=None, markers=['.'], colors=['b'], sampling_plot=1, SHOW=True)
+ocp_dh   = OCPDataHandlerClassical(problem)
+ocp_data = ocp_dh.extract_data(solver.xs, solver.us)
+ocp_dh.plot_ocp_results(ocp_data, markers=['.'], SHOW=True)

@@ -1,7 +1,7 @@
 import crocoddyl
 import numpy as np
 import mim_solvers
-import ocp_utils
+from croco_mpc_utils.ocp_data import OCPDataHandlerClassical
 
 
 # # # # # # # # # # # # #
@@ -9,9 +9,8 @@ import ocp_utils
 # # # # # # # # # # # # #
 
 # Or use robot_properties_kuka
-from robot_properties_kuka.config import IiwaConfig
-
-robot = IiwaConfig.buildRobotWrapper()
+from mim_robots.robot_loader import load_pinocchio_wrapper
+robot = load_pinocchio_wrapper("iiwa")
 
 model = robot.model
 nq = model.nq
@@ -118,15 +117,7 @@ solver.filter_size = max_iter
 # Solve
 solver.solve(xs, us, max_iter)
 
-
-# Extract DDP data and plot
-data = ocp_utils.extract_ocp_data(solver, ee_frame_name="contact")
-ocp_utils.plot_ocp_results(
-    data,
-    which_plots="all",
-    labels=None,
-    markers=["."],
-    colors=["b"],
-    sampling_plot=1,
-    SHOW=True,
-)
+# Plotting
+ocp_dh   = OCPDataHandlerClassical(problem)
+ocp_data = ocp_dh.extract_data(solver.xs, solver.us)
+ocp_dh.plot_ocp_results(ocp_data, markers=['.'], SHOW=True)
