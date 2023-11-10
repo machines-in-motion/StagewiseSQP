@@ -44,15 +44,15 @@ def solveOCP(q, v, solver, nb_iter, target_reach, TASK_PHASE):
 
 class KukaCircleSSQP:
 
-    def __init__(self, head, iiwa_config, config, run_sim):
+    def __init__(self, head, pin_robot, config, run_sim):
         """
         Input:
             head              : thread head
-            robot_model       : pinocchio model
+            pin_robot         : pinocchio wrapper
             config            : MPC config yaml file
             run_sim           : boolean sim or real
         """
-        self.robot   = iiwa_config.buildRobotWrapper()
+        self.robot   = pin_robot
         self.head    = head
         self.RUN_SIM = run_sim
         self.joint_positions  = head.get_sensor('joint_positions')
