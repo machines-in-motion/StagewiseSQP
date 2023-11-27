@@ -2,7 +2,6 @@ import crocoddyl
 import pinocchio
 import numpy as np
 import example_robot_data 
-from robot_properties_solo.solo12wrapper import Solo12Config
 import pinocchio as pin
 import solo_friction_utils as solo_friction_utils
 
@@ -17,7 +16,7 @@ FORCE_CSTR    = False
 FRICTION_CSTR = True
 MU = 0.8     # friction coefficient
 
-SOLVE_OCP     = False   # solve the OCP 
+SOLVE_OCP     = True   # solve the OCP 
 SAVE_OCP_SOL  = True   # save OCP solution
 
 PLOT_OCP_SOL  = False   # plot OCP solution
@@ -46,8 +45,10 @@ lhFootId = rmodel.getFrameId(ee_frame_names[2])
 rhFootId = rmodel.getFrameId(ee_frame_names[3])
 
 
-q0 = np.array(Solo12Config.initial_configuration.copy())
-q0[0] = 0.0
+q0 = np.array([0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 1.0] 
+                + 2 * [0.0, 0.8, -1.6] 
+                + 2 * [0.0, -0.8, 1.6] 
+                )
 
 x0 =  np.concatenate([q0, np.zeros(rmodel.nv)])
 
@@ -161,8 +162,7 @@ if(FRICTION_CSTR):
     solver.max_qp_iters = 1000
     max_iter = 500
     solver.with_callbacks = True
-    solver.use_filter_line_search = True
-    solver.filter_size = max_iter
+    solver.use_filter_line_search = False
     solver.termination_tolerance = 1e-4
     solver.eps_abs = 1e-6
     solver.eps_rel = 1e-6
@@ -171,8 +171,7 @@ else:
     max_iter = 500
     solver.termination_tolerance = 1e-4
     solver.with_callbacks = True
-    solver.use_filter_line_search = True
-    solver.filter_size = max_iter
+    solver.use_filter_line_search = False
 
 # Solve OCP (optionally dump solution in a file)
 if(SOLVE_OCP):   
