@@ -12,85 +12,45 @@ import crocoddyl
 
 
 class ResidualForce3D(crocoddyl.ResidualModelAbstract):
-    def __init__(self, state, nu):
-        crocoddyl.ResidualModelAbstract.__init__(self, state, 12, nu, True, True, True)
+    def __init__(self, state, contact_name, nu):
+        crocoddyl.ResidualModelAbstract.__init__(self, state, 3, nu, True, True, True)
+        self.contact_name = contact_name
 
     def calc(self, data, x, u=None):  
-        data.r[:3] = data.shared.contacts.contacts['FL_FOOT_contact'].f.vector[:3]   
-        data.r[3:6] = data.shared.contacts.contacts['FR_FOOT_contact'].f.vector[:3]   
-        data.r[6:9] = data.shared.contacts.contacts['HL_FOOT_contact'].f.vector[:3]   
-        data.r[9:12] = data.shared.contacts.contacts['HR_FOOT_contact'].f.vector[:3]   
-        # # data.r = data.shared.differential.pinocchio.lambda_c 
+        data.r = data.shared.contacts.contacts[self.contact_name].f.vector[:3]   
 
     def calcDiff(self, data, x, u=None):
-        # data.Rx = data.shared.differential.df_dx
-        # data.Ru = data.shared.differential.df_du
-        data.Rx[:3] = data.shared.contacts.contacts['FL_FOOT_contact'].df_dx[:3]   
-        data.Rx[3:6] = data.shared.contacts.contacts['FR_FOOT_contact'].df_dx[:3]   
-        data.Rx[6:9] = data.shared.contacts.contacts['HL_FOOT_contact'].df_dx[:3]   
-        data.Rx[9:12] = data.shared.contacts.contacts['HR_FOOT_contact'].df_dx[:3]   
+        data.Rx = data.shared.contacts.contacts[self.contact_name].df_dx[:3]   
+        data.Ru = data.shared.contacts.contacts[self.contact_name].df_du[:3]
         
-        data.Ru[:3] = data.shared.contacts.contacts['FL_FOOT_contact'].df_du[:3]   
-        data.Ru[3:6] = data.shared.contacts.contacts['FR_FOOT_contact'].df_du[:3]   
-        data.Ru[6:9] = data.shared.contacts.contacts['HL_FOOT_contact'].df_du[:3]   
-        data.Ru[9:12] = data.shared.contacts.contacts['HR_FOOT_contact'].df_du[:3] 
 
 class ResidualFrictionCone(crocoddyl.ResidualModelAbstract):
-    def __init__(self, state, mu, nu):
-        crocoddyl.ResidualModelAbstract.__init__(self, state, 4, nu, True, True, True)
+    def __init__(self, state, contact_name, mu, nu):
+        crocoddyl.ResidualModelAbstract.__init__(self, state, 1, nu, True, True, True)
         self.mu = mu
-        self.dcone_df = np.zeros((4, 12))
+        self.contact_name = contact_name
+        
+        self.dcone_df = np.zeros((1, 3))
+        self.df_dx = np.zeros((3, self.state.ndx))
+        self.df_du = np.zeros((3, self.nu))
 
     def calc(self, data, x, u=None): 
-        # constraint residual (expressed in constraint ref frame already)
-        F = np.zeros(12) #data.shared.differential.pinocchio.lambda_c
-        F[:3] = data.shared.contacts.contacts['FL_FOOT_contact'].f.vector[:3]   
-        F[3:6] = data.shared.contacts.contacts['FR_FOOT_contact'].f.vector[:3]   
-        F[6:9] = data.shared.contacts.contacts['HL_FOOT_contact'].f.vector[:3]   
-        F[9:12] = data.shared.contacts.contacts['HR_FOOT_contact'].f.vector[:3]  
-
+        F = data.shared.contacts.contacts[self.contact_name].f.vector[:3]   
         data.r[0] = np.array([self.mu * F[2] - np.sqrt(F[0]**2 + F[1]**2)])
-        data.r[1] = np.array([self.mu * F[5] - np.sqrt(F[3]**2 + F[4]**2)])
-        data.r[2] = np.array([self.mu * F[8] - np.sqrt(F[6]**2 + F[7]**2)])
-        data.r[3] = np.array([self.mu * F[11] - np.sqrt(F[9]**2 + F[10]**2)])
 
     def calcDiff(self, data, x, u=None):
-        F = np.zeros(12) #data.shared.differential.pinocchio.lambda_c
-        F[:3] = data.shared.contacts.contacts['FL_FOOT_contact'].f.vector[:3]   
-        F[3:6] = data.shared.contacts.contacts['FR_FOOT_contact'].f.vector[:3]   
-        F[6:9] = data.shared.contacts.contacts['HL_FOOT_contact'].f.vector[:3]   
-        F[9:12] = data.shared.contacts.contacts['HR_FOOT_contact'].f.vector[:3]  
+        F = data.shared.contacts.contacts[self.contact_name].f.vector[:3]
 
         self.dcone_df[0, 0] = -F[0] / np.sqrt(F[0]**2 + F[1]**2)
         self.dcone_df[0, 1] = -F[1] / np.sqrt(F[0]**2 + F[1]**2)
         self.dcone_df[0, 2] = self.mu
 
-        self.dcone_df[1, 3] = -F[3] / np.sqrt(F[3]**2 + F[4]**2)
-        self.dcone_df[1, 4] = -F[4] / np.sqrt(F[3]**2 + F[4]**2)
-        self.dcone_df[1, 5] = self.mu
 
-        self.dcone_df[2, 6] = -F[6] / np.sqrt(F[6]**2 + F[7]**2)
-        self.dcone_df[2, 7] = -F[7] / np.sqrt(F[6]**2 + F[7]**2)
-        self.dcone_df[2, 8] = self.mu
+        self.df_dx = data.shared.contacts.contacts[self.contact_name].df_dx[:3]   
+        self.df_du = data.shared.contacts.contacts[self.contact_name].df_du[:3] 
 
-        self.dcone_df[3, 9] = -F[9] / np.sqrt(F[9]**2 + F[10]**2)
-        self.dcone_df[3, 10] = -F[10] / np.sqrt(F[9]**2 + F[10]**2)
-        self.dcone_df[3, 11] = self.mu
-
-        df_dx = np.zeros((12, self.state.ndx))
-        df_du = np.zeros((12, self.nu))
-        df_dx[:3]  = data.shared.contacts.contacts['FL_FOOT_contact'].df_dx[:3]   
-        df_dx[3:6] = data.shared.contacts.contacts['FR_FOOT_contact'].df_dx[:3]   
-        df_dx[6:9] = data.shared.contacts.contacts['HL_FOOT_contact'].df_dx[:3]   
-        df_dx[9:12] = data.shared.contacts.contacts['HR_FOOT_contact'].df_dx[:3]   
-        
-        df_du[:3] = data.shared.contacts.contacts['FL_FOOT_contact'].df_du[:3]   
-        df_du[3:6] = data.shared.contacts.contacts['FR_FOOT_contact'].df_du[:3]   
-        df_du[6:9] = data.shared.contacts.contacts['HL_FOOT_contact'].df_du[:3]   
-        df_du[9:12] = data.shared.contacts.contacts['HR_FOOT_contact'].df_du[:3] 
-
-        data.Rx = self.dcone_df @ df_dx 
-        data.Ru = self.dcone_df @ df_du
+        data.Rx = self.dcone_df @ self.df_dx 
+        data.Ru = self.dcone_df @ self.df_du
 
 
 def meshcat_material(r, g, b, a):
