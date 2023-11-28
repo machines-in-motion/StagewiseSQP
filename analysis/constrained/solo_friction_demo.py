@@ -161,7 +161,7 @@ if(SOLVE_OCP):
     xs = [x0]*(solver.problem.T + 1)
     us = solver.problem.quasiStatic([x0]*solver.problem.T) 
     solver.solve(xs, us, max_iter)   
-    solution = solo_friction_utils.get_solution_trajectories(solver, rmodel, rdata, supportFeetIds, pinRefFrame=pinRef)
+    solution = solo_friction_utils.get_solution_trajectories(solver, rmodel, rdata, supportFeetIds)
     if(SAVE_OCP_SOL):
         if(FRICTION_CSTR):
             name = '/tmp/sol_constrained_mu='+str(MU)+'.pkl'

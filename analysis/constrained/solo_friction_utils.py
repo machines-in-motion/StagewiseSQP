@@ -87,7 +87,7 @@ def applyViewerConfiguration(viz, name, xyzquat):
     if isinstance(viz, pin.visualize.MeshcatVisualizer):
         viz.viewer[name].set_transform(meshcat_transform(*xyzquat))
 
-def get_solution_trajectories(solver, rmodel, rdata, supportFeetIds, pinRefFrame=pin.LOCAL):
+def get_solution_trajectories(solver, rmodel, rdata, supportFeetIds):
     xs, us = solver.xs, solver.us
     nq, nv, N = rmodel.nq, rmodel.nv, len(xs) 
     jointPos_sol = []
@@ -125,7 +125,7 @@ def get_solution_trajectories(solver, rmodel, rdata, supportFeetIds, pinRefFrame
         # print('extract foot id ', frame_idx, "_name = ", rmodel.frames[frame_idx].name)
         ct_frame_name = rmodel.frames[frame_idx].name + "_contact"
         datas = [solver.problem.runningDatas[i].differential.multibody.contacts.contacts[ct_frame_name] for i in range(N-1)]
-        ee_forces = [datas[k].jMf.actInv(datas[k].f).vector for k in range(N-1)] 
+        ee_forces = [datas[k].f.vector for k in range(N-1)] 
         sol[ct_frame_name] = [ee_forces[i] for i in range(N-1)]     
     
     return sol    
