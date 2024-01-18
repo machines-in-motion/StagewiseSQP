@@ -81,7 +81,7 @@ thread_head.switch_controllers(ctrl)
 # Data logging  #
 # # # # # # # # # <<<<<<<<<<<<< Choose data save path & log config here (cf. launch_utils)
 # prefix     = "/home/skleff/data_sqp_paper_croc2/constrained/circle/"
-prefix     = "/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/square/paper/"
+prefix     = "/tmp/"
 suffix     = "_"+config['SOLVER'] +'_CODE_SPRINT'
 LOG_FIELDS = launch_utils.get_log_config(EXP_NAME) 
 # print(LOG_FIELDS)
