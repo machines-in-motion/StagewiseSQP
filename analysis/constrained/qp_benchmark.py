@@ -113,15 +113,18 @@ def create_kuka_problem(x0):
     )
     frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
 
-    # Create contraint on end-effector
+    # Create contraint on end-effector (small box around initial EE position)
     frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
         state, endeff_frame_id, np.zeros(3)
     )
+    data = model.createData()
+    pin.framesForwardKinematics(model, data, x0[:model.nq])
+    p0 = data.oMf[endeff_frame_id].translation
     ee_contraint = crocoddyl.ConstraintModelResidual(
         state,
         frameTranslationResidual,
-        np.array([0., 0., 0.5]),
-        np.array([0.4, 1., 1.4]),
+        p0 - np.array([0.5, 0.5, 0.5]),
+        p0 + np.array([0.5, 0.5, 0.5]),
     )
     # Create the running models
     runningModels = []
@@ -196,15 +199,16 @@ def create_quadrotor_problem(x0):
 # Solver params
 MAXITER     = 1     
 TOL         = 1e-4 
-CALLBACKS   = True
+CALLBACKS   = False
 MAX_QP_ITER = 10000
+MAX_QP_TIME = 10000
 EPS_ABS     = 1e-6
-EPS_REL     = 1e-6
+EPS_REL     = 0.
 SAVE        = False # Save figure 
 
 # Benchmark params
 SEED = 1 ; np.random.seed(SEED)
-N_samples = 100
+N_samples = 10
 names = [
     #    'Pendulum'] # maxiter = 500
          'Kuka'] # maxiter = 100
@@ -305,36 +309,36 @@ print("Created "+str(N_samples)+" random initial states per model !")
 
 # Solve problems for sample initial states
 csqp_iter_samples   = []  
-csqp_kkt_samples    = []
+csqp_qp_time_samples    = []
 csqp_solved_samples = []
 
 osqp_iter_samples   = []  
-osqp_kkt_samples    = []
+osqp_qp_time_samples    = []
 osqp_solved_samples = []
 
 hpipm_dense_iter_samples   = []  
-hpipm_dense_kkt_samples    = []
+hpipm_dense_qp_time_samples    = []
 hpipm_dense_solved_samples = []
 
 hpipm_ocp_iter_samples   = []  
-hpipm_ocp_kkt_samples    = []
+hpipm_ocp_qp_time_samples    = []
 hpipm_ocp_solved_samples = []
 
 for i in range(N_samples):
     csqp_iter_samples.append([])
-    csqp_kkt_samples.append([])
+    csqp_qp_time_samples.append([])
     csqp_solved_samples.append([])
 
     osqp_iter_samples.append([])
-    osqp_kkt_samples.append([])
+    osqp_qp_time_samples.append([])
     osqp_solved_samples.append([])
 
     hpipm_dense_iter_samples.append([])
-    hpipm_dense_kkt_samples.append([])
+    hpipm_dense_qp_time_samples.append([])
     hpipm_dense_solved_samples.append([])
 
     hpipm_ocp_iter_samples.append([])
-    hpipm_ocp_kkt_samples.append([])
+    hpipm_ocp_qp_time_samples.append([])
     hpipm_ocp_solved_samples.append([])
 
     print("---")
@@ -361,7 +365,7 @@ for i in range(N_samples):
         #     csqp_iter_samples[i].append(MAXITER)
         # else:
         #     csqp_iter_samples[i].append(solvercsqp.qp_iters)
-        # csqp_kkt_samples[i].append(solvercsqp.KKT)
+        # csqp_primal_res_samples[i].append(solvercsqp.KKT)
 
         # OSQP
         print("   Problem : "+name+" OSQP")
@@ -370,15 +374,17 @@ for i in range(N_samples):
         solverosqp.xs = [x0] * (solverosqp.problem.T + 1) 
         solverosqp.us = solverosqp.problem.quasiStatic([x0] * solverosqp.problem.T)
         solverosqp.solve(solverosqp.xs, solverosqp.us, MAXITER, False)
-        solved = True # (solverosqp.qp_iters < MAXITER) and (solverosqp.KKT < TOL)
+        solved = solverosqp.is_optimal
         osqp_solved_samples[i].append( solved )
-        print("   iter = "+str(solverosqp.qp_iters)+"  |  KKT = "+str(solverosqp.KKT))
+        # print("   iter = "+str(solverosqp.qp_iters)+"  |  KKT = "+str(solverosqp.KKT))
         if(not solved): 
             print("      FAILED !!!!")
-            osqp_iter_samples[i].append(MAXITER)
+            osqp_iter_samples[i].append(MAX_QP_ITER)
         else:
             osqp_iter_samples[i].append(solverosqp.qp_iters)
-        osqp_kkt_samples[i].append(solverosqp.KKT)
+        osqp_qp_time_samples[i].append(solverosqp.qp_time)
+        print(solverosqp.qp_time)
+        print(solverosqp.qp_iters)
 
         # # HPIPM_DENSE
         # print("   Problem : "+name+" HPIPM_DENSE")
@@ -395,7 +401,7 @@ for i in range(N_samples):
         #     hpipm_dense_iter_samples[i].append(MAXITER)
         # else:
         #     hpipm_dense_iter_samples[i].append(solverhpipm_dense.qp_iters)
-        # hpipm_dense_kkt_samples[i].append(solverhpipm_dense.KKT)
+        # hpipm_dense_primal_res_samples[i].append(solverhpipm_dense.KKT)
 
         # # HPIPM_OCP        
         # print("   Problem : "+name+" HPIPM_OCP")
@@ -413,29 +419,46 @@ for i in range(N_samples):
         #     hpipm_ocp_iter_samples[i].append(MAXITER)
         # else:
         #     hpipm_ocp_iter_samples[i].append(solverhpipm_ocp.qp_iters)
-        # hpipm_ocp_kkt_samples[i].append(solverhpipm_ocp.KKT)
+        # hpipm_ocp_primal_res_samples[i].append(solverhpipm_ocp.KKT)
 
 
-# Average fddp iters
-csqp_iter_solved = np.zeros((MAXITER, N_pb))
-osqp_iter_solved = np.zeros((MAXITER, N_pb))
-hpipm_dense_iter_solved = np.zeros((MAXITER, N_pb))
-hpipm_ocp_iter_solved = np.zeros((MAXITER, N_pb))
-
+# Compute convergence statistics
+csqp_iter_solved = np.zeros((MAX_QP_ITER, N_pb))
+osqp_iter_solved = np.zeros((MAX_QP_ITER, N_pb))
+hpipm_dense_iter_solved = np.zeros((MAX_QP_ITER, N_pb))
+hpipm_ocp_iter_solved = np.zeros((MAX_QP_ITER, N_pb))
 for k,exp in enumerate(names):
     # Count number of problems solved for each sample initial state 
     for i in range(N_samples):
         # For sample i of problem k , compare nb iter to max iter
-        csqp_iter_ik  = np.array(csqp_iter_samples)[i,k]
+        # csqp_iter_ik  = np.array(csqp_iter_samples)[i,k]
         osqp_iter_ik = np.array(osqp_iter_samples)[i,k]
-        hpipm_dense_iter_ik = np.array(hpipm_dense_iter_samples)[i,k]
-        hpipm_ocp_iter_ik = np.array(hpipm_ocp_iter_samples)[i,k]
-        for j in range(MAXITER):
-            if(csqp_iter_ik < j): csqp_iter_solved[j,k] += 1
+        # hpipm_dense_iter_ik = np.array(hpipm_dense_iter_samples)[i,k]
+        # hpipm_ocp_iter_ik = np.array(hpipm_ocp_iter_samples)[i,k]
+        for j in range(MAX_QP_ITER):
+            # if(csqp_iter_ik < j): csqp_iter_solved[j,k] += 1
             if(osqp_iter_ik < j): osqp_iter_solved[j,k] += 1
-            if(hpipm_dense_iter_ik < j): hpipm_dense_iter_solved[j,k] += 1
-            if(hpipm_ocp_iter_ik < j): hpipm_ocp_iter_solved[j,k] += 1
+            # if(hpipm_dense_iter_ik < j): hpipm_dense_iter_solved[j,k] += 1
+            # if(hpipm_ocp_iter_ik < j): hpipm_ocp_iter_solved[j,k] += 1
 
+# Compute timings statistics
+csqp_time_solved = np.zeros((MAX_QP_TIME, N_pb))
+osqp_time_solved = np.zeros((MAX_QP_TIME, N_pb))
+hpipm_dense_time_solved = np.zeros((MAX_QP_TIME, N_pb))
+hpipm_ocp_time_solved = np.zeros((MAX_QP_TIME, N_pb))
+for k,exp in enumerate(names):
+    # Count number of problems solved for each sample initial state 
+    for i in range(N_samples):
+        # For sample i of problem k , compare nb iter to max iter
+        # csqp_iter_ik  = np.array(csqp_iter_samples)[i,k]
+        osqp_time_ik = np.array(osqp_qp_time_samples)[i,k]
+        # hpipm_dense_iter_ik = np.array(hpipm_dense_iter_samples)[i,k]
+        # hpipm_ocp_iter_ik = np.array(hpipm_ocp_iter_samples)[i,k]
+        for j in range(MAX_QP_TIME):
+            # if(csqp_iter_ik < j): csqp_iter_solved[j,k] += 1
+            if(osqp_iter_ik < j): osqp_time_solved[j,k] += 1
+            # if(hpipm_dense_iter_ik < j): hpipm_dense_iter_solved[j,k] += 1
+            # if(hpipm_ocp_iter_ik < j): hpipm_ocp_iter_solved[j,k] += 1
 
 # Generate plot of number of iterations for each problem
 import matplotlib.pyplot as plt
@@ -444,13 +467,13 @@ matplotlib.rcParams["pdf.fonttype"] = 42
 matplotlib.rcParams["ps.fonttype"] = 42
  
 # x-axis : max number of iterations
-xdata     = range(0,MAXITER)
+xdata     = range(0,MAX_QP_ITER)
 for k in range(N_pb):
     fig0, ax0 = plt.subplots(1, 1, figsize=(19.2,10.8))
-    ax0.plot(xdata, csqp_iter_solved[:,k]/N_samples, color='r', linewidth=4, label='CSQP') 
+    # ax0.plot(xdata, csqp_iter_solved[:,k]/N_samples, color='r', linewidth=4, label='CSQP') 
     ax0.plot(xdata, osqp_iter_solved[:,k]/N_samples, color='y', linewidth=4, label='OSQP') 
-    ax0.plot(xdata, hpipm_dense_iter_solved[:,k]/N_samples, color='g', linewidth=4, label='HPIPM (dense)') 
-    ax0.plot(xdata, hpipm_ocp_iter_solved[:,k]/N_samples, color='b', linewidth=4, label='HPIPM (OCP)') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
+    # ax0.plot(xdata, hpipm_dense_iter_solved[:,k]/N_samples, color='g', linewidth=4, label='HPIPM (dense)') 
+    # ax0.plot(xdata, hpipm_ocp_iter_solved[:,k]/N_samples, color='b', linewidth=4, label='HPIPM (OCP)') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
     # Set axis and stuff
     ax0.set_ylabel('Percentage of problems solved', fontsize=26)
     ax0.set_xlabel('Max. number of iterations', fontsize=26)
@@ -464,6 +487,30 @@ for k in range(N_pb):
     # # Save, show , clean
     # if(SAVE):
     #     fig0.savefig('/home/skleff/data_sqp_paper_croc2/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
+
+# x-axis : max time allowed to solve the QP (in ms)
+xdata     = range(0,MAX_QP_TIME)
+for k in range(N_pb):
+    fig0, ax0 = plt.subplots(1, 1, figsize=(19.2,10.8))
+    # ax0.plot(xdata, csqp_iter_solved[:,k]/N_samples, color='r', linewidth=4, label='CSQP') 
+    ax0.plot(xdata, osqp_time_solved[:,k]/N_samples, color='y', linewidth=4, label='OSQP') 
+    # ax0.plot(xdata, hpipm_dense_iter_solved[:,k]/N_samples, color='g', linewidth=4, label='HPIPM (dense)') 
+    # ax0.plot(xdata, hpipm_ocp_iter_solved[:,k]/N_samples, color='b', linewidth=4, label='HPIPM (OCP)') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
+    # Set axis and stuff
+    ax0.set_ylabel('Percentage of problems solved', fontsize=26)
+    ax0.set_xlabel('Max. solving time', fontsize=26)
+    ax0.set_ylim(-0.02, 1.02)
+    ax0.tick_params(axis = 'y', labelsize=22)
+    ax0.tick_params(axis = 'x', labelsize=22)
+    ax0.grid(True) 
+    # Legend 
+    handles0, labels0 = ax0.get_legend_handles_labels()
+    fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
+    # # Save, show , clean
+    # if(SAVE):
+    #     fig0.savefig('/home/skleff/data_sqp_paper_croc2/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
+
+
 
 
 # # Plot CV
