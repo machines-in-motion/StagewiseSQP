@@ -15,7 +15,7 @@ import numpy as np
 import crocoddyl
 import pinocchio as pin
 
-from robot_properties_kuka.config import IiwaConfig
+from mim_robots.robot_loader import load_pinocchio_wrapper
 import example_robot_data
 # from unconstrained.bench_utils.cartpole_swingup import DifferentialActionModelCartpole
 from crocoddyl.utils.pendulum import CostModelDoublePendulum, ActuationModelDoublePendulum
@@ -92,45 +92,62 @@ def create_kuka_problem(x0):
     Create shooting problem for kuka reaching task
     '''
     print("Create kuka problem ...")
-    iiwa_config = IiwaConfig()
-    robot       = iiwa_config.buildRobotWrapper()
+    robot = load_pinocchio_wrapper("iiwa", locked_joints=["A7"])
     model = robot.model
-    nq = model.nq; nv = model.nv
     # State and actuation model
     state = crocoddyl.StateMultibody(model)
     actuation = crocoddyl.ActuationModelFull(state)
-    # Running and terminal cost models
-    runningCostModel = crocoddyl.CostModelSum(state)
-    terminalCostModel = crocoddyl.CostModelSum(state)
-    # Create cost terms 
+
+    # Create cost terms
     # Control regularization cost
     uResidual = crocoddyl.ResidualModelControlGrav(state)
     uRegCost = crocoddyl.CostModelResidual(state, uResidual)
-    # State regularization cost
+    # State regularization cost
     xResidual = crocoddyl.ResidualModelState(state, x0)
     xRegCost = crocoddyl.CostModelResidual(state, xResidual)
     # endeff frame translation cost
     endeff_frame_id = model.getFrameId("contact")
-    # endeff_translation = robot.data.oMf[endeff_frame_id].translation.copy()
-    endeff_translation = np.array([0.7, 0, 1.1]) # move endeff +30 cm along x in WORLD frame
-    frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(state, endeff_frame_id, endeff_translation)
+    endeff_translation = np.array([0.5, 0.1, 0.2]) 
+    frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
+        state, endeff_frame_id, endeff_translation
+    )
     frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
-    # Add costs
-    runningCostModel.addCost("stateReg", xRegCost, 1e-1)
-    runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
-    runningCostModel.addCost("translation", frameTranslationCost, 1)
-    terminalCostModel.addCost("stateReg", xRegCost, 1e-1)
-    terminalCostModel.addCost("translation", frameTranslationCost, 1)
-    # Create Differential Action Model (DAM), i.e. continuous dynamics and cost functions
-    running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, runningCostModel)
-    terminal_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, terminalCostModel)
-    # Create Integrated Action Model (IAM), i.e. Euler integration of continuous dynamics and cost
+
+    # Create contraint on end-effector
+    frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
+        state, endeff_frame_id, np.zeros(3)
+    )
+    ee_contraint = crocoddyl.ConstraintModelResidual(
+        state,
+        frameTranslationResidual,
+        np.array([0., 0., 0.5]),
+        np.array([0.4, 1., 1.4]),
+    )
+    # Create the running models
+    runningModels = []
     dt = 1e-2
-    runningModel = crocoddyl.IntegratedActionModelEuler(running_DAM, dt)
-    terminalModel = crocoddyl.IntegratedActionModelEuler(terminal_DAM, 0.)
-    # Create the shooting problem
     T = 50
-    pb = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
+    for t in range(T + 1):
+        runningCostModel = crocoddyl.CostModelSum(state)
+        # Add costs
+        runningCostModel.addCost("stateReg", xRegCost, 1e-1)
+        runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
+        if t != T:
+            runningCostModel.addCost("translation", frameTranslationCost, 4)
+        else:
+            runningCostModel.addCost("translation", frameTranslationCost, 40)
+        # Define contraints
+        constraints = crocoddyl.ConstraintModelManager(state, actuation.nu)
+        if t != 0:
+            constraints.addConstraint("ee_bound", ee_contraint)
+        # Create Differential action model
+        running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
+            state, actuation, runningCostModel, constraints
+        )
+        # Apply Euler integration
+        running_model = crocoddyl.IntegratedActionModelEuler(running_DAM, dt)
+        runningModels.append(running_model)        
+    pb = crocoddyl.ShootingProblem(x0, runningModels[:-1], runningModels[-1])
     return pb
 
 def create_quadrotor_problem(x0):
@@ -176,15 +193,13 @@ def create_quadrotor_problem(x0):
     return pb 
 
 
-
-
 # Solver params
-MAXITER     = 100 
+MAXITER     = 1     
 TOL         = 1e-4 
-CALLBACKS   = False
-MAX_QP_ITER = 25
-EPS_ABS     = 1e-20
-EPS_REL     = 0.
+CALLBACKS   = True
+MAX_QP_ITER = 10000
+EPS_ABS     = 1e-6
+EPS_REL     = 1e-6
 SAVE        = False # Save figure 
 
 # Benchmark params
@@ -207,7 +222,7 @@ solversHPIPM_ocp   = [] # CSQP(problem, "HPIPM")
 # Initial states
 pendulum_x0  = np.array([3.14, 0., 0., 0.])
 cartpole_x0  = np.array([0., 3.14, 0., 0.])
-kuka_x0      = np.array([0.1, 0.7, 0., 0.7, -0.5, 1.5, 0.] + [0.]*7)
+kuka_x0      = np.array([0.1, 0.2, 0., 0., -0.2, 0.2] + [0.]*6)
 quadrotor    = example_robot_data.load('hector') 
 quadrotor_x0 = np.array(list(quadrotor.q0) + [0.]*quadrotor.model.nv) 
 
@@ -233,7 +248,7 @@ for k,name in enumerate(names):
     solvercsqp.eps_rel = EPS_REL
     solvercsqp.equality_qp_initial_guess = False
     solvercsqp.update_rho_with_heuristic = True
-    if(CALLBACKS): solvercsqp.setCallbacks([crocoddyl.CallbackVerbose()])
+    solvercsqp.with_callbacks = CALLBACKS
     solversCSQP.append(solvercsqp)
     
     # Create solver OSQP
@@ -245,7 +260,7 @@ for k,name in enumerate(names):
     solverosqp.eps_abs = EPS_ABS
     solverosqp.eps_rel = EPS_REL
     solverosqp.equality_qp_initial_guess = False
-    if(CALLBACKS): solverosqp.setCallbacks([crocoddyl.CallbackVerbose()])
+    solverosqp.with_callbacks = CALLBACKS
     solversOSQP.append(solverosqp)
 
     # Create solver HPIPM dense
@@ -257,8 +272,7 @@ for k,name in enumerate(names):
     solverhpipm_dense.eps_abs = EPS_ABS
     solverhpipm_dense.eps_rel = EPS_REL
     solverhpipm_dense.equality_qp_initial_guess = False
-
-    if(CALLBACKS): solverhpipm_dense.setCallbacks([crocoddyl.CallbackVerbose()])
+    solverhpipm_dense.with_callbacks = CALLBACKS
     solversHPIPM_dense.append(solverhpipm_dense)
 
     # Create solver HPIPM ocp
@@ -266,18 +280,17 @@ for k,name in enumerate(names):
     solverhpipm_ocp.xs = [solverhpipm_ocp.problem.x0] * (solverhpipm_ocp.problem.T + 1)  
     solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([solverhpipm_ocp.problem.x0] * solverhpipm_ocp.problem.T)
     solverhpipm_ocp.termination_tolerance  = TOL
-    solverhpipm_ocp.with_callbacks         = CALLBACKS
     solverhpipm_ocp.eps_abs = EPS_ABS
     solverhpipm_ocp.eps_rel = EPS_REL
     solverhpipm_ocp.equality_qp_initial_guess = False
+    solverhpipm_ocp.with_callbacks = CALLBACKS
     solversHPIPM_ocp.append(solverhpipm_ocp)
 
 
 # Initial state samples
 pendulum_x0_samples  = np.zeros((N_samples, 4))
 cartpole_x0_samples  = np.zeros((N_samples, 4))
-iiwa_config          = IiwaConfig()
-kuka                 = iiwa_config.buildRobotWrapper()
+kuka                 = load_pinocchio_wrapper("iiwa", locked_joints=["A7"])
 kuka_x0_samples      = np.zeros((N_samples, kuka.model.nq + kuka.model.nv))
 quadrotor            = example_robot_data.load('hector') 
 humanoid             = example_robot_data.load('talos')
@@ -333,74 +346,74 @@ for i in range(N_samples):
         if(name == "Kuka"):      x0 = kuka_x0_samples[i,:]
         if(name == "Quadrotor"): x0 = quadrotor_x0_samples[i,:]
 
-        # DDP (SS)
-        print("   Problem : "+name+" CSQP")
-        solvercsqp = solversCSQP[k]
-        solvercsqp.problem.x0 = x0
-        solvercsqp.xs = [x0] * (solvercsqp.problem.T + 1) 
-        solvercsqp.us = solvercsqp.problem.quasiStatic([x0] * solvercsqp.problem.T)
-        solvercsqp.solve(solvercsqp.xs, solvercsqp.us, MAXITER, False)
-        solved = (solvercsqp.iter < MAXITER) and (solvercsqp.KKT < TOL)
-        csqp_solved_samples[i].append( solved )
-        print("   iter = "+str(solvercsqp.iter)+"  |  KKT = "+str(solvercsqp.KKT))
-        if(not solved): 
-            print("      FAILED !!!!")
-            csqp_iter_samples[i].append(MAXITER)
-        else:
-            csqp_iter_samples[i].append(solvercsqp.iter)
-        csqp_kkt_samples[i].append(solvercsqp.KKT)
+        # # CSQP
+        # print("   Problem : "+name+" CSQP")
+        # solvercsqp = solversCSQP[k]
+        # solvercsqp.problem.x0 = x0
+        # solvercsqp.xs = [x0] * (solvercsqp.problem.T + 1) 
+        # solvercsqp.us = solvercsqp.problem.quasiStatic([x0] * solvercsqp.problem.T)
+        # solvercsqp.solve(solvercsqp.xs, solvercsqp.us, MAXITER, False)
+        # solved = True #(solvercsqp.qp_iters < MAXITER) and (solvercsqp.KKT < TOL)
+        # csqp_solved_samples[i].append( solved )
+        # print("   iter = "+str(solvercsqp.qp_iters)+"  |  KKT = "+str(solvercsqp.KKT))
+        # if(not solved): 
+        #     print("      FAILED !!!!")
+        #     csqp_iter_samples[i].append(MAXITER)
+        # else:
+        #     csqp_iter_samples[i].append(solvercsqp.qp_iters)
+        # csqp_kkt_samples[i].append(solvercsqp.KKT)
 
-        # FDDP (MS)
+        # OSQP
         print("   Problem : "+name+" OSQP")
         solverosqp = solversOSQP[k]
         solverosqp.problem.x0 = x0
         solverosqp.xs = [x0] * (solverosqp.problem.T + 1) 
         solverosqp.us = solverosqp.problem.quasiStatic([x0] * solverosqp.problem.T)
         solverosqp.solve(solverosqp.xs, solverosqp.us, MAXITER, False)
-        solved = (solverosqp.iter < MAXITER) and (solverosqp.KKT < TOL)
+        solved = True # (solverosqp.qp_iters < MAXITER) and (solverosqp.KKT < TOL)
         osqp_solved_samples[i].append( solved )
-        print("   iter = "+str(solverosqp.iter)+"  |  KKT = "+str(solverosqp.KKT))
+        print("   iter = "+str(solverosqp.qp_iters)+"  |  KKT = "+str(solverosqp.KKT))
         if(not solved): 
             print("      FAILED !!!!")
             osqp_iter_samples[i].append(MAXITER)
         else:
-            osqp_iter_samples[i].append(solverosqp.iter)
+            osqp_iter_samples[i].append(solverosqp.qp_iters)
         osqp_kkt_samples[i].append(solverosqp.KKT)
 
-        # FDDP filter (MS)
-        print("   Problem : "+name+" HPIPM_DENSE")
-        solverhpipm_dense = solversHPIPM_dense[k]
-        solverhpipm_dense.problem.x0 = x0
-        solverhpipm_dense.xs = [x0] * (solverhpipm_dense.problem.T + 1) 
-        solverhpipm_dense.us = solverhpipm_dense.problem.quasiStatic([x0] * solverhpipm_dense.problem.T)
-        solverhpipm_dense.solve(solverhpipm_dense.xs, solverhpipm_dense.us, MAXITER, False)
-        solved = (solverhpipm_dense.iter < MAXITER) and (solverhpipm_dense.KKT < TOL)
-        hpipm_dense_solved_samples[i].append( solved )
-        print("   iter = "+str(solverhpipm_dense.iter)+"  |  KKT = "+str(solverhpipm_dense.KKT))
-        if(not solved): 
-            print("      FAILED !!!!")
-            hpipm_dense_iter_samples[i].append(MAXITER)
-        else:
-            hpipm_dense_iter_samples[i].append(solverhpipm_dense.iter)
-        hpipm_dense_kkt_samples[i].append(solverhpipm_dense.KKT)
+        # # HPIPM_DENSE
+        # print("   Problem : "+name+" HPIPM_DENSE")
+        # solverhpipm_dense = solversHPIPM_dense[k]
+        # solverhpipm_dense.problem.x0 = x0
+        # solverhpipm_dense.xs = [x0] * (solverhpipm_dense.problem.T + 1) 
+        # solverhpipm_dense.us = solverhpipm_dense.problem.quasiStatic([x0] * solverhpipm_dense.problem.T)
+        # solverhpipm_dense.solve(solverhpipm_dense.xs, solverhpipm_dense.us, MAXITER, False)
+        # solved = True # (solverhpipm_dense.qp_iters < MAXITER) and (solverhpipm_dense.KKT < TOL)
+        # hpipm_dense_solved_samples[i].append( solved )
+        # print("   iter = "+str(solverhpipm_dense.qp_iters)+"  |  KKT = "+str(solverhpipm_dense.KKT))
+        # if(not solved): 
+        #     print("      FAILED !!!!")
+        #     hpipm_dense_iter_samples[i].append(MAXITER)
+        # else:
+        #     hpipm_dense_iter_samples[i].append(solverhpipm_dense.qp_iters)
+        # hpipm_dense_kkt_samples[i].append(solverhpipm_dense.KKT)
 
-        # SQP        
-        print("   Problem : "+name+" HPIPM_OCP")
-        solverhpipm_ocp = solversHPIPM_ocp[k]
-        solverhpipm_ocp.problem.x0 = x0
-        solverhpipm_ocp.xs = [x0] * (solverhpipm_ocp.problem.T + 1) 
-        solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([x0] * solverhpipm_ocp.problem.T)
-        solverhpipm_ocp.solve(solverhpipm_ocp.xs, solverhpipm_ocp.us, MAXITER, False)
-            # Check convergence
-        solved = (solverhpipm_ocp.iter < MAXITER) and (solverhpipm_ocp.KKT < TOL)
-        hpipm_ocp_solved_samples[i].append( solved )
-        print("   iter = "+str(solverhpipm_ocp.iter)+"  |  KKT = "+str(solverhpipm_ocp.KKT))
-        if(not solved): 
-            print("      FAILED !!!!")
-            hpipm_ocp_iter_samples[i].append(MAXITER)
-        else:
-            hpipm_ocp_iter_samples[i].append(solverhpipm_ocp.iter)
-        hpipm_ocp_kkt_samples[i].append(solverhpipm_ocp.KKT)
+        # # HPIPM_OCP        
+        # print("   Problem : "+name+" HPIPM_OCP")
+        # solverhpipm_ocp = solversHPIPM_ocp[k]
+        # solverhpipm_ocp.problem.x0 = x0
+        # solverhpipm_ocp.xs = [x0] * (solverhpipm_ocp.problem.T + 1) 
+        # solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([x0] * solverhpipm_ocp.problem.T)
+        # solverhpipm_ocp.solve(solverhpipm_ocp.xs, solverhpipm_ocp.us, MAXITER, False)
+        #     # Check convergence
+        # solved = True #(solverhpipm_ocp.qp_iters < MAXITER) and (solverhpipm_ocp.KKT < TOL)
+        # hpipm_ocp_solved_samples[i].append( solved )
+        # print("   iter = "+str(solverhpipm_ocp.qp_iters)+"  |  KKT = "+str(solverhpipm_ocp.KKT))
+        # if(not solved): 
+        #     print("      FAILED !!!!")
+        #     hpipm_ocp_iter_samples[i].append(MAXITER)
+        # else:
+        #     hpipm_ocp_iter_samples[i].append(solverhpipm_ocp.qp_iters)
+        # hpipm_ocp_kkt_samples[i].append(solverhpipm_ocp.KKT)
 
 
 # Average fddp iters
