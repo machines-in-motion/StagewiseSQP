@@ -28,60 +28,6 @@ os.sys.path.insert(1, str(python_path))
 from csqp import CSQP
 
 import time
-from qpsolvers import Problem, Solution
-
-
-# def create_full_qp(problem, ndx, nu, gap, y):
-#     '''
-#     Creates the full QP (needed for benchmarks)
-#     '''
-#     P = np.zeros((problem.T*(ndx + nu), problem.T*(ndx + nu)))
-#     q = np.zeros(problem.T*(ndx + nu))
-#     Asize = problem.T*(ndx + nu)
-#     A = np.zeros((problem.T*ndx, Asize))
-#     B = np.zeros(problem.T*ndx)
-#     for t, (model, data) in enumerate(zip(problem.runningModels, problem.runningDatas)):
-#         index_u = problem.T*ndx + t * nu
-#         if t>=1:
-#             index_x = (t-1) * ndx
-#             P[index_x:index_x+ndx, index_x:index_x+ndx] = data.Lxx.copy()
-#             P[index_x:index_x+ndx, index_u:index_u+nu] = data.Lxu.copy()
-#             P[index_u:index_u+nu, index_x:index_x+ndx] = data.Lxu.T.copy()
-#             q[index_x:index_x+ndx] = data.Lx.copy()
-#         P[index_u:index_u+nu, index_u:index_u+nu] = data.Luu.copy()
-#         q[index_u:index_u+nu] = data.Lu.copy()
-#         A[t * ndx: (t+1) * ndx, index_u:index_u+nu] = - data.Fu.copy() 
-#         A[t * ndx: (t+1) * ndx, t * ndx: (t+1) * ndx] = np.eye(ndx)
-#         if t >=1:
-#             A[t * ndx: (t+1) * ndx, (t-1) * ndx: t * ndx] = - data.Fx.copy()
-#         B[t * ndx: (t+1) * ndx] = gap[t].copy()
-#     P[(problem.T-1)*ndx:problem.T*ndx, problem.T*ndx-ndx:problem.T*ndx] = problem.terminalData.Lxx.copy()
-#     q[(problem.T-1)*ndx:problem.T*ndx] = problem.terminalData.Lx.copy()
-#     n_in = sum([len(y[i]) for i in range(len(y))])
-#     C = np.zeros((n_in, problem.T*(ndx + nu)))
-#     l = np.zeros(n_in)
-#     u = np.zeros(n_in)
-#     nin_count = 0
-#     index_x = problem.T*ndx
-#     for t, (model, data) in enumerate(zip(problem.runningModels, problem.runningDatas)):
-#         if model.ng == 0:
-#             continue
-#         l[nin_count: nin_count + model.ng] = model.g_lb - data.g
-#         u[nin_count: nin_count + model.ng] = model.g_ub - data.g
-#         if t > 0:
-#             C[nin_count: nin_count + model.ng, (t-1)*ndx: t*ndx] = data.Gx
-#         C[nin_count: nin_count + model.ng, index_x+t*nu: index_x+(t+1)*nu] = data.Gu
-#         nin_count += model.ng
-#     model = problem.terminalModel
-#     data = problem.terminalData
-#     if model.ng != 0:
-#         l[nin_count: nin_count + model.ng] = model.g_lb - data.g
-#         u[nin_count: nin_count + model.ng] = model.g_ub - data.g
-#         C[nin_count: nin_count + model.ng, (problem.T-1)*ndx: problem.T*ndx] = data.Gx
-#         nin_count += model.ng
-#     return P, q, A, B, C, u, l
-
-
 
 def create_double_pendulum_problem(x0):
     '''
@@ -178,8 +124,8 @@ def create_kuka_problem(x0):
     ee_contraint = crocoddyl.ConstraintModelResidual(
         state,
         frameTranslationResidual,
-        p0 - np.array([10.5, 10.5, 10.5]),
-        p0 + np.array([10.5, 10.5, 10.5]),
+        p0 - np.array([10.5, 0.5, 10.5]),
+        p0 + np.array([0.5, 10.5, 10.5]),
     )
     # Create the running models
     runningModels = []
@@ -255,15 +201,15 @@ def create_quadrotor_problem(x0):
 MAXITER     = 1     
 TOL         = 1e-4 
 CALLBACKS   = False
-MAX_QP_ITER = 10000
+MAX_QP_ITER = 1000
 MAX_QP_TIME = 10000
-EPS_ABS     = 1e-10
+EPS_ABS     = 1e-5
 EPS_REL     = 0.
 SAVE        = False # Save figure 
 
 # Benchmark params
 SEED = 1 ; np.random.seed(SEED)
-N_samples = 1
+N_samples = 10
 names = [
     #    'Pendulum'] # maxiter = 500
          'Kuka'] # maxiter = 100
@@ -364,36 +310,36 @@ print("Created "+str(N_samples)+" random initial states per model !")
 
 # Solve problems for sample initial states
 csqp_iter_samples   = []  
-csqp_qp_time_samples    = []
+csqp_time_samples    = []
 csqp_solved_samples = []
 
 osqp_iter_samples   = []  
-osqp_qp_time_samples    = []
+osqp_time_samples    = []
 osqp_solved_samples = []
 
 hpipm_dense_iter_samples   = []  
-hpipm_dense_qp_time_samples    = []
+hpipm_dense_time_samples    = []
 hpipm_dense_solved_samples = []
 
 hpipm_ocp_iter_samples   = []  
-hpipm_ocp_qp_time_samples    = []
+hpipm_ocp_time_samples    = []
 hpipm_ocp_solved_samples = []
 
 for i in range(N_samples):
     csqp_iter_samples.append([])
-    csqp_qp_time_samples.append([])
+    csqp_time_samples.append([])
     csqp_solved_samples.append([])
 
     osqp_iter_samples.append([])
-    osqp_qp_time_samples.append([])
+    osqp_time_samples.append([])
     osqp_solved_samples.append([])
 
     hpipm_dense_iter_samples.append([])
-    hpipm_dense_qp_time_samples.append([])
+    hpipm_dense_time_samples.append([])
     hpipm_dense_solved_samples.append([])
 
     hpipm_ocp_iter_samples.append([])
-    hpipm_ocp_qp_time_samples.append([])
+    hpipm_ocp_time_samples.append([])
     hpipm_ocp_solved_samples.append([])
 
     print("---")
@@ -423,7 +369,7 @@ for i in range(N_samples):
             csqp_iter_samples[i].append(MAX_QP_ITER)
         else:
             csqp_iter_samples[i].append(solvercsqp.qp_iters)
-        csqp_qp_time_samples[i].append(solvercsqp.qp_time)
+        csqp_time_samples[i].append(solvercsqp.qp_time)
         print("     QP Time = ", solvercsqp.qp_time)
         print("     QP Iter = ", solvercsqp.qp_iters)
 
@@ -444,7 +390,7 @@ for i in range(N_samples):
             osqp_iter_samples[i].append(MAX_QP_ITER)
         else:
             osqp_iter_samples[i].append(solverosqp.qp_iters)
-        osqp_qp_time_samples[i].append(solverosqp.qp_time)
+        osqp_time_samples[i].append(solverosqp.qp_time)
         print("     QP Time = ", solverosqp.qp_time)
         print("     QP Iter = ", solverosqp.qp_iters)
 
@@ -465,6 +411,7 @@ for i in range(N_samples):
             hpipm_dense_iter_samples[i].append(MAXITER)
         else:
             hpipm_dense_iter_samples[i].append(solverhpipm_dense.qp_iters)
+        hpipm_dense_time_samples[i].append(solverhpipm_dense.qp_time)
         print("     QP Time = ", solverhpipm_dense.qp_time)
         print("     QP Iter = ", solverhpipm_dense.qp_iters)
 
@@ -487,6 +434,7 @@ for i in range(N_samples):
             hpipm_ocp_iter_samples[i].append(MAXITER)
         else:
             hpipm_ocp_iter_samples[i].append(solverhpipm_ocp.qp_iters)
+        hpipm_ocp_time_samples[i].append(solverhpipm_ocp.qp_time)
         print("     QP Time = ", solverhpipm_ocp.qp_time)
         print("     QP Iter = ", solverhpipm_ocp.qp_iters)
 
@@ -518,15 +466,15 @@ for k,exp in enumerate(names):
     # Count number of problems solved for each sample initial state 
     for i in range(N_samples):
         # For sample i of problem k , compare nb iter to max iter
-        csqp_iter_ik  = np.array(csqp_iter_samples)[i,k]
-        osqp_time_ik = np.array(osqp_qp_time_samples)[i,k]
-        hpipm_dense_iter_ik = np.array(hpipm_dense_iter_samples)[i,k]
-        hpipm_ocp_iter_ik = np.array(hpipm_ocp_iter_samples)[i,k]
+        csqp_time_ik  = np.array(csqp_time_samples)[i,k]
+        osqp_time_ik = np.array(osqp_time_samples)[i,k]
+        hpipm_dense_time_ik = np.array(hpipm_dense_time_samples)[i,k]
+        hpipm_ocp_time_ik = np.array(hpipm_ocp_time_samples)[i,k]
         for j in range(MAX_QP_TIME):
-            if(csqp_iter_ik < j): csqp_iter_solved[j,k] += 1
-            if(osqp_iter_ik < j): osqp_time_solved[j,k] += 1
-            if(hpipm_dense_iter_ik < j): hpipm_dense_iter_solved[j,k] += 1
-            if(hpipm_ocp_iter_ik < j): hpipm_ocp_iter_solved[j,k] += 1
+            if(csqp_time_ik < j): csqp_time_solved[j,k] += 1
+            if(osqp_time_ik < j): osqp_time_solved[j,k] += 1
+            if(hpipm_dense_time_ik < j): hpipm_dense_time_solved[j,k] += 1
+            if(hpipm_ocp_time_ik < j): hpipm_ocp_time_solved[j,k] += 1
 
 # Generate plot of number of iterations for each problem
 import matplotlib.pyplot as plt
@@ -562,8 +510,8 @@ for k in range(N_pb):
     fig0, ax0 = plt.subplots(1, 1, figsize=(19.2,10.8))
     ax0.plot(xdata, csqp_time_solved[:,k]/N_samples, color='r', linewidth=4, label='CSQP') 
     ax0.plot(xdata, osqp_time_solved[:,k]/N_samples, color='y', linewidth=4, label='OSQP') 
-    ax0.plot(xdata, hpipm_dense_iter_solved[:,k]/N_samples, color='g', linewidth=4, label='HPIPM (dense)') 
-    ax0.plot(xdata, hpipm_ocp_iter_solved[:,k]/N_samples, color='b', linewidth=4, label='HPIPM (OCP)') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
+    ax0.plot(xdata, hpipm_dense_time_solved[:,k]/N_samples, color='g', linewidth=4, label='HPIPM (dense)') 
+    ax0.plot(xdata, hpipm_ocp_time_solved[:,k]/N_samples, color='b', linewidth=4, label='HPIPM (OCP)') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
     # Set axis and stuff
     ax0.set_ylabel('Percentage of problems solved', fontsize=26)
     ax0.set_xlabel('Max. solving time', fontsize=26)
@@ -607,5 +555,56 @@ for k in range(N_pb):
 # fig0.savefig('/home/skleff/data_paper_CSSQP/bench_'+names[0]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.png')
 
 
-# plt.show()
-# plt.close('all')
+plt.show()
+plt.close('all')
+
+
+# def create_full_qp(problem, ndx, nu, gap, y):
+#     '''
+#     Creates the full QP (needed for benchmarks)
+#     '''
+#     P = np.zeros((problem.T*(ndx + nu), problem.T*(ndx + nu)))
+#     q = np.zeros(problem.T*(ndx + nu))
+#     Asize = problem.T*(ndx + nu)
+#     A = np.zeros((problem.T*ndx, Asize))
+#     B = np.zeros(problem.T*ndx)
+#     for t, (model, data) in enumerate(zip(problem.runningModels, problem.runningDatas)):
+#         index_u = problem.T*ndx + t * nu
+#         if t>=1:
+#             index_x = (t-1) * ndx
+#             P[index_x:index_x+ndx, index_x:index_x+ndx] = data.Lxx.copy()
+#             P[index_x:index_x+ndx, index_u:index_u+nu] = data.Lxu.copy()
+#             P[index_u:index_u+nu, index_x:index_x+ndx] = data.Lxu.T.copy()
+#             q[index_x:index_x+ndx] = data.Lx.copy()
+#         P[index_u:index_u+nu, index_u:index_u+nu] = data.Luu.copy()
+#         q[index_u:index_u+nu] = data.Lu.copy()
+#         A[t * ndx: (t+1) * ndx, index_u:index_u+nu] = - data.Fu.copy() 
+#         A[t * ndx: (t+1) * ndx, t * ndx: (t+1) * ndx] = np.eye(ndx)
+#         if t >=1:
+#             A[t * ndx: (t+1) * ndx, (t-1) * ndx: t * ndx] = - data.Fx.copy()
+#         B[t * ndx: (t+1) * ndx] = gap[t].copy()
+#     P[(problem.T-1)*ndx:problem.T*ndx, problem.T*ndx-ndx:problem.T*ndx] = problem.terminalData.Lxx.copy()
+#     q[(problem.T-1)*ndx:problem.T*ndx] = problem.terminalData.Lx.copy()
+#     n_in = sum([len(y[i]) for i in range(len(y))])
+#     C = np.zeros((n_in, problem.T*(ndx + nu)))
+#     l = np.zeros(n_in)
+#     u = np.zeros(n_in)
+#     nin_count = 0
+#     index_x = problem.T*ndx
+#     for t, (model, data) in enumerate(zip(problem.runningModels, problem.runningDatas)):
+#         if model.ng == 0:
+#             continue
+#         l[nin_count: nin_count + model.ng] = model.g_lb - data.g
+#         u[nin_count: nin_count + model.ng] = model.g_ub - data.g
+#         if t > 0:
+#             C[nin_count: nin_count + model.ng, (t-1)*ndx: t*ndx] = data.Gx
+#         C[nin_count: nin_count + model.ng, index_x+t*nu: index_x+(t+1)*nu] = data.Gu
+#         nin_count += model.ng
+#     model = problem.terminalModel
+#     data = problem.terminalData
+#     if model.ng != 0:
+#         l[nin_count: nin_count + model.ng] = model.g_lb - data.g
+#         u[nin_count: nin_count + model.ng] = model.g_ub - data.g
+#         C[nin_count: nin_count + model.ng, (problem.T-1)*ndx: problem.T*ndx] = data.Gx
+#         nin_count += model.ng
+#     return P, q, A, B, C, u, l

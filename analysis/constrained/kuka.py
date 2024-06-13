@@ -17,7 +17,7 @@ import pinocchio as pin
 ###       LOAD ROBOT      ###
 # # # # # # # # # # # # # # #
 
-import qp_benchmark
+# import qp_benchmark
 
 robot = load_pinocchio_wrapper("iiwa", locked_joints = ["A7"])
 model = robot.model
@@ -29,68 +29,68 @@ q0 = np.array([-0.8 ,  0.06 , 2.68 , 1.74 , 0.81,  0.91])
 v0 = np.zeros(nv)
 x0 = np.concatenate([q0, v0]).copy()
 
-problem = qp_benchmark.create_kuka_problem(x0)
+# problem = qp_benchmark.create_kuka_problem(x0)
 # # # # # # # # # # # # # # # #
 # ###  SETUP CROCODDYL OCP  ###
 # # # # # # # # # # # # # # # #
 
-# # State and actuation model
-# state = crocoddyl.StateMultibody(model)
-# actuation = crocoddyl.ActuationModelFull(state)
+# State and actuation model
+state = crocoddyl.StateMultibody(model)
+actuation = crocoddyl.ActuationModelFull(state)
 
-# # Create cost terms
-# # Control regularization cost
-# uResidual = crocoddyl.ResidualModelControlGrav(state)
-# uRegCost = crocoddyl.CostModelResidual(state, uResidual)
-# # State regularization cost
-# xResidual = crocoddyl.ResidualModelState(state, x0)
-# xRegCost = crocoddyl.CostModelResidual(state, xResidual)
-# # endeff frame translation cost
-# endeff_frame_id = model.getFrameId("contact")
-# endeff_translation = np.array([0.5, 0.1, 0.2]) 
-# frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
-#     state, endeff_frame_id, endeff_translation
-# )
-# frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
+# Create cost terms
+# Control regularization cost
+uResidual = crocoddyl.ResidualModelControlGrav(state)
+uRegCost = crocoddyl.CostModelResidual(state, uResidual)
+# State regularization cost
+xResidual = crocoddyl.ResidualModelState(state, x0)
+xRegCost = crocoddyl.CostModelResidual(state, xResidual)
+# endeff frame translation cost
+endeff_frame_id = model.getFrameId("contact")
+endeff_translation = np.array([0.5, 0.1, 0.2]) 
+frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
+    state, endeff_frame_id, endeff_translation
+)
+frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
 
-# # Create contraint on end-effector (small box around initial EE position)
-# frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
-#     state, endeff_frame_id, np.zeros(3)
-# )
-# data = model.createData()
-# pin.framesForwardKinematics(model, data, x0[:model.nq])
-# p0 = data.oMf[endeff_frame_id].translation
-# ee_contraint = crocoddyl.ConstraintModelResidual(
-#     state,
-#     frameTranslationResidual,
-#     p0 - np.array([10.5, 0.5, 10.5]),
-#     p0 + np.array([0.5, 10.5, 10.5]),
-# )
-# # Create the running models
-# runningModels = []
-# dt = 1e-2
-# T = 50
-# for t in range(T + 1):
-#     runningCostModel = crocoddyl.CostModelSum(state)
-#     # Add costs
-#     runningCostModel.addCost("stateReg", xRegCost, 1e-1)
-#     runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
-#     if t != T:
-#         runningCostModel.addCost("translation", frameTranslationCost, 4)
-#     else:
-#         runningCostModel.addCost("translation", frameTranslationCost, 40)
-#     # Define contraints
-#     constraints = crocoddyl.ConstraintModelManager(state, actuation.nu)
-#     if t != 0:
-#         constraints.addConstraint("ee_bound", ee_contraint)
-#     # Create Differential action model
-#     running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
-#         state, actuation, runningCostModel, constraints
-#     )
-#     # Apply Euler integration
-#     running_model = crocoddyl.IntegratedActionModelEuler(running_DAM, dt)
-#     runningModels.append(running_model)        
-# problem = crocoddyl.ShootingProblem(x0, runningModels[:-1], runningModels[-1])
+# Create contraint on end-effector (small box around initial EE position)
+frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
+    state, endeff_frame_id, np.zeros(3)
+)
+data = model.createData()
+pin.framesForwardKinematics(model, data, x0[:model.nq])
+p0 = data.oMf[endeff_frame_id].translation
+ee_contraint = crocoddyl.ConstraintModelResidual(
+    state,
+    frameTranslationResidual,
+    p0 - np.array([10.5, 0.5, 10.5]),
+    p0 + np.array([0.5, 10.5, 10.5]),
+)
+# Create the running models
+runningModels = []
+dt = 1e-2
+T = 50
+for t in range(T + 1):
+    runningCostModel = crocoddyl.CostModelSum(state)
+    # Add costs
+    runningCostModel.addCost("stateReg", xRegCost, 1e-1)
+    runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
+    if t != T:
+        runningCostModel.addCost("translation", frameTranslationCost, 4)
+    else:
+        runningCostModel.addCost("translation", frameTranslationCost, 40)
+    # Define contraints
+    constraints = crocoddyl.ConstraintModelManager(state, actuation.nu)
+    if t != 0:
+        constraints.addConstraint("ee_bound", ee_contraint)
+    # Create Differential action model
+    running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
+        state, actuation, runningCostModel, constraints
+    )
+    # Apply Euler integration
+    running_model = crocoddyl.IntegratedActionModelEuler(running_DAM, dt)
+    runningModels.append(running_model)        
+problem = crocoddyl.ShootingProblem(x0, runningModels[:-1], runningModels[-1])
 
 
 # # # # # # # # # # # # #
@@ -107,7 +107,7 @@ import os
 python_path = pathlib.Path('/home/skleff/libs/mim_solvers/python/').absolute()
 os.sys.path.insert(1, str(python_path))
 from csqp import CSQP
-solver = CSQP(problem, "OSQP") #mim_solvers.SolverCSQP(problem)
+solver = CSQP(problem, "HPIPM_OCP") #mim_solvers.SolverCSQP(problem)
 
 MAXITER     = 1     
 TOL         = 1e-4 
@@ -118,7 +118,7 @@ EPS_ABS     = 1e-8
 EPS_REL     = 0.
 SAVE        = False # Save figure 
 
-solver = CSQP(problem, "OSQP")
+# solver = CSQP(problem, "OSQP")
 solver.xs = [solver.problem.x0] * (solver.problem.T + 1)  
 solver.us = solver.problem.quasiStatic([solver.problem.x0] * solver.problem.T)
 solver.termination_tolerance = TOL
@@ -132,7 +132,7 @@ solver.problem.x0 = x0
 solver.xs = [x0] * (solver.problem.T + 1) 
 solver.us = solver.problem.quasiStatic([x0] * solver.problem.T)
 solver.solve(solver.xs, solver.us, MAXITER, False)
-solved = solver.is_optimal
+# solved = solver.is_optimal
 
 # solver.max_qp_iters = 10000
 # solver.eps_abs = 1e-8
