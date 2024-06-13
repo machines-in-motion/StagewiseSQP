@@ -202,14 +202,14 @@ MAXITER     = 1
 TOL         = 1e-4 
 CALLBACKS   = False
 MAX_QP_ITER = 1000
-MAX_QP_TIME = 10000
+MAX_QP_TIME = int(0.5*1e3) # in ms
 EPS_ABS     = 1e-5
 EPS_REL     = 0.
 SAVE        = False # Save figure 
 
 # Benchmark params
 SEED = 1 ; np.random.seed(SEED)
-N_samples = 10
+N_samples = 100
 names = [
     #    'Pendulum'] # maxiter = 500
          'Kuka'] # maxiter = 100
@@ -369,7 +369,7 @@ for i in range(N_samples):
             csqp_iter_samples[i].append(MAX_QP_ITER)
         else:
             csqp_iter_samples[i].append(solvercsqp.qp_iters)
-        csqp_time_samples[i].append(solvercsqp.qp_time)
+        csqp_time_samples[i].append(solvercsqp.qp_time*1e3)
         print("     QP Time = ", solvercsqp.qp_time)
         print("     QP Iter = ", solvercsqp.qp_iters)
 
@@ -390,7 +390,7 @@ for i in range(N_samples):
             osqp_iter_samples[i].append(MAX_QP_ITER)
         else:
             osqp_iter_samples[i].append(solverosqp.qp_iters)
-        osqp_time_samples[i].append(solverosqp.qp_time)
+        osqp_time_samples[i].append(solverosqp.qp_time*1e3)
         print("     QP Time = ", solverosqp.qp_time)
         print("     QP Iter = ", solverosqp.qp_iters)
 
@@ -411,7 +411,7 @@ for i in range(N_samples):
             hpipm_dense_iter_samples[i].append(MAXITER)
         else:
             hpipm_dense_iter_samples[i].append(solverhpipm_dense.qp_iters)
-        hpipm_dense_time_samples[i].append(solverhpipm_dense.qp_time)
+        hpipm_dense_time_samples[i].append(solverhpipm_dense.qp_time*1e3)
         print("     QP Time = ", solverhpipm_dense.qp_time)
         print("     QP Iter = ", solverhpipm_dense.qp_iters)
 
@@ -434,7 +434,7 @@ for i in range(N_samples):
             hpipm_ocp_iter_samples[i].append(MAXITER)
         else:
             hpipm_ocp_iter_samples[i].append(solverhpipm_ocp.qp_iters)
-        hpipm_ocp_time_samples[i].append(solverhpipm_ocp.qp_time)
+        hpipm_ocp_time_samples[i].append(solverhpipm_ocp.qp_time*1e3)
         print("     QP Time = ", solverhpipm_ocp.qp_time)
         print("     QP Iter = ", solverhpipm_ocp.qp_iters)
 
@@ -465,7 +465,7 @@ hpipm_ocp_time_solved = np.zeros((MAX_QP_TIME, N_pb))
 for k,exp in enumerate(names):
     # Count number of problems solved for each sample initial state 
     for i in range(N_samples):
-        # For sample i of problem k , compare nb iter to max iter
+        # For sample i of problem k , compare solve time to max time
         csqp_time_ik  = np.array(csqp_time_samples)[i,k]
         osqp_time_ik = np.array(osqp_time_samples)[i,k]
         hpipm_dense_time_ik = np.array(hpipm_dense_time_samples)[i,k]
