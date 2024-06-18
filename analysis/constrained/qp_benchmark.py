@@ -113,7 +113,11 @@ def create_kuka_problem(x0):
         state, endeff_frame_id, endeff_translation
     )
     frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
-
+    # ee velocity cost
+    frameVelocityResidual = crocoddyl.ResidualModelFrameVelocity(
+        state, endeff_frame_id, pin.Motion.Zero(), pin.LOCAL_WORLD_ALIGNED
+    )
+    frameVelocityCost = crocoddyl.CostModelResidual(state, frameVelocityResidual)
     # Create contraint on end-effector (small box around initial EE position)
     frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
         state, endeff_frame_id, np.zeros(3)
@@ -127,6 +131,16 @@ def create_kuka_problem(x0):
         p0 - np.array([10.5, 0.5, 10.5]),
         p0 + np.array([0.5, 10.5, 10.5]),
     )
+    # Constraint on frame velocity
+    # frameVelocityResidual = crocoddyl.ResidualModelFrameVelocity(
+    #     state, endeff_frame_id, pin.Motion.Zero(), pin.LOCAL_WORLD_ALIGNED
+    # )
+    ee_vel_constraint = crocoddyl.ConstraintModelResidual(
+        state,
+        frameVelocityResidual,
+        -np.array([10.]*6),
+        np.array([10.]*6),
+    )
     # Create the running models
     runningModels = []
     dt = 1e-2
@@ -138,12 +152,15 @@ def create_kuka_problem(x0):
         runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
         if t != T:
             runningCostModel.addCost("translation", frameTranslationCost, 4)
+            # runningCostModel.addCost("velocity", frameVelocityCost, 1e-3)
         else:
             runningCostModel.addCost("translation", frameTranslationCost, 40)
+            # runningCostModel.addCost("velocity", frameVelocityCost, 1)
         # Define contraints
         constraints = crocoddyl.ConstraintModelManager(state, actuation.nu)
         if t != 0:
             constraints.addConstraint("ee_bound", ee_contraint)
+            constraints.addConstraint("ee_vel", ee_vel_constraint)
         # Create Differential action model
         running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
             state, actuation, runningCostModel, constraints
@@ -216,7 +233,6 @@ def create_humanoid_taichi_problem(target=np.array([0.4, 0, 1.2]),
     # Set integration time
     DT = 5e-2
     T = 10
-    # target = np.array([0.4, 0, 1.2])
     # Initialize reference state, target and reference CoM
     rightFoot = "right_sole_link"
     leftFoot = "left_sole_link"
@@ -230,7 +246,6 @@ def create_humanoid_taichi_problem(target=np.array([0.4, 0, 1.2]),
     pin.updateFramePlacements(rmodel, rdata)
     rfPos0 = rdata.oMf[rightFootId].translation
     lfPos0 = rdata.oMf[leftFootId].translation
-    refGripper = rdata.oMf[rmodel.getFrameId("gripper_left_joint")].translation
     comRef = (rfPos0 + lfPos0) / 2
     comRef[2] = pin.centerOfMass(rmodel, rdata, q0)[2].item()
     # Create two contact models used along the motion
@@ -327,7 +342,7 @@ def create_humanoid_taichi_problem(target=np.array([0.4, 0, 1.2]),
     runningCostModel3 = crocoddyl.CostModelSum(state, actuation.nu)
     terminalCostModel = crocoddyl.CostModelSum(state, actuation.nu)
     # Then let's added the running and terminal cost functions
-    JOINT_CONSTRAINT = True
+    JOINT_CONSTRAINT = False
     runningCostModel1.addCost("gripperPose", handTrackingCost, 1e2)
     runningCostModel1.addCost("stateReg", xRegCost, 1e-3)
     runningCostModel1.addCost("ctrlReg", uRegCost, 1e-4)
@@ -362,9 +377,9 @@ def create_humanoid_taichi_problem(target=np.array([0.4, 0, 1.2]),
     if FORCE_CONSTRAINT:
         constraintForce = crocoddyl.ConstraintModelResidual(state, ForceResidual, np.array([0., 0, 0]*2), np.array([np.inf, np.inf, np.inf]*2))
         constraintModelManager.addConstraint("force", constraintForce)
-    if JOINT_CONSTRAINT:
-        constraintState = crocoddyl.ConstraintModelResidual(state, xLimitResidual, xlb, xub)
-        constraintModelManager.addConstraint("state", constraintState)
+    # if JOINT_CONSTRAINT:
+    #     constraintState = crocoddyl.ConstraintModelResidual(state, xLimitResidual, xlb, xub)
+    #     constraintModelManager.addConstraint("state", constraintState)
     # Create the action model
     dmodelRunning1 = crocoddyl.DifferentialActionModelContactFwdDynamics(
         state, actuation, contactModel2Feet, runningCostModel1, constraintModelManager, 0., True)
@@ -380,97 +395,30 @@ def create_humanoid_taichi_problem(target=np.array([0.4, 0, 1.2]),
     runningModel3 = crocoddyl.IntegratedActionModelEuler(dmodelRunning3, DT)
     terminalModel = crocoddyl.IntegratedActionModelEuler(dmodelTerminal, 0)
     # Problem definition
-    x0 = np.concatenate([q0, pin.utils.zero(state.nv)])
     pb = crocoddyl.ShootingProblem(
         x0, [runningModel1] * T + [runningModel2] * T + [runningModel3] * T, terminalModel
     )
     return pb
 
-pb = create_humanoid_taichi_problem()
-N_ocp = pb.T
-xs_init = [pb.x0] * (N_ocp + 1)
-robot = example_robot_data.load("talos")
-rmodel = robot.model
-state = crocoddyl.StateMultibody(rmodel)
-actuation = crocoddyl.ActuationModelFloatingBase(state)
-us_init = [np.zeros( actuation.nu)] * N_ocp
-# Define solver
-ddp0 = mim_solvers.SolverCSQP(pb) #CSQP(problem, "StagewiseQP")
-ddp0.with_qp_callbacks = True 
-ddp1 = CSQP(pb, "ProxQP")
-ddp2 = CSQP(pb, "OSQP")
-ddp4 = CSQP(pb, "HPIPM_DENSE")
-ddp5 = CSQP(pb, "HPIPM_OCP")
-ddp0.with_callbacks = True
-ddp1.with_callbacks = True
-ddp2.with_callbacks = True
-ddp4.with_callbacks = True
-ddp5.with_callbacks = True
-max_qp_iters = 10000
-ddp0.max_qp_iters = max_qp_iters
-ddp1.max_qp_iters = max_qp_iters
-ddp2.max_qp_iters = max_qp_iters
-ddp4.max_qp_iters = max_qp_iters
-ddp5.max_qp_iters = max_qp_iters
-eps_abs = 1e-3  
-eps_rel = 0.
-ddp0.eps_abs = eps_abs
-ddp0.eps_rel = eps_rel
-ddp1.eps_abs = eps_abs
-ddp1.eps_rel = eps_rel
-ddp2.eps_abs = eps_abs
-ddp2.eps_rel = eps_rel
-ddp4.eps_abs = eps_abs
-ddp4.eps_rel = eps_rel
-ddp5.eps_rel = eps_rel
-ddp0.equality_qp_initial_guess = False
-ddp1.equality_qp_initial_guess = False
-ddp2.equality_qp_initial_guess = False
-ddp4.equality_qp_initial_guess = False
-ddp5.equality_qp_initial_guess = False
-ddp0.update_rho_with_heuristic = True
-import time 
-# Stagewise QP
-print("\n ------ STAGEWISE (computeDirection)------ ")
-converged = ddp0.solve(xs_init, us_init, 0)
-t0 = time.time()
-ddp0.computeDirection(True)
-print("Stagewise : ", time.time() - t0)
-print("------------------------ \n")
-# # ProxQP
-# print("\n ------ ProxQP ------ ")
-# converged = ddp1.solve(xs_init, us_init, 1)
-# print("------------------------ \n")
-# # OSQP
-# print("\n ------ OSQP ------ ")
-# converged = ddp2.solve(xs_init, us_init, 1)
-# print("------------------------ \n")
-# # HPIPM
-# print("\n ------ HPIPM DENSE ------ ")
-# converged = ddp4.solve(xs_init, us_init, 1)
-# print("------------------------ \n")
-# # HPIPM
-# print("\n ------ HPIPM OCP ------ ")
-# converged = ddp5.solve(xs_init, us_init, 1)
-# print("------------------------ \n")
+
 
 # Solver params
 MAXITER     = 1     
-TOL         = 1e-4 
+TOL         = 1e-4
 CALLBACKS   = False
-MAX_QP_ITER = 10000
+MAX_QP_ITER = 50000
 MAX_QP_TIME = int(0.5*1e3) # in ms
-EPS_ABS     = 1e-3
+EPS_ABS     = 1e-1
 EPS_REL     = 0.
 SAVE        = False # Save figure 
 
 # Benchmark params
-SEED = 1 ; np.random.seed(SEED)
-N_samples = 2
+SEED = 10 ; np.random.seed(SEED)
+N_samples = 100
 names = [
     #    'Pendulum'] # maxiter = 500
-        #  'Kuka'] # maxiter = 100
-         'Taichi'] #
+         'Kuka'] # maxiter = 100
+        #  'Taichi'] #
         # #  'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
         #  'Quadrotor'] # maxiter = 200
 
@@ -510,10 +458,11 @@ for k,name in enumerate(names):
     solvercsqp.us = solvercsqp.problem.quasiStatic([solvercsqp.problem.x0] * solvercsqp.problem.T)
     solvercsqp.termination_tolerance = TOL
     solvercsqp.max_qp_iters = MAX_QP_ITER
+    solvercsqp.with_qp_callbacks = False
     solvercsqp.eps_abs = EPS_ABS
     solvercsqp.eps_rel = EPS_REL
-    solvercsqp.equality_qp_initial_guess = False
-    solvercsqp.update_rho_with_heuristic = True
+    solvercsqp.equality_qp_initial_guess = True
+    # solvercsqp.update_rho_with_heuristic = False
     solvercsqp.with_callbacks = CALLBACKS
     solversCSQP.append(solvercsqp)
     
@@ -525,7 +474,6 @@ for k,name in enumerate(names):
     solverosqp.max_qp_iters = MAX_QP_ITER
     solverosqp.eps_abs = EPS_ABS
     solverosqp.eps_rel = EPS_REL
-    solverosqp.equality_qp_initial_guess = False
     solverosqp.with_callbacks = CALLBACKS
     solversOSQP.append(solverosqp)
 
@@ -534,10 +482,9 @@ for k,name in enumerate(names):
     solverhpipm_dense.xs = [solverhpipm_dense.problem.x0] * (solverhpipm_dense.problem.T + 1)  
     solverhpipm_dense.us = solverhpipm_dense.problem.quasiStatic([solverhpipm_dense.problem.x0] * solverhpipm_dense.problem.T)
     solverhpipm_dense.termination_tolerance  = TOL
-    solverhpipm_dense.max_qp_iters = MAX_QP_ITER
+    solverhpipm_dense.max_qp_iters = 1 #MAX_QP_ITER
     solverhpipm_dense.eps_abs = EPS_ABS
     solverhpipm_dense.eps_rel = EPS_REL
-    solverhpipm_dense.equality_qp_initial_guess = False
     solverhpipm_dense.with_callbacks = CALLBACKS
     solversHPIPM_dense.append(solverhpipm_dense)
 
@@ -548,7 +495,6 @@ for k,name in enumerate(names):
     solverhpipm_ocp.termination_tolerance  = TOL
     solverhpipm_ocp.eps_abs = EPS_ABS
     solverhpipm_ocp.eps_rel = EPS_REL
-    solverhpipm_ocp.equality_qp_initial_guess = False
     solverhpipm_ocp.with_callbacks = CALLBACKS
     solversHPIPM_ocp.append(solverhpipm_ocp)
 
@@ -569,7 +515,7 @@ for i in range(N_samples):
     quadrotor_x0_samples[i,:] = np.concatenate([pin.randomConfiguration(quadrotor.model), np.zeros(quadrotor.model.nv)])
     err = np.zeros(3)
     err[2] = 2*np.random.rand(1) - 1
-    taichi_p0_samples[i,:]  = taichi_p0 #+ 0.05*err
+    taichi_p0_samples[i,:]  = taichi_p0 + 0.05*err
 
 print("Created "+str(N_samples)+" random initial states per model !")
 
@@ -627,7 +573,6 @@ for i in range(N_samples):
             solvercsqp.problem.x0 = x0
         solvercsqp.xs = [solvercsqp.problem.x0] * (solvercsqp.problem.T + 1) 
         solvercsqp.us = solvercsqp.problem.quasiStatic([solvercsqp.problem.x0] * solvercsqp.problem.T)
-        solvercsqp.with_qp_callbacks = True
         solvercsqp.solve(solvercsqp.xs, solvercsqp.us, 0, False)
         t1 = time.time()
         solvercsqp.computeDirection(True)
@@ -641,9 +586,11 @@ for i in range(N_samples):
         else:
             csqp_iter_samples[i].append(solvercsqp.qp_iters)
         csqp_time_samples[i].append(solvercsqp.qp_time*1e3)
+        print(" - Primal residual: ", solvercsqp.norm_primal)
+        print(" - Dual residual: ", solvercsqp.norm_dual)
         print("     QP Time = ", solvercsqp.qp_time)
         print("     QP Iter = ", solvercsqp.qp_iters)
-
+        
         # OSQP
         print("   Problem : "+name+" OSQP")
         solverosqp = solversOSQP[k]
