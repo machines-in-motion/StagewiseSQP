@@ -154,10 +154,10 @@ def create_humanoid_taichi_problem(target):
 
 # Solver params
 MAXITER     = 300 
-TOL         = 1e-4 
+TOL         = 1e-2 
 CALLBACKS   = False
 FILTER_SIZE = MAXITER
-SAVE        = False # Save figure 
+SAVE        = True # Save figure 
 
 # Benchmark params
 SEED = 1 ; np.random.seed(SEED)
@@ -388,7 +388,7 @@ for k in range(N_pb):
     fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
     # Save, show , clean
 if(SAVE):
-    fig0.savefig('/home/skleff/data_sqp_paper_croc2/bench_taichi_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+'.pdf', bbox_inches="tight")
+    fig0.savefig('/home/skleff/Desktop/TRO-SQP/data/rollout_benchmarks/bench_Taichi_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
 
 plt.show()
 plt.close('all')

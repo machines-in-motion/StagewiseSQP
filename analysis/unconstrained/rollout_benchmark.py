@@ -171,20 +171,20 @@ def create_quadrotor_problem(x0):
 
 
 # Solver params
-MAXITER     = 500 
+MAXITER     = 200 
 TOL         = 1e-4 
 CALLBACKS   = False
 FILTER_SIZE = MAXITER
-SAVE        = False # Save figure 
+SAVE        = True # Save figure 
 
 # Benchmark params
 SEED = 1 ; np.random.seed(SEED)
 N_samples = 100
 names = [
-       'Pendulum'] # maxiter = 500
+    #    'Pendulum'] # maxiter = 500
         #  'Kuka'] # maxiter = 100
         # #  'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
-        #  'Quadrotor'] # maxiter = 200
+         'Quadrotor'] # maxiter = 200
 
 N_pb = len(names)
 
@@ -429,8 +429,7 @@ for k in range(N_pb):
     fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
     # Save, show , clean
     if(SAVE):
-        fig0.savefig('/home/skleff/data_sqp_paper_croc2/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
-
+        fig0.savefig('/home/skleff/Desktop/TRO-SQP/data/rollout_benchmarks/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
 
 # # Plot CV
 # fig1, ax1 = plt.subplots(1, 1, figsize=(19.2,10.8)) 

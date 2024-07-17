@@ -504,7 +504,10 @@ for k,name in enumerate(names):
         solvercsqp.with_qp_callbacks = False
         solvercsqp.eps_abs = EPS_ABS
         solvercsqp.eps_rel = EPS_REL
+        # print("CHECK = ", solvercsqp.equality_qp_initial_guess)
         solvercsqp.equality_qp_initial_guess = False
+        # assert(solvercsqp.equality_qp_initial_guess == False)
+        # print("ASSERT OK")
         solvercsqp.update_rho_with_heuristic = False
         solvercsqp.with_callbacks = CALLBACKS
         # solvercsqp.with_qp_callbacks = True # CALLBACKS
@@ -540,7 +543,7 @@ for k,name in enumerate(names):
         solverhpipm_ocp.xs = [solverhpipm_ocp.problem.x0] * (solverhpipm_ocp.problem.T + 1)  
         solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([solverhpipm_ocp.problem.x0] * solverhpipm_ocp.problem.T)
         solverhpipm_ocp.termination_tolerance  = TOL
-        solverhpipm_dense.max_qp_iters = MAX_QP_ITER
+        solverhpipm_ocp.max_qp_iters = MAX_QP_ITER
         solverhpipm_ocp.eps_abs = EPS_ABS
         solverhpipm_ocp.eps_rel = EPS_REL
         solverhpipm_ocp.with_callbacks = CALLBACKS
