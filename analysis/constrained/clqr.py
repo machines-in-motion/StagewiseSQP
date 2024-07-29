@@ -22,8 +22,8 @@ class ActionModelCLQR(crocoddyl.ActionModelAbstract):
         crocoddyl.ActionModelAbstract.__init__(self, state, nu, nr, ng, nh)
 
         if not self.isInitial:
-            lower_bound = np.array([0.] * ng)
-            upper_bound = np.array([np.inf]* ng)
+            lower_bound = np.array([-10.] * ng)
+            upper_bound = np.array([10.]* ng)
 
             self.g_lb = lower_bound
             self.g_ub = upper_bound
