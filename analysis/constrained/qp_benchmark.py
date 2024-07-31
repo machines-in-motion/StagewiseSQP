@@ -402,6 +402,13 @@ def create_humanoid_taichi_problem(target=np.array([0.4, 0, 1.2]),
     if JOINT_CONSTRAINT:
         constraintState = crocoddyl.ConstraintModelResidual(state, xLimitResidual, xlb, xub)
         constraintModelManager.addConstraint("state", constraintState)
+
+    acc_refs = crocoddyl.ResidualModelJointAcceleration(state, actuation.nu)
+    accCost = crocoddyl.CostModelResidual(state, acc_refs)
+    runningCostModel1.addCost("accCost1", accCost, 1e-3)
+    runningCostModel2.addCost("accCost2", accCost, 1e-3)
+    runningCostModel3.addCost("accCost3", accCost, 1e-3)
+
     # Create the action model
     dmodelRunning1 = crocoddyl.DifferentialActionModelContactFwdDynamics(
         state, actuation, contactModel2Feet, runningCostModel1, constraintModelManager, 0., True)
@@ -427,19 +434,19 @@ def create_humanoid_taichi_problem(target=np.array([0.4, 0, 1.2]),
 MAXITER     = 1     
 TOL         = 1e-4
 CALLBACKS   = False
-MAX_QP_ITER = 50000
+MAX_QP_ITER = 1000
 MAX_QP_TIME = int(5.*1e3) # in ms
-EPS_ABS     = 1e-1
+EPS_ABS     = 1e-6
 EPS_REL     = 0.
 SAVE        = False # Save figure 
 
 # Benchmark params
 SEED = 10 ; np.random.seed(SEED)
-N_samples = 100
+N_samples = 10
 names = [
     #    'Pendulum'] # maxiter = 500
-         'Kuka'] # maxiter = 100
-        #  'Taichi'] #
+        #  'Kuka'] # maxiter = 100
+         'Taichi'] #
         # #  'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
         #  'Quadrotor'] # maxiter = 200
 
@@ -447,9 +454,9 @@ N_pb = len(names)
 
 # Solvers
 SOLVERS = ['CSQP',
-           'OSQP'] 
+           'OSQP',
         #    'HPIPM_DENSE', 
-        #    'HPIPM_OCP']
+           'HPIPM_OCP']
 
 if('CSQP' in SOLVERS):
     solversCSQP         = [] 

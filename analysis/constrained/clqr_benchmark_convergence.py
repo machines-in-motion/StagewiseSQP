@@ -20,9 +20,9 @@ from csqp import CSQP
 MAXITER     = 1     
 TOL         = 1e-4
 CALLBACKS   = False
-MAX_QP_ITER = 1
-MAX_QP_TIME = int(8e3) # in ms
-EPS_ABS     = 1e-1
+MAX_QP_ITER = 1000
+MAX_QP_TIME = int(1e3) # in ms
+EPS_ABS     = 1e-10
 EPS_REL     = 0.
 SAVE        = False # Save figure 
 
@@ -39,12 +39,12 @@ csqp_time_solved = np.zeros(N_samples)
 osqp_time_solved = np.zeros(N_samples)
 hpipm_time_solved = np.zeros(N_samples)
 
-nx = 10
+nx = 80
 
 # Solvers
 SOLVERS = ['CSQP',
            'OSQP',
-           'HPIPM_DENSE', 
+        #    'HPIPM_DENSE', 
            'HPIPM_OCP',
            'ProxQP']
 
@@ -139,13 +139,13 @@ for pb_id in range(N_samples):
     # HPIPM OCP
     if("HPIPM_OCP" in SOLVERS):
         print("HPIPM_OCP")
-        solverhpipm = CSQP(problem, "HPIPM_OCP")
-        solverhpipm.termination_tolerance = TOL
-        solverhpipm.max_qp_iters = MAX_QP_ITER
-        solverhpipm.eps_abs = EPS_ABS
-        solverhpipm.eps_rel = EPS_REL
-        solverhpipm.with_callbacks = CALLBACKS
-        solverhpipm.solve(xs, us, MAXITER, False)
+        solverhpipm_ocp = CSQP(problem, "HPIPM_OCP")
+        solverhpipm_ocp.termination_tolerance = TOL
+        solverhpipm_ocp.max_qp_iters = MAX_QP_ITER
+        solverhpipm_ocp.eps_abs = EPS_ABS
+        solverhpipm_ocp.eps_rel = EPS_REL
+        solverhpipm_ocp.with_callbacks = CALLBACKS
+        solverhpipm_ocp.solve(xs, us, MAXITER, False)
         # Check convergence
         solved = True # (solverhpipm.found_qp_sol and solverhpipm.norm_primal < EPS_ABS and solverhpipm.norm_dual < EPS_ABS and solverhpipm.qp_iters <= MAX_QP_ITER)
         hpipm_ocp_solved_samples.append( solved )
@@ -154,33 +154,33 @@ for pb_id in range(N_samples):
             hpipm_ocp_iter_samples.append(MAX_QP_ITER)
             hpipm_ocp_time_samples.append(MAX_QP_TIME)
         else:
-            hpipm_ocp_iter_samples.append(solverhpipm.qp_iters)
-            hpipm_ocp_time_samples.append(solverhpipm.qp_time*1e3)
-        print("     QP Time = ", solverhpipm.qp_time)
-        print("     QP Iter = ", solverhpipm.qp_iters)
+            hpipm_ocp_iter_samples.append(solverhpipm_ocp.qp_iters)
+            hpipm_ocp_time_samples.append(solverhpipm_ocp.qp_time*1e3)
+        print("     QP Time = ", solverhpipm_ocp.qp_time)
+        print("     QP Iter = ", solverhpipm_ocp.qp_iters)
 
-    # HPIPM OCP
+    # HPIPM DENE
     if("HPIPM_DENSE" in SOLVERS):
         print("HPIPM_DENSE")
-        solverhpipm = CSQP(problem, "HPIPM_DENSE")
-        solverhpipm.termination_tolerance = TOL
-        solverhpipm.max_qp_iters = MAX_QP_ITER
-        solverhpipm.eps_abs = EPS_ABS
-        solverhpipm.eps_rel = EPS_REL
-        solverhpipm.with_callbacks = CALLBACKS
-        solverhpipm.solve(xs, us, MAXITER, False)
+        solverhpipm_dense = CSQP(problem, "HPIPM_DENSE")
+        solverhpipm_dense.termination_tolerance = TOL
+        solverhpipm_dense.max_qp_iters = MAX_QP_ITER
+        solverhpipm_dense.eps_abs = EPS_ABS
+        solverhpipm_dense.eps_rel = EPS_REL
+        solverhpipm_dense.with_callbacks = CALLBACKS
+        solverhpipm_dense.solve(xs, us, MAXITER, False)
         # Check convergence
         solved = True # (solverhpipm.found_qp_sol and solverhpipm.norm_primal < EPS_ABS and solverhpipm.norm_dual < EPS_ABS and solverhpipm.qp_iters <= MAX_QP_ITER)
-        hpipm_ocp_solved_samples.append( solved )
+        hpipm_dense_solved_samples.append( solved )
         if(not solved): 
             print("      FAILED !!!!")
-            hpipm_ocp_iter_samples.append(MAX_QP_ITER)
-            hpipm_ocp_time_samples.append(MAX_QP_TIME)
+            hpipm_dense_iter_samples.append(MAX_QP_ITER)
+            hpipm_dense_time_samples.append(MAX_QP_TIME)
         else:
-            hpipm_ocp_iter_samples.append(solverhpipm.qp_iters)
-            hpipm_ocp_time_samples.append(solverhpipm.qp_time*1e3)
-        print("     QP Time = ", solverhpipm.qp_time)
-        print("     QP Iter = ", solverhpipm.qp_iters)
+            hpipm_dense_iter_samples.append(solverhpipm_dense.qp_iters)
+            hpipm_dense_time_samples.append(solverhpipm_dense.qp_time*1e3)
+        print("     QP Time = ", solverhpipm_dense.qp_time)
+        print("     QP Iter = ", solverhpipm_dense.qp_iters)
 
     # ProxQP
     if("ProxQP" in SOLVERS):
