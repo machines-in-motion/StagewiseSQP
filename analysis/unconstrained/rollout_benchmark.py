@@ -9,7 +9,6 @@ Also compare with FDDP (original LS) and DDP
 
 Randomizing over initial states
 '''
-import sys
 import numpy as np
 import crocoddyl
 import pinocchio as pin
@@ -19,6 +18,7 @@ import example_robot_data
 # from bench_utils.cartpole_swingup import DifferentialActionModelCartpole
 from crocoddyl.utils.pendulum import CostModelDoublePendulum, ActuationModelDoublePendulum
 import mim_solvers
+import time
 
 def create_double_pendulum_problem(x0):
     '''
@@ -176,6 +176,7 @@ TOL         = 1e-4
 CALLBACKS   = False
 FILTER_SIZE = MAXITER
 SAVE        = True # Save figure 
+# REG         = 1e-6
 
 # Benchmark params
 SEED = 1 ; np.random.seed(SEED)
@@ -248,6 +249,12 @@ for k,name in enumerate(names):
     solverSQP.use_filter_line_search = True
     solverSQP.filter_size            = MAXITER
     solverSQP.with_callbacks         = CALLBACKS
+    # solverSQP.reg_incFactor = 1.01
+    # solverSQP.reg_decFactor = 1.01
+    # solverSQP.reg_min = REG
+    # solverSQP.reg_max = REG
+    # solverSQP.regMin  = REG
+    # solverSQP.regMax  = REG
     solverCSSQP.append(solverSQP)
 
 
@@ -273,35 +280,43 @@ print("Created "+str(N_samples)+" random initial states per model !")
 ddp_iter_samples   = []  
 ddp_kkt_samples    = []
 ddp_solved_samples = []
+ddp_avg_time_per_iter_samples = []
 
 fddp_iter_samples   = []  
 fddp_kkt_samples    = []
 fddp_solved_samples = []
+fddp_avg_time_per_iter_samples = []
 
 fddp_filter_iter_samples   = []  
 fddp_filter_kkt_samples    = []
 fddp_filter_solved_samples = []
+fddp_filter_avg_time_per_iter_samples = []
 
 SQP_iter_samples   = []  
 SQP_kkt_samples    = []
 SQP_solved_samples = []
+SQP_avg_time_per_iter_samples = []
 
 for i in range(N_samples):
     ddp_iter_samples.append([])
     ddp_kkt_samples.append([])
     ddp_solved_samples.append([])
+    ddp_avg_time_per_iter_samples.append([])
 
     fddp_iter_samples.append([])
     fddp_kkt_samples.append([])
     fddp_solved_samples.append([])
+    fddp_avg_time_per_iter_samples.append([])
 
     fddp_filter_iter_samples.append([])
     fddp_filter_kkt_samples.append([])
     fddp_filter_solved_samples.append([])
+    fddp_filter_avg_time_per_iter_samples.append([])
 
     SQP_iter_samples.append([])
     SQP_kkt_samples.append([])
     SQP_solved_samples.append([])
+    SQP_avg_time_per_iter_samples.append([])
 
     print("---")
     print("Sample "+str(i+1)+'/'+str(N_samples))
@@ -318,7 +333,9 @@ for i in range(N_samples):
         solverddp.problem.x0 = x0
         solverddp.xs = [x0] * (solverddp.problem.T + 1) 
         solverddp.us = solverddp.problem.quasiStatic([x0] * solverddp.problem.T)
+        tic = time.time()
         solverddp.solve(solverddp.xs, solverddp.us, MAXITER, False)
+        ddp_solve_time = time.time() - tic
         solved = (solverddp.iter < MAXITER) and (solverddp.KKT < TOL)
         ddp_solved_samples[i].append( solved )
         print("   iter = "+str(solverddp.iter)+"  |  KKT = "+str(solverddp.KKT))
@@ -327,6 +344,7 @@ for i in range(N_samples):
             ddp_iter_samples[i].append(MAXITER)
         else:
             ddp_iter_samples[i].append(solverddp.iter)
+        ddp_avg_time_per_iter_samples[i].append(ddp_solve_time/solverddp.iter)
         ddp_kkt_samples[i].append(solverddp.KKT)
 
         # FDDP (MS)
@@ -335,7 +353,9 @@ for i in range(N_samples):
         solverfddp.problem.x0 = x0
         solverfddp.xs = [x0] * (solverfddp.problem.T + 1) 
         solverfddp.us = solverfddp.problem.quasiStatic([x0] * solverfddp.problem.T)
+        tic = time.time()
         solverfddp.solve(solverfddp.xs, solverfddp.us, MAXITER, False)
+        fddp_solve_time = time.time() - tic
         solved = (solverfddp.iter < MAXITER) and (solverfddp.KKT < TOL)
         fddp_solved_samples[i].append( solved )
         print("   iter = "+str(solverfddp.iter)+"  |  KKT = "+str(solverfddp.KKT))
@@ -344,6 +364,7 @@ for i in range(N_samples):
             fddp_iter_samples[i].append(MAXITER)
         else:
             fddp_iter_samples[i].append(solverfddp.iter)
+        fddp_avg_time_per_iter_samples[i].append(fddp_solve_time/solverfddp.iter)
         fddp_kkt_samples[i].append(solverfddp.KKT)
 
         # FDDP filter (MS)
@@ -352,7 +373,9 @@ for i in range(N_samples):
         solverfddp_filter.problem.x0 = x0
         solverfddp_filter.xs = [x0] * (solverfddp_filter.problem.T + 1) 
         solverfddp_filter.us = solverfddp_filter.problem.quasiStatic([x0] * solverfddp_filter.problem.T)
+        tic = time.time()
         solverfddp_filter.solve(solverfddp_filter.xs, solverfddp_filter.us, MAXITER, False)
+        fddp_filter_solve_time = time.time() - tic
         solved = (solverfddp_filter.iter < MAXITER) and (solverfddp_filter.KKT < TOL)
         fddp_filter_solved_samples[i].append( solved )
         print("   iter = "+str(solverfddp_filter.iter)+"  |  KKT = "+str(solverfddp_filter.KKT))
@@ -361,6 +384,7 @@ for i in range(N_samples):
             fddp_filter_iter_samples[i].append(MAXITER)
         else:
             fddp_filter_iter_samples[i].append(solverfddp_filter.iter)
+        fddp_filter_avg_time_per_iter_samples[i].append(fddp_filter_solve_time/solverfddp_filter.iter)
         fddp_filter_kkt_samples[i].append(solverfddp_filter.KKT)
 
         # SQP        
@@ -369,7 +393,9 @@ for i in range(N_samples):
         solverSQP.problem.x0 = x0
         solverSQP.xs = [x0] * (solverSQP.problem.T + 1) 
         solverSQP.us = solverSQP.problem.quasiStatic([x0] * solverSQP.problem.T)
+        tic = time.time()
         solverSQP.solve(solverSQP.xs, solverSQP.us, MAXITER, False)
+        SQP_solve_time = time.time() - tic
             # Check convergence
         solved = (solverSQP.iter < MAXITER) and (solverSQP.KKT < TOL)
         SQP_solved_samples[i].append( solved )
@@ -379,8 +405,25 @@ for i in range(N_samples):
             SQP_iter_samples[i].append(MAXITER)
         else:
             SQP_iter_samples[i].append(solverSQP.iter)
+        SQP_avg_time_per_iter_samples[i].append(SQP_solve_time/solverSQP.iter)
         SQP_kkt_samples[i].append(solverSQP.KKT)
 
+# Compute solving time statistics
+ddp_mean_solve_time         = np.mean(np.array(ddp_avg_time_per_iter_samples))
+ddp_std_solve_time          = np.std(np.array(ddp_avg_time_per_iter_samples))
+fddp_mean_solve_time        = np.mean(np.array(fddp_avg_time_per_iter_samples))
+fddp_std_solve_time         = np.std(np.array(fddp_avg_time_per_iter_samples))
+fddp_filter_mean_solve_time = np.mean(np.array(fddp_filter_avg_time_per_iter_samples))
+fddp_filter_std_solve_time  = np.std(np.array(fddp_filter_avg_time_per_iter_samples))
+SQP_mean_solve_time         = np.mean(np.array(SQP_avg_time_per_iter_samples))
+SQP_std_solve_time          = np.std(np.array(SQP_avg_time_per_iter_samples))
+
+print("Average solving times \n")
+print(ddp_mean_solve_time)
+print(" DDP      = " , ddp_mean_solve_time         ,  ' \xB1 ' , ddp_std_solve_time)
+print(" FDDP     = " , fddp_mean_solve_time        ,  ' \xB1 ' , fddp_std_solve_time)
+print(" FDDP_LS  = " , fddp_filter_mean_solve_time ,  ' \xB1 ' , fddp_filter_std_solve_time)
+print(" SQP      = " , SQP_mean_solve_time         ,  ' \xB1 ' , SQP_std_solve_time)
 
 # Average fddp iters
 ddp_iter_solved = np.zeros((MAXITER, N_pb))
@@ -408,15 +451,17 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.rcParams["pdf.fonttype"] = 42
 matplotlib.rcParams["ps.fonttype"] = 42
- 
+
 # x-axis : max number of iterations
 xdata     = range(0,MAXITER)
+xdata2     = range(0,N_samples)
 for k in range(N_pb):
+    # Plot number of problem solved vs max number of iterations
     fig0, ax0 = plt.subplots(1, 1, figsize=(19.2,10.8))
-    ax0.plot(xdata, ddp_iter_solved[:,k]/N_samples, color='r', linewidth=4, label='DDP') 
-    ax0.plot(xdata, fddp_iter_solved[:,k]/N_samples, color='y', linewidth=4, label='FDDP (default LS)') 
-    ax0.plot(xdata, fddp_filter_iter_solved[:,k]/N_samples, color='g', linewidth=4, label='FDDP (filter LS)') 
-    ax0.plot(xdata, SQP_iter_solved[:,k]/N_samples, color='b', linewidth=4, label='SQP') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
+    ax0.plot(xdata, ddp_iter_solved[:,k]/N_samples, color='r', linewidth=4, linestyle='dashdot', label='DDP') 
+    ax0.plot(xdata, fddp_iter_solved[:,k]/N_samples, color='y', linewidth=4, linestyle='dashed', label='FDDP (default LS)') 
+    ax0.plot(xdata, fddp_filter_iter_solved[:,k]/N_samples, color='g', linewidth=4, linestyle='dotted', label='FDDP (filter LS)') 
+    ax0.plot(xdata, SQP_iter_solved[:,k]/N_samples, color='b', linewidth=4, linestyle='solid', label='SQP') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
     # Set axis and stuff
     ax0.set_ylabel('Percentage of problems solved', fontsize=26)
     ax0.set_xlabel('Max. number of iterations', fontsize=26)
@@ -429,7 +474,33 @@ for k in range(N_pb):
     fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
     # Save, show , clean
     if(SAVE):
-        fig0.savefig('/home/skleff/Desktop/TRO-SQP/data/rollout_benchmarks/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
+        fig0.savefig('/home/skleff/Desktop/TRO-SQP/data/rollout_benchmarks/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'_NEW.pdf', bbox_inches="tight")
+
+    # Plot average computation times 
+    # fig1, ax1 = plt.subplots(1, 1, figsize=(19.2,10.8))
+    # ax1.plot(xdata2, ddp_avg_time_per_iter_samples, color='r', linewidth=4, label='DDP') 
+    # ax1.plot(xdata2, np.mean(ddp_avg_time_per_iter_samples)*np.ones(N_samples), color='r', linewidth=8, alpha=0.3, linestyle='-.') 
+    # ax1.plot(xdata2, fddp_avg_time_per_iter_samples, color='y', linewidth=4, label='FDDP (default LS)') 
+    # ax1.plot(xdata2, np.mean(fddp_avg_time_per_iter_samples)*np.ones(N_samples), color='y', linewidth=8, alpha=0.3, linestyle='-.') 
+    # ax1.plot(xdata2, fddp_filter_avg_time_per_iter_samples, color='g', linewidth=4, label='FDDP (filter LS)') 
+    # ax1.plot(xdata2, np.mean(fddp_filter_avg_time_per_iter_samples)*np.ones(N_samples), color='g', linewidth=8, alpha=0.3, linestyle='-.') 
+    # ax1.plot(xdata2, SQP_avg_time_per_iter_samples, color='b', linewidth=4, label='SQP') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
+    # ax1.plot(xdata2, np.mean(SQP_avg_time_per_iter_samples)*np.ones(N_samples), color='b', linewidth=8, alpha=0.3, linestyle='-.') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
+    # # Set axis and stuff
+    # ax1.set_ylabel('Avg time per iteration', fontsize=26)
+    # ax1.set_xlabel('Random problem', fontsize=26)
+    # # ax1.set_ylim(-0.02, 1.02)
+    # ax1.tick_params(axis = 'y', labelsize=22)
+    # ax1.tick_params(axis = 'x', labelsize=22)
+    # ax1.grid(True) 
+    # # Legend 
+    # handles1, labels1 = ax1.get_legend_handles_labels()
+    # fig1.legend(handles1, labels1, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
+    # # Save, show , clean
+    # if(SAVE):
+    #     fig1.savefig('/home/skleff/Desktop/TRO-SQP/data/rollout_benchmarks/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'AVG_TIME.pdf', bbox_inches="tight")
+
+
 
 # # Plot CV
 # fig1, ax1 = plt.subplots(1, 1, figsize=(19.2,10.8)) 

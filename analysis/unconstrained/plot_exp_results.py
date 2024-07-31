@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.rcParams["pdf.fonttype"] = 42
 matplotlib.rcParams["ps.fonttype"] = 42
- 
+import os
  
 KUKA_DGH_PATH   = os.path.join(os.path.dirname(__file__), '../../kuka_dgh')
 os.sys.path.insert(1, str(KUKA_DGH_PATH))
@@ -85,7 +85,7 @@ def compute_costs(r):
 
 
 # Plot the convergence ; KKT residual and number of iterations
-fig, ax = plt.subplots(2, 1, sharex='col', figsize=(10.8,10.8))
+fig, ax = plt.subplots(2, 1, sharex='col',  figsize=(13.8,10.8), constrained_layout=True)
 LINEWIDTH = 6
 
 
@@ -100,8 +100,8 @@ major_formatter = FuncFormatter(sci_format)
 
 
 # KKT residual 
-ax[0].plot(time_lin, r1.data['KKT'][N_START:N], label='SQP', linewidth=LINEWIDTH, color='b', alpha=0.8)
-ax[0].plot(time_lin, r2.data['KKT'][N_START:N], label='FDDP',linewidth=LINEWIDTH,  color='g',  alpha=0.8)
+ax[0].plot(time_lin, r1.data['KKT'][N_START:N], label='SQP', linewidth=LINEWIDTH, color='b', alpha=0.5)
+ax[0].plot(time_lin, r2.data['KKT'][N_START:N], label='FDDP',linewidth=LINEWIDTH,  color='g',  alpha=0.5)
 ax[0].plot(time_lin, (N-N_START)*[config['solver_termination_tolerance']], label= 'Tolerance', linestyle='--', color='r', linewidth=LINEWIDTH, alpha=0.5)
 ax[0].set_ylim(0, 5e-4)
 ax[0].grid(linewidth=1)
@@ -113,8 +113,8 @@ ax[0].yaxis.set_major_formatter(major_formatter)
 # ax[0].set_yticks([0, 1, 2, 3, 4, 5])
 
 # Number of iterations
-ax[1].plot(time_lin, r1.data['ddp_iter'][N_START:N], label='SQP', linewidth=LINEWIDTH, color='b', alpha=0.8)
-ax[1].plot(time_lin, r2.data['ddp_iter'][N_START:N], label='FDDP', linewidth=LINEWIDTH,  color='g', alpha=0.8)
+ax[1].plot(time_lin, r1.data['ddp_iter'][N_START:N], label='SQP', linewidth=LINEWIDTH, color='b', alpha=0.5)
+ax[1].plot(time_lin, r2.data['ddp_iter'][N_START:N], label='FDDP', linewidth=LINEWIDTH,  color='g', alpha=0.5)
 ax[1].plot(time_lin, (N-N_START)*[config['maxiter']], label= 'Max. # iter.', linestyle='--', color='r', linewidth=LINEWIDTH, alpha=0.5)
 ax[1].set_ylim(0, 6)
 ax[1].set_yticks([0, 1, 2, 3, 4, 5])
@@ -139,14 +139,14 @@ print("Cumulative cost of the MPC (FDDP) = ", np.sum(c2))
 # ax[2].set_xlim(time_lin[0], time_lin[-1])
 
 
-handles, labels = ax[0].get_legend_handles_labels()
-ax[0].legend(loc="upper left", framealpha=0.95, fontsize=26) 
-# fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
 fig.align_ylabels()
-plt.tight_layout(pad=1)
-plt.show() 
+handles, labels = ax[0].get_legend_handles_labels()
+# ax[0].legend(loc="upper left", framealpha=0.95, fontsize=26) 
+fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.1, 1.), prop={'size': 26}) 
+# plt.tight_layout(pad=1)
 save_path = os.path.join(SAVE_PATH, 'circle_ssqp_vs_fddp_plot.pdf')
 logger.warning("Saving figure to "+str(save_path))
 fig.savefig(save_path, bbox_inches="tight")
+plt.show() 
 
 
