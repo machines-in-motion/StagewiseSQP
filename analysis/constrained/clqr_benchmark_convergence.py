@@ -3,26 +3,27 @@ import mim_solvers
 import numpy as np
 import time
 import crocoddyl
-
-# import pathlib
-# import os
-# python_path = pathlib.Path('/home/ajordana/workspace/mim_solvers/python/').absolute()
-# os.sys.path.insert(1, str(python_path))
-# from csqp import CSQP
+import os
 
 import pathlib
 import os
-python_path = pathlib.Path('/home/skleff/libs/mim_solvers/python/').absolute()
+python_path = pathlib.Path('/home/ajordana/workspace/mim_solvers/python/').absolute()
 os.sys.path.insert(1, str(python_path))
+from csqp import CSQP
+
+# import pathlib
+# import os
+# python_path = pathlib.Path('/home/skleff/libs/mim_solvers/python/').absolute()
+# os.sys.path.insert(1, str(python_path))
 from csqp import CSQP
 
 # Solver params
 MAXITER     = 1     
 TOL         = 1e-4
 CALLBACKS   = False
-MAX_QP_ITER = 1
-MAX_QP_TIME = int(8e3) # in ms
-EPS_ABS     = 1e-1
+MAX_QP_ITER = 1000
+MAX_QP_TIME = int(1e3) # in ms
+EPS_ABS     = 1e-2
 EPS_REL     = 0.
 SAVE        = False # Save figure 
 
@@ -31,7 +32,7 @@ SEED = 10 ; np.random.seed(SEED)
 
 names = "clqr"
 N_samples = 10
-horizon = 40
+horizon = 20
 # dim_list = [20, 40, 60, 80, 100]
 
 # Compute convergence statistics
@@ -39,14 +40,14 @@ csqp_time_solved = np.zeros(N_samples)
 osqp_time_solved = np.zeros(N_samples)
 hpipm_time_solved = np.zeros(N_samples)
 
-nx = 10
+nx = 80
 
 # Solvers
-SOLVERS = ['CSQP',
+SOLVERS = ['CSQP', 
            'OSQP',
-           'HPIPM_DENSE', 
-           'HPIPM_OCP',
-           'ProxQP']
+        #    'HPIPM_DENSE', 
+           'HPIPM_OCP']
+        #    'ProxQP']
 
 if('CSQP' in SOLVERS):
     csqp_iter_samples   = []  
@@ -84,8 +85,8 @@ for pb_id in range(N_samples):
     )
 
 
-    xs = [np.zeros(nx)] * (horizon+1)
-    us = [np.zeros(terminalModel.nu) for _ in range(horizon)]
+    xs = [10 * np.ones(nx)] * (horizon+1)
+    us = [10 * np.ones(terminalModel.nu) for _ in range(horizon)]
 
     # CSQP solver
     if("CSQP" in SOLVERS):
@@ -100,9 +101,13 @@ for pb_id in range(N_samples):
         solvercsqp.with_callbacks = CALLBACKS
         solvercsqp.solve(xs, us, 0)
         t1 = time.time()
+        # crocoddyl.enable_profiler()
         solvercsqp.computeDirection(True)
+        # crocoddyl.stop_watch_report(5)
+        # assert False
         solvercsqp.qp_time = time.time() - t1
-        solved = True # (solvercsqp.norm_primal < EPS_ABS and solvercsqp.norm_dual < EPS_ABS and solvercsqp.qp_iters <= MAX_QP_ITER)
+        solved = (solvercsqp.norm_primal < EPS_ABS and solvercsqp.norm_dual < EPS_ABS and solvercsqp.qp_iters <= MAX_QP_ITER)
+        # solved = True
         csqp_solved_samples.append( solved )
         if(not solved): 
             print("      FAILED !!!!")
@@ -124,7 +129,9 @@ for pb_id in range(N_samples):
         solverosqp.eps_rel = EPS_REL
         solverosqp.with_callbacks = CALLBACKS
         solverosqp.solve(xs, us, MAXITER, False)
-        solved = True # (solverosqp.found_qp_sol and solverosqp.norm_primal < EPS_ABS and solverosqp.norm_dual < EPS_ABS and solverosqp.qp_iters <= MAX_QP_ITER)
+        solved = (solverosqp.norm_primal < EPS_ABS and solverosqp.norm_dual < EPS_ABS and solverosqp.qp_iters <= MAX_QP_ITER)
+        # solved = (solverosqp.found_qp_sol and solverosqp.norm_primal < EPS_ABS and solverosqp.norm_dual < EPS_ABS and solverosqp.qp_iters <= MAX_QP_ITER)
+        # solved = True
         osqp_solved_samples.append( solved )
         if(not solved): 
             print("      FAILED !!!!")
@@ -147,7 +154,9 @@ for pb_id in range(N_samples):
         solverhpipm.with_callbacks = CALLBACKS
         solverhpipm.solve(xs, us, MAXITER, False)
         # Check convergence
-        solved = True # (solverhpipm.found_qp_sol and solverhpipm.norm_primal < EPS_ABS and solverhpipm.norm_dual < EPS_ABS and solverhpipm.qp_iters <= MAX_QP_ITER)
+        solved = (solverhpipm.norm_primal < EPS_ABS and solverhpipm.norm_dual < EPS_ABS and solverhpipm.qp_iters <= MAX_QP_ITER)
+        # solved = (solverhpipm.found_qp_sol and solverhpipm.norm_primal < EPS_ABS and solverhpipm.norm_dual < EPS_ABS and solverhpipm.qp_iters <= MAX_QP_ITER)
+        # solved = True
         hpipm_ocp_solved_samples.append( solved )
         if(not solved): 
             print("      FAILED !!!!")
@@ -170,7 +179,9 @@ for pb_id in range(N_samples):
         solverhpipm.with_callbacks = CALLBACKS
         solverhpipm.solve(xs, us, MAXITER, False)
         # Check convergence
-        solved = True # (solverhpipm.found_qp_sol and solverhpipm.norm_primal < EPS_ABS and solverhpipm.norm_dual < EPS_ABS and solverhpipm.qp_iters <= MAX_QP_ITER)
+        # solved = (solverhpipm.found_qp_sol and solverhpipm.norm_primal < EPS_ABS and solverhpipm.norm_dual < EPS_ABS and solverhpipm.qp_iters <= MAX_QP_ITER)
+        solved = (solverhpipm.norm_primal < EPS_ABS and solverhpipm.norm_dual < EPS_ABS and solverhpipm.qp_iters <= MAX_QP_ITER)
+        # solved = True
         hpipm_ocp_solved_samples.append( solved )
         if(not solved): 
             print("      FAILED !!!!")
@@ -193,7 +204,8 @@ for pb_id in range(N_samples):
         solverproxqp.with_callbacks = CALLBACKS
         solverproxqp.solve(xs, us, MAXITER, False)
         # Check convergence
-        solved = True # (solverproxqp.found_qp_sol and solverproxqp.norm_primal < EPS_ABS and solverproxqp.norm_dual < EPS_ABS and solverproxqp.qp_iters <= MAX_QP_ITER)
+        solved = (solverproxqp.norm_primal < EPS_ABS and solverproxqp.norm_dual < EPS_ABS and solverproxqp.qp_iters <= MAX_QP_ITER)
+        # solved = (solverproxqp.found_qp_sol and solverproxqp.norm_primal < EPS_ABS and solverproxqp.norm_dual < EPS_ABS and solverproxqp.qp_iters <= MAX_QP_ITER)
         proxqp_solved_samples.append( solved )
         if(not solved): 
             print("      FAILED !!!!")
@@ -316,6 +328,7 @@ if('ProxQP' in SOLVERS):
 ax0.set_ylabel('Percentage of problems solved', fontsize=26)
 ax0.set_xlabel('Max. solving time (ms)', fontsize=26)
 ax0.set_ylim(-0.02, 1.02)
+# ax0.set_xscale("log")
 ax0.tick_params(axis = 'y', labelsize=22)
 ax0.tick_params(axis = 'x', labelsize=22)
 ax0.grid(True) 

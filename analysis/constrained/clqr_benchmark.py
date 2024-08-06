@@ -14,7 +14,7 @@ from csqp import CSQP
 MAXITER     = 1     
 TOL         = 1e-4
 CALLBACKS   = False
-MAX_QP_ITER = 25
+MAX_QP_ITER = 50
 MAX_QP_TIME = int(1e3) # in ms
 EPS_ABS     = 1e-100
 EPS_REL     = 0.
@@ -27,12 +27,13 @@ SEED = 10 ; np.random.seed(SEED)
 names = "clqr"
 
 
-N_samples = 100
+N_samples = 10
 
 
-horizon = 40
+horizon = 10
 
 dim_list = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+# dim_list = [80]
 
 
 

@@ -44,8 +44,8 @@ class ActionModelCLQR(crocoddyl.ActionModelAbstract):
 
         self.Fx = np.random.random((self.nx, self.nx))
         self.Fu = np.random.random((self.nx, self.nu))
-        self.Cx = np.random.random((ng, self.nx))
-        self.Cu = np.random.random((ng, self.nu))
+        self.Cx = np.random.random((ng, self.nx)) - 0.5
+        self.Cu = np.random.random((ng, self.nu)) - 0.5
 
     def _running_cost(self, x, u):
         return 0.5 * ((x - self.x_star).T @ self.Q @ (x - self.x_star) + (u - self.u_star).T @ self.R @ (u - self.u_star) + (x - self.x_star).T @ self.Lxu @ (u - self.u_star))

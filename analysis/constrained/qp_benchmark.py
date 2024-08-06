@@ -27,7 +27,7 @@ import mim_solvers
 
 import pathlib
 import os
-python_path = pathlib.Path('/home/skleff/libs/mim_solvers/python/').absolute()
+python_path = pathlib.Path('/home/ajordana/workspace/mim_solvers/python/').absolute()
 os.sys.path.insert(1, str(python_path))
 from csqp import CSQP
 
@@ -166,7 +166,7 @@ def create_kuka_problem(x0):
     # Create the running models
     runningModels = []
     dt = 1e-2
-    T = 200
+    T = 50
     for t in range(T + 1):
         runningCostModel = crocoddyl.CostModelSum(state)
         # Add costs
@@ -174,8 +174,8 @@ def create_kuka_problem(x0):
         runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
         if t != T:
             runningCostModel.addCost("translation", frameTranslationCost, 1)
-            runningCostModel.addCost("force1", contactForceCost1, 1e-3)
-            runningCostModel.addCost("force2", contactForceCost2, 1e-3)
+            # runningCostModel.addCost("force1", contactForceCost1, 1e-3)
+            # runningCostModel.addCost("force2", contactForceCost2, 1e-3)
             runningCostModel.addCost("velocity", frameVelocityCost, 1e-3)
         else:
             runningCostModel.addCost("translation", frameTranslationCost, 1)
@@ -428,7 +428,7 @@ MAXITER     = 1
 TOL         = 1e-4
 CALLBACKS   = False
 MAX_QP_ITER = 50000
-MAX_QP_TIME = int(5.*1e3) # in ms
+MAX_QP_TIME = int(100*1e3) # in ms
 EPS_ABS     = 1e-1
 EPS_REL     = 0.
 SAVE        = False # Save figure 
@@ -438,8 +438,8 @@ SEED = 10 ; np.random.seed(SEED)
 N_samples = 100
 names = [
     #    'Pendulum'] # maxiter = 500
-         'Kuka'] # maxiter = 100
-        #  'Taichi'] #
+        #  'Kuka'] # maxiter = 100
+         'Taichi'] #
         # #  'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
         #  'Quadrotor'] # maxiter = 200
 
@@ -447,9 +447,9 @@ N_pb = len(names)
 
 # Solvers
 SOLVERS = ['CSQP',
-           'OSQP'] 
+        #    'OSQP',
         #    'HPIPM_DENSE', 
-        #    'HPIPM_OCP']
+           'HPIPM_OCP']
 
 if('CSQP' in SOLVERS):
     solversCSQP         = [] 
@@ -497,8 +497,8 @@ for k,name in enumerate(names):
     # Create solver CSQP 
     if('CSQP' in SOLVERS):
         solvercsqp = mim_solvers.SolverCSQP(pb)
-        solvercsqp.xs = [solvercsqp.problem.x0] * (solvercsqp.problem.T + 1)  
-        solvercsqp.us = solvercsqp.problem.quasiStatic([solvercsqp.problem.x0] * solvercsqp.problem.T)
+        # solvercsqp.xs = [solvercsqp.problem.x0] * (solvercsqp.problem.T + 1)  
+        # solvercsqp.us = [solvercsqp.problem.quasiStatic([solvercsqp.problem.x0] * solvercsqp.problem.T)
         solvercsqp.termination_tolerance = TOL
         solvercsqp.max_qp_iters = MAX_QP_ITER
         solvercsqp.with_qp_callbacks = False
@@ -540,8 +540,8 @@ for k,name in enumerate(names):
     # Create solver HPIPM ocp
     if('HPIPM_OCP' in SOLVERS):
         solverhpipm_ocp = CSQP(pb, "HPIPM_OCP")
-        solverhpipm_ocp.xs = [solverhpipm_ocp.problem.x0] * (solverhpipm_ocp.problem.T + 1)  
-        solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([solverhpipm_ocp.problem.x0] * solverhpipm_ocp.problem.T)
+        # solverhpipm_ocp.xs = [solverhpipm_ocp.problem.x0] * (solverhpipm_ocp.problem.T + 1)  
+        # solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([solverhpipm_ocp.problem.x0] * solverhpipm_ocp.problem.T)
         solverhpipm_ocp.termination_tolerance  = TOL
         solverhpipm_ocp.max_qp_iters = MAX_QP_ITER
         solverhpipm_ocp.eps_abs = EPS_ABS
@@ -812,6 +812,7 @@ for k in range(N_pb):
     ax0.set_ylabel('Percentage of problems solved', fontsize=26)
     ax0.set_xlabel('Max. solving time (ms)', fontsize=26)
     ax0.set_ylim(-0.02, 1.02)
+    ax0.set_xscale("log")
     ax0.tick_params(axis = 'y', labelsize=22)
     ax0.tick_params(axis = 'x', labelsize=22)
     ax0.grid(True) 
