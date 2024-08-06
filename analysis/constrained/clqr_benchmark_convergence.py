@@ -7,7 +7,8 @@ import os
 
 import pathlib
 import os
-python_path = pathlib.Path('/home/ajordana/workspace/mim_solvers/python/').absolute()
+# python_path = pathlib.Path('/home/ajordana/workspace/mim_solvers/python/').absolute()
+python_path = pathlib.Path('/home/ajordana/eigen_workspace/mim_solvers/python/').absolute()
 os.sys.path.insert(1, str(python_path))
 from csqp import CSQP
 
@@ -22,7 +23,7 @@ MAXITER     = 1
 TOL         = 1e-4
 CALLBACKS   = False
 MAX_QP_ITER = 1000
-MAX_QP_TIME = int(1e3) # in ms
+MAX_QP_TIME = int(2e2) # in ms
 EPS_ABS     = 1e-2
 EPS_REL     = 0.
 SAVE        = False # Save figure 

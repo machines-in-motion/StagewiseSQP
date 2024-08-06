@@ -280,7 +280,7 @@ def create_humanoid_taichi_problem(target=np.array([0.4, 0, 1.2]),
         state,
         leftFootId,
         pin.SE3.Identity(),
-        pin.LOCAL,
+        pin.LOCAL_WORLD_ALIGNED,
         actuation.nu,
         np.array([0, 40]),
     )
@@ -288,7 +288,7 @@ def create_humanoid_taichi_problem(target=np.array([0.4, 0, 1.2]),
         state,
         rightFootId,
         pin.SE3.Identity(),
-        pin.LOCAL,
+        pin.LOCAL_WORLD_ALIGNED,
         actuation.nu,
         np.array([0, 40]),
     )
@@ -397,7 +397,7 @@ def create_humanoid_taichi_problem(target=np.array([0.4, 0, 1.2]),
         runningCostModel2.addCost("forcecost2", Forcecost, 1e-3)
         runningCostModel3.addCost("forcecost3", Forcecost, 1e-3)
     if FORCE_CONSTRAINT:
-        constraintForce = crocoddyl.ConstraintModelResidual(state, ForceResidual, np.array([0., 0, 0]*2), np.array([np.inf, np.inf, np.inf]*2))
+        constraintForce = crocoddyl.ConstraintModelResidual(state, ForceResidual, np.array([-np.inf, -np.inf, 0]*2), np.array([np.inf, np.inf, np.inf]*2))
         constraintModelManager.addConstraint("force", constraintForce)
     if JOINT_CONSTRAINT:
         constraintState = crocoddyl.ConstraintModelResidual(state, xLimitResidual, xlb, xub)
@@ -429,13 +429,13 @@ TOL         = 1e-4
 CALLBACKS   = False
 MAX_QP_ITER = 50000
 MAX_QP_TIME = int(100*1e3) # in ms
-EPS_ABS     = 1e-1
+EPS_ABS     = 1e-2
 EPS_REL     = 0.
 SAVE        = False # Save figure 
 
 # Benchmark params
 SEED = 10 ; np.random.seed(SEED)
-N_samples = 100
+N_samples = 10
 names = [
     #    'Pendulum'] # maxiter = 500
         #  'Kuka'] # maxiter = 100
@@ -447,7 +447,7 @@ N_pb = len(names)
 
 # Solvers
 SOLVERS = ['CSQP',
-        #    'OSQP',
+           'OSQP',
         #    'HPIPM_DENSE', 
            'HPIPM_OCP']
 
@@ -497,17 +497,12 @@ for k,name in enumerate(names):
     # Create solver CSQP 
     if('CSQP' in SOLVERS):
         solvercsqp = mim_solvers.SolverCSQP(pb)
-        # solvercsqp.xs = [solvercsqp.problem.x0] * (solvercsqp.problem.T + 1)  
-        # solvercsqp.us = [solvercsqp.problem.quasiStatic([solvercsqp.problem.x0] * solvercsqp.problem.T)
         solvercsqp.termination_tolerance = TOL
         solvercsqp.max_qp_iters = MAX_QP_ITER
         solvercsqp.with_qp_callbacks = False
         solvercsqp.eps_abs = EPS_ABS
         solvercsqp.eps_rel = EPS_REL
-        # print("CHECK = ", solvercsqp.equality_qp_initial_guess)
         solvercsqp.equality_qp_initial_guess = False
-        # assert(solvercsqp.equality_qp_initial_guess == False)
-        # print("ASSERT OK")
         solvercsqp.update_rho_with_heuristic = False
         solvercsqp.with_callbacks = CALLBACKS
         # solvercsqp.with_qp_callbacks = True # CALLBACKS
@@ -516,8 +511,6 @@ for k,name in enumerate(names):
     # Create solver OSQP
     if('OSQP' in SOLVERS):
         solverosqp = CSQP(pb, "OSQP")
-        solverosqp.xs = [solverosqp.problem.x0] * (solverosqp.problem.T + 1)  
-        solverosqp.us = solverosqp.problem.quasiStatic([solverosqp.problem.x0] * solverosqp.problem.T)
         solverosqp.termination_tolerance = TOL
         solverosqp.max_qp_iters = MAX_QP_ITER
         solverosqp.eps_abs = EPS_ABS
@@ -528,10 +521,8 @@ for k,name in enumerate(names):
     # Create solver HPIPM dense
     if('HPIPM_DENSE' in SOLVERS):
         solverhpipm_dense = CSQP(pb, "HPIPM_DENSE")
-        solverhpipm_dense.xs = [solverhpipm_dense.problem.x0] * (solverhpipm_dense.problem.T + 1)  
-        solverhpipm_dense.us = solverhpipm_dense.problem.quasiStatic([solverhpipm_dense.problem.x0] * solverhpipm_dense.problem.T)
         solverhpipm_dense.termination_tolerance  = TOL
-        solverhpipm_dense.max_qp_iters = 1 #MAX_QP_ITER
+        solverhpipm_dense.max_qp_iters = MAX_QP_ITER
         solverhpipm_dense.eps_abs = EPS_ABS
         solverhpipm_dense.eps_rel = EPS_REL
         solverhpipm_dense.with_callbacks = CALLBACKS
@@ -540,8 +531,8 @@ for k,name in enumerate(names):
     # Create solver HPIPM ocp
     if('HPIPM_OCP' in SOLVERS):
         solverhpipm_ocp = CSQP(pb, "HPIPM_OCP")
-        # solverhpipm_ocp.xs = [solverhpipm_ocp.problem.x0] * (solverhpipm_ocp.problem.T + 1)  
-        # solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([solverhpipm_ocp.problem.x0] * solverhpipm_ocp.problem.T)
+        solverhpipm_ocp.xs = [solverhpipm_ocp.problem.x0] * (solverhpipm_ocp.problem.T + 1)  
+        solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([solverhpipm_ocp.problem.x0] * solverhpipm_ocp.problem.T)
         solverhpipm_ocp.termination_tolerance  = TOL
         solverhpipm_ocp.max_qp_iters = MAX_QP_ITER
         solverhpipm_ocp.eps_abs = EPS_ABS
@@ -667,7 +658,7 @@ for i in range(N_samples):
                 solvercsqp.problem.x0 = x0
             solverhpipm_dense.xs = [solverhpipm_dense.problem.x0] * (solverhpipm_dense.problem.T + 1) 
             solverhpipm_dense.us = solverhpipm_dense.problem.quasiStatic([solverhpipm_dense.problem.x0] * solverhpipm_dense.problem.T)
-            # solverhpipm_dense.solve(solverhpipm_dense.xs, solverhpipm_dense.us, MAXITER, False)
+            solverhpipm_dense.solve(solverhpipm_dense.xs, solverhpipm_dense.us, MAXITER, False)
             solverhpipm_dense.found_qp_sol = False
             if(solverhpipm_dense.found_qp_sol):
                 solved = (solverhpipm_dense.norm_primal < EPS_ABS and solverhpipm_dense.norm_dual < EPS_ABS and solverhpipm_dense.qp_iters <= MAX_QP_ITER)

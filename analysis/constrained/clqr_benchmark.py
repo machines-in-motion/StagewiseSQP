@@ -5,7 +5,7 @@ import time
 import crocoddyl
 import pathlib
 import os
-python_path = pathlib.Path('/home/ajordana/workspace/mim_solvers/python/').absolute()
+python_path = pathlib.Path('/home/ajordana/eigen_workspace/mim_solvers/python/').absolute()
 os.sys.path.insert(1, str(python_path))
 from csqp import CSQP
 
