@@ -21,8 +21,7 @@ import pinocchio as pin
 
 from mim_robots.robot_loader import load_pinocchio_wrapper
 import example_robot_data
-# from unconstrained.bench_utils.cartpole_swingup import DifferentialActionModelCartpole
-from crocoddyl.utils.pendulum import CostModelDoublePendulum, ActuationModelDoublePendulum
+import solo_friction_utils
 import mim_solvers
 
 import pathlib
@@ -33,36 +32,131 @@ from csqp import CSQP
 
 import time
 
-def create_double_pendulum_problem(x0):
+def create_solo12_problem(MU):
     '''
     Create shooting problem for the double pendulum model
     '''
-    print("Created double pendulum problem ...")
-    # Loading the double pendulum model
-    pendulum = example_robot_data.load('double_pendulum')
-    model = pendulum.model
-    state = crocoddyl.StateMultibody(model)
-    actuation = ActuationModelDoublePendulum(state, actLink=1)
+
+    pinRef        = pin.LOCAL_WORLD_ALIGNED
+
+    ee_frame_names = ['FL_FOOT', 'FR_FOOT', 'HL_FOOT', 'HR_FOOT']
+    solo12 = example_robot_data.ROBOTS['solo12']()
+    rmodel = solo12.robot.model
+    rmodel.type = 'QUADRUPED'
+    rmodel.foot_type = 'POINT_FOOT'
+    rdata = rmodel.createData()
+
+    # set contact frame_names and_indices
+    lfFootId = rmodel.getFrameId(ee_frame_names[0])
+    rfFootId = rmodel.getFrameId(ee_frame_names[1])
+    lhFootId = rmodel.getFrameId(ee_frame_names[2])
+    rhFootId = rmodel.getFrameId(ee_frame_names[3])
+
+
+    q0 = np.array([0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 1.0] 
+                    + 2 * [0.0, 0.8, -1.6] 
+                    + 2 * [0.0, -0.8, 1.6] 
+                    )
+
+    x0 =  np.concatenate([q0, np.zeros(rmodel.nv)])
+
+    pin.forwardKinematics(rmodel, rdata, q0)
+    pin.updateFramePlacements(rmodel, rdata)
+    rfFootPos0 = rdata.oMf[rfFootId].translation
+    rhFootPos0 = rdata.oMf[rhFootId].translation
+    lfFootPos0 = rdata.oMf[lfFootId].translation
+    lhFootPos0 = rdata.oMf[lhFootId].translation 
+
+    comRef = (rfFootPos0 + rhFootPos0 + lfFootPos0 + lhFootPos0) / 4
+    comRef[2] = pin.centerOfMass(rmodel, rdata, q0)[2].item() 
+
+    supportFeetIds = [lfFootId, rfFootId, lhFootId, rhFootId]
+    supportFeePos = [lfFootPos0, rfFootPos0, lhFootPos0, rhFootPos0]
+
+
+    state = crocoddyl.StateMultibody(rmodel)
+    actuation = crocoddyl.ActuationModelFloatingBase(state)
     nu = actuation.nu
-    runningCostModel = crocoddyl.CostModelSum(state, nu)
-    terminalCostModel = crocoddyl.CostModelSum(state, nu)
-    xResidual = crocoddyl.ResidualModelState(state, state.zero(), nu)
-    xActivation = crocoddyl.ActivationModelQuad(state.ndx)
-    uResidual = crocoddyl.ResidualModelControl(state, nu)
-    xRegCost = crocoddyl.CostModelResidual(state, xActivation, xResidual)
-    uRegCost = crocoddyl.CostModelResidual(state, uResidual)
-    xPendCost = CostModelDoublePendulum(state, crocoddyl.ActivationModelWeightedQuad(np.array([1.] * 4 + [0.1] * 2)), nu)
-    dt = 1e-2
-    runningCostModel.addCost("uReg", uRegCost, 1e-4 / dt)
-    runningCostModel.addCost("xGoal", xPendCost, 1e-5 / dt)
-    terminalCostModel.addCost("xGoal", xPendCost, 100.)
-    runningModel = crocoddyl.IntegratedActionModelEuler(
-        crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, runningCostModel), dt)
-    terminalModel = crocoddyl.IntegratedActionModelEuler(
-        crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, terminalCostModel), dt)
-    T = 100
-    pb = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
-    return pb
+
+
+    comDes = []
+
+    N_ocp = 40
+    dt = 0.02
+    T = N_ocp * dt
+    radius = 0.065
+    for t in range(N_ocp+1):
+        comDes_t = comRef.copy()
+        w = (2 * np.pi) * 0.2 # / T
+        # print(w * t * dt / 2 / np.pi)
+        comDes_t[0] += radius * 1 # * np.sin(w * t * dt) 
+        comDes_t[1] += radius * 0 # * (np.cos(w * t * dt) - 1)
+        comDes += [comDes_t]
+
+    running_models = []
+    for i, t in enumerate(range(N_ocp+1)):
+        contactModel = crocoddyl.ContactModelMultiple(state, nu)
+        costModel = crocoddyl.CostModelSum(state, nu)
+
+        # Add contact
+        for i, frame_idx in enumerate(supportFeetIds):
+            support_contact = crocoddyl.ContactModel3D(state, frame_idx, supportFeePos[i], pinRef, nu, np.array([0., 0.]))
+            # print("contact name = ", rmodel.frames[frame_idx].name + "_contact")
+            contactModel.addContact(rmodel.frames[frame_idx].name + "_contact", support_contact) 
+
+        # Add state/control reg costs
+
+        state_reg_weight, control_reg_weight = 1e-1, 1e-3
+
+        freeFlyerQWeight = [0.]*3 + [500.]*3
+        freeFlyerVWeight = [10.]*6
+        legsQWeight = [0.01]*(rmodel.nv - 6)
+        legsWWeights = [1.]*(rmodel.nv - 6)
+        stateWeights = np.array(freeFlyerQWeight + legsQWeight + freeFlyerVWeight + legsWWeights)    
+
+
+        stateResidual = crocoddyl.ResidualModelState(state, x0, nu)
+        stateActivation = crocoddyl.ActivationModelWeightedQuad(stateWeights**2)
+        stateReg = crocoddyl.CostModelResidual(state, stateActivation, stateResidual)
+
+        if t == N_ocp:
+            costModel.addCost("stateReg", stateReg, state_reg_weight*dt)
+        else:
+            costModel.addCost("stateReg", stateReg, state_reg_weight)
+
+        if t != N_ocp:
+            ctrlResidual = crocoddyl.ResidualModelControl(state, nu)
+            ctrlReg = crocoddyl.CostModelResidual(state, ctrlResidual)
+            costModel.addCost("ctrlReg", ctrlReg, control_reg_weight)      
+
+
+        # Add COM task
+        com_residual = crocoddyl.ResidualModelCoMPosition(state, comDes[t], nu)
+        com_activation = crocoddyl.ActivationModelWeightedQuad(np.array([1., 1., 1.]))
+        com_track = crocoddyl.CostModelResidual(state, com_activation, com_residual)
+        if t == N_ocp:
+            costModel.addCost("comTrack", com_track, 1e5)
+        else:
+            costModel.addCost("comTrack", com_track, 1e5)
+
+        constraintModelManager = crocoddyl.ConstraintModelManager(state, actuation.nu)
+
+        if(t != N_ocp):
+            for frame_idx in supportFeetIds:
+                name = rmodel.frames[frame_idx].name + "_contact"
+                residualFriction = solo_friction_utils.ResidualFrictionCone(state, name, MU, actuation.nu)
+                constraintFriction = crocoddyl.ConstraintModelResidual(state, residualFriction, np.array([0.]), np.array([np.inf]))
+                constraintModelManager.addConstraint(name + "friction", constraintFriction)
+
+        dmodel = crocoddyl.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel, costModel, constraintModelManager, 0., True)
+        model = crocoddyl.IntegratedActionModelEuler(dmodel, dt)
+
+        running_models += [model]
+
+    # Create shooting problem
+    ocp = crocoddyl.ShootingProblem(x0, running_models[:-1], running_models[-1])
+
+    return ocp
 
 def create_cartpole_problem(x0):
     '''
@@ -91,7 +185,6 @@ def create_cartpole_problem(x0):
     terminalCartpole.costWeights[5] = 0.0001
     pb = crocoddyl.ShootingProblem(x0, [cartpoleIAM] * T, terminalCartpoleIAM)
     return pb 
-
 
 def create_kuka_problem(x0):
     '''
@@ -408,20 +501,20 @@ def create_humanoid_taichi_problem(target=np.array([0.4, 0, 1.2]),
 MAXITER     = 1     
 TOL         = 1e-4
 CALLBACKS   = False
-MAX_QP_ITER = 50000
-MAX_QP_TIME = int(1e1) # in ms
+MAX_QP_ITER = 10000
+MAX_QP_TIME = int(1e2) # in ms
 EPS_ABS     = 1e-2
 EPS_REL     = 0.
 SAVE        = False # Save figure 
 
-TIME_DISCRETIZATION = 0.01  # the larger the faster (usefull for very fast problems) 
+TIME_DISCRETIZATION = 1  # the larger the faster (usefull for very fast problems) 
 
 # Benchmark params
 SEED = 10 ; np.random.seed(SEED)
-N_samples = 4
+N_samples = 20
 names = [
-    #    'Pendulum'] # maxiter = 500
-         'Kuka'] # maxiter = 100
+       'solo12'] # maxiter = 500
+        #  'Kuka'] # maxiter = 100
         #  'Taichi'] #
         # #  'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
         #  'Quadrotor'] # maxiter = 200
@@ -466,8 +559,8 @@ taichi_p0    = np.array([0.4, 0, 1.2])
 # Create 1 solver of each type for each problem
 print('------')
 for k,name in enumerate(names):
-    if(name == "Pendulum"):  
-        pb = create_double_pendulum_problem(pendulum_x0)
+    if(name == "solo12"):  
+        pb = create_solo12_problem(pendulum_x0)
     if(name == "Cartpole"):  
         pb = create_cartpole_problem(cartpole_x0) 
     if(name == "Kuka"):      
@@ -524,7 +617,8 @@ for k,name in enumerate(names):
 
 
 # Initial state samples
-pendulum_x0_samples  = np.zeros((N_samples, 4))
+solo12                 = load_pinocchio_wrapper("solo12")
+ee_frame_names = ['FL_FOOT', 'FR_FOOT', 'HL_FOOT', 'HR_FOOT']
 cartpole_x0_samples  = np.zeros((N_samples, 4))
 kuka                 = load_pinocchio_wrapper("iiwa")
 kuka_data = kuka.model.createData()
@@ -532,16 +626,17 @@ kuka_x0_samples      = np.zeros((N_samples, kuka.model.nq + kuka.model.nv))
 quadrotor            = example_robot_data.load('hector') 
 quadrotor_x0_samples = np.zeros((N_samples, quadrotor.model.nq + quadrotor.model.nv))
 taichi_p0_samples  = np.zeros((N_samples, 3))
+solo12_mu_samples  = np.zeros((N_samples))
 
 
 for i in range(N_samples):
-    pendulum_x0_samples[i,:]  = np.array([np.pi*(2*np.random.rand()-1), 0., 0., 0.])
     cartpole_x0_samples[i,:]  = np.array([0., np.pi/2, 0., 0.])
     kuka_x0_samples[i,:]      = np.concatenate([pin.randomConfiguration(kuka.model), np.random.random(kuka.model.nv)])
     quadrotor_x0_samples[i,:] = np.concatenate([pin.randomConfiguration(quadrotor.model), np.zeros(quadrotor.model.nv)])
     err = np.zeros(3)
-    err[2] = 2*np.random.rand(1) - 1
+    err[2] = 2*np.random.rand() - 1
     taichi_p0_samples[i,:]  = taichi_p0 + 0.05*err
+    solo12_mu_samples[i]  = 0.8 + 0*0.01 * (2*np.random.rand() - 1)
 
 print("Created "+str(N_samples)+" random initial states per model !")
 
@@ -571,17 +666,23 @@ for i in range(N_samples):
     print("Sample "+str(i+1)+'/'+str(N_samples))
     for k,name in enumerate(names):
         # Initial state
-        if(name == "Pendulum"):  x0 = pendulum_x0_samples[i,:]
         if(name == "Cartpole"):  x0 = cartpole_x0_samples[i,:]
         if(name == "Kuka"):      x0 = kuka_x0_samples[i,:]
         if(name == "Quadrotor"): x0 = quadrotor_x0_samples[i,:]
         if(name == "Taichi"):    p0 = taichi_p0_samples[i,:]
+        if(name == "solo12"):    mu = solo12_mu_samples[i]
 
         # CSQP
         if('CSQP' in SOLVERS):
             print("   Problem : "+name+" CSQP")
             solvercsqp = solversCSQP[k]
-            if(name == "Taichi"):
+            if(name == "solo12"):
+                models = list(solvercsqp.problem.runningModels)
+                for m in models: 
+                    for name_ee in ee_frame_names:
+                        name_constraint = solo12.model.frames[solo12.model.getFrameId(name_ee)].name + "_contact"
+                        m.differential.constraints.constraints[name_constraint+"friction"].constraint.residual.mu = mu
+            elif(name == "Taichi"):
                 models = list(solvercsqp.problem.runningModels) + [solvercsqp.problem.terminalModel]
                 for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), p0.copy())
             else:
@@ -611,13 +712,19 @@ for i in range(N_samples):
         if('OSQP' in SOLVERS):
             print("   Problem : "+name+" OSQP")
             solverosqp = solversOSQP[k]
-            if(name == "Taichi"):
+            if(name == "solo12"):
+                models = list(solverosqp.problem.runningModels)
+                for m in models: 
+                    for name_ee in ee_frame_names:
+                        name_constraint = solo12.model.frames[solo12.model.getFrameId(name_ee)].name + "_contact"
+                        m.differential.constraints.constraints[name_constraint+"friction"].constraint.residual.mu = mu
+            elif(name == "Taichi"):
                 models = list(solvercsqp.problem.runningModels) + [solvercsqp.problem.terminalModel]
                 for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), p0.copy())
             else:
                 solvercsqp.problem.x0 = x0
-            solverosqp.xs = [solverosqp.problem.x0] * (solverosqp.problem.T + 1) 
-            solverosqp.us = solverosqp.problem.quasiStatic([solverosqp.problem.x0] * solverosqp.problem.T)
+            # solverosqp.xs = [solverosqp.problem.x0] * (solverosqp.problem.T + 1) 
+            # solverosqp.us = solverosqp.problem.quasiStatic([solverosqp.problem.x0] * solverosqp.problem.T)
             solverosqp.solve(solverosqp.xs, solverosqp.us, MAXITER, False)
             solved = (solverosqp.found_qp_sol and solverosqp.norm_primal < EPS_ABS and solverosqp.norm_dual < EPS_ABS and solverosqp.qp_iters <= MAX_QP_ITER)
             osqp_solved_samples[i].append( solved )
@@ -635,13 +742,19 @@ for i in range(N_samples):
         if('HPIPM_DENSE' in SOLVERS):
             print("   Problem : "+name+" HPIPM_DENSE")
             solverhpipm_dense = solversHPIPM_dense[k]
-            if(name == "Taichi"):
+            if(name == "solo12"):
+                models = list(solverhpipm_dense.problem.runningModels)
+                for m in models: 
+                    for name_ee in ee_frame_names:
+                        name_constraint = solo12.model.frames[solo12.model.getFrameId(name_ee)].name + "_contact"
+                        m.differential.constraints.constraints[name_constraint+"friction"].constraint.residual.mu = mu
+            elif(name == "Taichi"):
                 models = list(solvercsqp.problem.runningModels) + [solvercsqp.problem.terminalModel]
                 for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), p0.copy())
             else:
                 solvercsqp.problem.x0 = x0
-            solverhpipm_dense.xs = [solverhpipm_dense.problem.x0] * (solverhpipm_dense.problem.T + 1) 
-            solverhpipm_dense.us = solverhpipm_dense.problem.quasiStatic([solverhpipm_dense.problem.x0] * solverhpipm_dense.problem.T)
+            # solverhpipm_dense.xs = [solverhpipm_dense.problem.x0] * (solverhpipm_dense.problem.T + 1) 
+            # solverhpipm_dense.us = solverhpipm_dense.problem.quasiStatic([solverhpipm_dense.problem.x0] * solverhpipm_dense.problem.T)
             solverhpipm_dense.solve(solverhpipm_dense.xs, solverhpipm_dense.us, MAXITER, False)
             solverhpipm_dense.found_qp_sol = False
             if(solverhpipm_dense.found_qp_sol):
@@ -664,13 +777,19 @@ for i in range(N_samples):
         if('HPIPM_OCP' in SOLVERS):    
             print("   Problem : "+name+" HPIPM_OCP")
             solverhpipm_ocp = solversHPIPM_ocp[k]
-            if(name == "Taichi"):
+            if(name == "solo12"):
+                models = list(solverhpipm_ocp.problem.runningModels)
+                for m in models: 
+                    for name_ee in ee_frame_names:
+                        name_constraint = solo12.model.frames[solo12.model.getFrameId(name_ee)].name + "_contact"
+                        m.differential.constraints.constraints[name_constraint+"friction"].constraint.residual.mu = mu
+            elif(name == "Taichi"):
                 models = list(solvercsqp.problem.runningModels) + [solvercsqp.problem.terminalModel]
                 for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), p0.copy())
             else:
                 solvercsqp.problem.x0 = x0
-            solverhpipm_ocp.xs = [solverhpipm_ocp.problem.x0] * (solverhpipm_ocp.problem.T + 1) 
-            solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([solverhpipm_ocp.problem.x0] * solverhpipm_ocp.problem.T)
+            # solverhpipm_ocp.xs = [solverhpipm_ocp.problem.x0] * (solverhpipm_ocp.problem.T + 1) 
+            # solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([solverhpipm_ocp.problem.x0] * solverhpipm_ocp.problem.T)
             solverhpipm_ocp.solve(solverhpipm_ocp.xs, solverhpipm_ocp.us, MAXITER, False)
                 # Check convergence
             if(solverhpipm_ocp.found_qp_sol):
