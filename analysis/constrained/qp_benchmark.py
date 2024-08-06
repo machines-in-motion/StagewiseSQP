@@ -27,7 +27,7 @@ import mim_solvers
 
 import pathlib
 import os
-python_path = pathlib.Path('/home/ajordana/workspace/mim_solvers/python/').absolute()
+python_path = pathlib.Path('/home/ajordana/eigen_workspace/mim_solvers/python/').absolute()
 os.sys.path.insert(1, str(python_path))
 from csqp import CSQP
 
@@ -92,12 +92,13 @@ def create_cartpole_problem(x0):
     pb = crocoddyl.ShootingProblem(x0, [cartpoleIAM] * T, terminalCartpoleIAM)
     return pb 
 
+
 def create_kuka_problem(x0):
     '''
     Create shooting problem for kuka reaching task
     '''
     print("Create kuka problem ...")
-    robot = load_pinocchio_wrapper("iiwa", locked_joints=["A7"])
+    robot = load_pinocchio_wrapper("iiwa")
     model = robot.model
     # State and actuation model
     state = crocoddyl.StateMultibody(model)
@@ -105,18 +106,14 @@ def create_kuka_problem(x0):
 
     # Create cost terms
     # Control regularization cost
-    uResidual = crocoddyl.ResidualModelContactControlGrav(state)
+    uResidual = crocoddyl.ResidualModelControlGrav(state)
     uRegCost = crocoddyl.CostModelResidual(state, uResidual)
     # State regularization cost
     xResidual = crocoddyl.ResidualModelState(state, x0)
     xRegCost = crocoddyl.CostModelResidual(state, xResidual)
     # endeff frame translation cost
-    endeff_frame_id = model.getFrameId("A3")
-    endeff_translation = np.array([0.5, 0.1, 0.2]) 
-    frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
-        state, endeff_frame_id, endeff_translation
-    )
-    frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
+    endeff_frame_id = model.getFrameId("contact")
+    # frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
     # ee velocity cost
     frameVelocityResidual = crocoddyl.ResidualModelFrameVelocity(
         state, endeff_frame_id, pin.Motion.Zero(), pin.LOCAL_WORLD_ALIGNED
@@ -126,70 +123,54 @@ def create_kuka_problem(x0):
     frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
         state, endeff_frame_id, np.zeros(3)
     )
-    data = model.createData()
-    pin.framesForwardKinematics(model, data, x0[:model.nq])
-    p0 = data.oMf[endeff_frame_id].translation
+
     ee_contraint = crocoddyl.ConstraintModelResidual(
         state,
         frameTranslationResidual,
-        p0 - np.array([10.5, 0.5, 10.5]),
-        p0 + np.array([0.5, 10.5, 10.5]),
+        np.array([0.4, 0., 0.4]),
+        np.array([0.4, 0., 0.4]),
     )
     #  Constraint on frame velocity
     frameVelocityResidual = crocoddyl.ResidualModelFrameVelocity(
         state, endeff_frame_id, pin.Motion.Zero(), pin.LOCAL_WORLD_ALIGNED
     )
-    # ee_vel_constraint = crocoddyl.ConstraintModelResidual(
-    #     state,
-    #     frameVelocityResidual,
-    #     -np.array([10.]*6),
-    #     np.array([10.]*6),
-    # )
-    xlb = np.concatenate([robot.model.lowerPositionLimit, -robot.model.velocityLimit])
-    xub = np.concatenate([robot.model.upperPositionLimit, robot.model.velocityLimit])
-    xLimitResidual = crocoddyl.ResidualModelState(state, x0, actuation.nu)
-    constraintState = crocoddyl.ConstraintModelResidual(state, xLimitResidual, xlb, xub)
 
-    # Contact model 
-    contactModel = crocoddyl.ContactModelMultiple(state, actuation.nu)
-    contact_frame_id1 = model.getFrameId("contact") 
-    contact_frame_id2 = model.getFrameId("A5") 
-    contactModel.addContact("contact1", crocoddyl.ContactModel6D(state, contact_frame_id1, pin.SE3.Identity(), pin.LOCAL, np.array([0., 50.])) , active=True)
-    contactModel.addContact("contact2", crocoddyl.ContactModel6D(state, contact_frame_id2, pin.SE3.Identity(), pin.LOCAL, np.array([0., 50.])) , active=True)
-    # End-effector frame force cost
-    frameForceResidual1 = crocoddyl.ResidualModelContactForce(state, contact_frame_id1, pin.Force.Zero(), 6, actuation.nu)
-    frameForceResidual2 = crocoddyl.ResidualModelContactForce(state, contact_frame_id2, pin.Force.Zero(), 6, actuation.nu)
-    contactForceCost1 = crocoddyl.CostModelResidual(state, frameForceResidual1)
-    contactForceCost2 = crocoddyl.CostModelResidual(state, frameForceResidual2)
-    constraintForce1 = crocoddyl.ConstraintModelResidual(state, frameForceResidual1, np.array([0., 0, 0]*2), np.array([np.inf, np.inf, np.inf]*2))
-    constraintForce2 = crocoddyl.ConstraintModelResidual(state, frameForceResidual2, np.array([0., 0, 0]*2), np.array([np.inf, np.inf, np.inf]*2))
     # Create the running models
     runningModels = []
     dt = 1e-2
-    T = 50
+    T = 10
     for t in range(T + 1):
         runningCostModel = crocoddyl.CostModelSum(state)
         # Add costs
         runningCostModel.addCost("stateReg", xRegCost, 1e-1)
         runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
+
+        acc_refs = crocoddyl.ResidualModelJointAcceleration(state, actuation.nu)
+        accCost = crocoddyl.CostModelResidual(state, acc_refs)
+
+        acc_contraint = crocoddyl.ConstraintModelResidual(
+            state,
+            acc_refs,
+            np.zeros(7),
+            np.zeros(7),
+        )
+
+        runningCostModel.addCost("accCost", accCost, 1e-4)
+
         if t != T:
-            runningCostModel.addCost("translation", frameTranslationCost, 1)
-            # runningCostModel.addCost("force1", contactForceCost1, 1e-3)
-            # runningCostModel.addCost("force2", contactForceCost2, 1e-3)
             runningCostModel.addCost("velocity", frameVelocityCost, 1e-3)
         else:
-            runningCostModel.addCost("translation", frameTranslationCost, 1)
             runningCostModel.addCost("velocity", frameVelocityCost, 1e-1)
         # Define contraints
         constraints = crocoddyl.ConstraintModelManager(state, actuation.nu)
-        if t != 0:
-            # constraints.addConstraint("ee_bound", ee_contraint)
-            # constraints.addConstraint("xLim", constraintState)
-            constraints.addConstraint("force1", constraintForce1)
-            # constraints.addConstraint("force2", constraintForce2)
+        if t == T:
+            constraints.addConstraint("ee_bound", ee_contraint)
+        if t == T-1:
+            constraints.addConstraint("acc_contraint", acc_contraint)
         # Create Differential action model
-        running_DAM = crocoddyl.DifferentialActionModelContactFwdDynamics(
-            state, actuation, contactModel, runningCostModel, constraints, inv_damping=0., enable_force=True)
+        running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
+            state, actuation, runningCostModel, constraints
+        )
         # Apply Euler integration
         running_model = crocoddyl.IntegratedActionModelEuler(running_DAM, dt)
         runningModels.append(running_model)        
@@ -428,18 +409,20 @@ MAXITER     = 1
 TOL         = 1e-4
 CALLBACKS   = False
 MAX_QP_ITER = 50000
-MAX_QP_TIME = int(100*1e3) # in ms
+MAX_QP_TIME = int(1e1) # in ms
 EPS_ABS     = 1e-2
 EPS_REL     = 0.
 SAVE        = False # Save figure 
 
+TIME_DISCRETIZATION = 0.01  # the larger the faster (usefull for very fast problems) 
+
 # Benchmark params
 SEED = 10 ; np.random.seed(SEED)
-N_samples = 10
+N_samples = 4
 names = [
     #    'Pendulum'] # maxiter = 500
-        #  'Kuka'] # maxiter = 100
-         'Taichi'] #
+         'Kuka'] # maxiter = 100
+        #  'Taichi'] #
         # #  'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
         #  'Quadrotor'] # maxiter = 200
 
@@ -475,7 +458,7 @@ if('HPIPM_OCP' in SOLVERS):
 # Initial states
 pendulum_x0  = np.array([3.14, 0., 0., 0.])
 cartpole_x0  = np.array([0., 3.14, 0., 0.])
-kuka_x0      = np.array([0.1, 0.2, 0., 0., -0.2, 0.2] + [0.]*6)
+kuka_x0      = np.zeros(14)
 quadrotor    = example_robot_data.load('hector') 
 quadrotor_x0 = np.array(list(quadrotor.q0) + [0.]*quadrotor.model.nv) 
 taichi_p0    = np.array([0.4, 0, 1.2])
@@ -531,8 +514,6 @@ for k,name in enumerate(names):
     # Create solver HPIPM ocp
     if('HPIPM_OCP' in SOLVERS):
         solverhpipm_ocp = CSQP(pb, "HPIPM_OCP")
-        solverhpipm_ocp.xs = [solverhpipm_ocp.problem.x0] * (solverhpipm_ocp.problem.T + 1)  
-        solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([solverhpipm_ocp.problem.x0] * solverhpipm_ocp.problem.T)
         solverhpipm_ocp.termination_tolerance  = TOL
         solverhpipm_ocp.max_qp_iters = MAX_QP_ITER
         solverhpipm_ocp.eps_abs = EPS_ABS
@@ -541,19 +522,22 @@ for k,name in enumerate(names):
         solversHPIPM_ocp.append(solverhpipm_ocp)
 
 
+
 # Initial state samples
 pendulum_x0_samples  = np.zeros((N_samples, 4))
 cartpole_x0_samples  = np.zeros((N_samples, 4))
-kuka                 = load_pinocchio_wrapper("iiwa", locked_joints=["A7"])
+kuka                 = load_pinocchio_wrapper("iiwa")
+kuka_data = kuka.model.createData()
 kuka_x0_samples      = np.zeros((N_samples, kuka.model.nq + kuka.model.nv))
 quadrotor            = example_robot_data.load('hector') 
 quadrotor_x0_samples = np.zeros((N_samples, quadrotor.model.nq + quadrotor.model.nv))
 taichi_p0_samples  = np.zeros((N_samples, 3))
+
+
 for i in range(N_samples):
     pendulum_x0_samples[i,:]  = np.array([np.pi*(2*np.random.rand()-1), 0., 0., 0.])
     cartpole_x0_samples[i,:]  = np.array([0., np.pi/2, 0., 0.])
-    kuka_x0_samples[i,:]      = np.concatenate([pin.randomConfiguration(kuka.model), np.zeros(kuka.model.nv)])
-    quadrotor_x0_samples[i,:] = np.concatenate([pin.randomConfiguration(quadrotor.model), np.zeros(quadrotor.model.nv)])
+    kuka_x0_samples[i,:]      = np.concatenate([pin.randomConfiguration(kuka.model), np.random.random(kuka.model.nv)])
     quadrotor_x0_samples[i,:] = np.concatenate([pin.randomConfiguration(quadrotor.model), np.zeros(quadrotor.model.nv)])
     err = np.zeros(3)
     err[2] = 2*np.random.rand(1) - 1
@@ -687,7 +671,6 @@ for i in range(N_samples):
                 solvercsqp.problem.x0 = x0
             solverhpipm_ocp.xs = [solverhpipm_ocp.problem.x0] * (solverhpipm_ocp.problem.T + 1) 
             solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([solverhpipm_ocp.problem.x0] * solverhpipm_ocp.problem.T)
-            # import pdb ; pdb.set_trace()
             solverhpipm_ocp.solve(solverhpipm_ocp.xs, solverhpipm_ocp.us, MAXITER, False)
                 # Check convergence
             if(solverhpipm_ocp.found_qp_sol):
@@ -706,18 +689,20 @@ for i in range(N_samples):
             print("     QP Iter = ", solverhpipm_ocp.qp_iters)
 
 # Compute convergence statistics
+TIME_VECTOR_SIZE = int((MAX_QP_TIME + 1) / TIME_DISCRETIZATION)
+
 if('CSQP' in SOLVERS):  
     csqp_iter_solved = np.zeros((MAX_QP_ITER, N_pb))
-    csqp_time_solved = np.zeros((MAX_QP_TIME, N_pb))
+    csqp_time_solved = np.zeros((TIME_VECTOR_SIZE, N_pb))
 if('OSQP' in SOLVERS):  
     osqp_iter_solved = np.zeros((MAX_QP_ITER, N_pb))
-    osqp_time_solved = np.zeros((MAX_QP_TIME, N_pb))
+    osqp_time_solved = np.zeros((TIME_VECTOR_SIZE, N_pb))
 if('HPIPM_DENSE' in SOLVERS):  
     hpipm_dense_iter_solved = np.zeros((MAX_QP_ITER, N_pb))
-    hpipm_dense_time_solved = np.zeros((MAX_QP_TIME, N_pb))
+    hpipm_dense_time_solved = np.zeros((TIME_VECTOR_SIZE, N_pb))
 if('HPIPM_OCP' in SOLVERS):  
     hpipm_ocp_iter_solved = np.zeros((MAX_QP_ITER, N_pb))
-    hpipm_ocp_time_solved = np.zeros((MAX_QP_TIME, N_pb))
+    hpipm_ocp_time_solved = np.zeros((TIME_VECTOR_SIZE, N_pb))
 for k,exp in enumerate(names):
     # Count number of problems solved for each sample initial state 
     for i in range(N_samples):
@@ -745,15 +730,15 @@ for k,exp in enumerate(names):
             if('HPIPM_OCP' in SOLVERS): 
                 if(hpipm_ocp_iter_ik < j): hpipm_ocp_iter_solved[j,k] += 1
         # Solve time
-        for j in range(MAX_QP_TIME):
+        for j in range(TIME_VECTOR_SIZE):
             if('CSQP' in SOLVERS): 
-                if(csqp_time_ik < j): csqp_time_solved[j,k] += 1
+                if(csqp_time_ik < j * TIME_DISCRETIZATION): csqp_time_solved[j,k] += 1
             if('OSQP' in SOLVERS): 
-                if(osqp_time_ik < j): osqp_time_solved[j,k] += 1
+                if(osqp_time_ik < j * TIME_DISCRETIZATION): osqp_time_solved[j,k] += 1
             if('HPIPM_DENSE' in SOLVERS): 
-                if(hpipm_dense_time_ik < j): hpipm_dense_time_solved[j,k] += 1
+                if(hpipm_dense_time_ik < j * TIME_DISCRETIZATION): hpipm_dense_time_solved[j,k] += 1
             if('HPIPM_OCP' in SOLVERS): 
-                if(hpipm_ocp_time_ik < j): hpipm_ocp_time_solved[j,k] += 1
+                if(hpipm_ocp_time_ik < j * TIME_DISCRETIZATION): hpipm_ocp_time_solved[j,k] += 1
 
 # Generate plot of number of iterations for each problem
 import matplotlib.pyplot as plt
@@ -763,6 +748,7 @@ matplotlib.rcParams["ps.fonttype"] = 42
  
 # x-axis : max number of iterations
 xdata     = range(0,MAX_QP_ITER)
+
 for k in range(N_pb):
     fig0, ax0 = plt.subplots(1, 1, figsize=(19.2,10.8))
     if('CSQP' in SOLVERS): 
@@ -788,7 +774,8 @@ for k in range(N_pb):
         fig0.savefig('/tmp/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
 
 # x-axis : max time allowed to solve the QP (in ms)
-xdata     = range(0,MAX_QP_TIME)
+
+xdata     = np.linspace(0, MAX_QP_TIME, TIME_VECTOR_SIZE)
 for k in range(N_pb):
     fig0, ax0 = plt.subplots(1, 1, figsize=(19.2,10.8))
     if('CSQP' in SOLVERS): 
@@ -803,7 +790,7 @@ for k in range(N_pb):
     ax0.set_ylabel('Percentage of problems solved', fontsize=26)
     ax0.set_xlabel('Max. solving time (ms)', fontsize=26)
     ax0.set_ylim(-0.02, 1.02)
-    ax0.set_xscale("log")
+    # ax0.set_xscale("log")
     ax0.tick_params(axis = 'y', labelsize=22)
     ax0.tick_params(axis = 'x', labelsize=22)
     ax0.grid(True) 
