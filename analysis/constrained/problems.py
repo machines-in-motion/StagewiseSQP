@@ -3,6 +3,8 @@ import example_robot_data
 import crocoddyl
 import pinocchio as pin
 import numpy as np
+from mim_robots.robot_loader import load_pinocchio_wrapper
+
 
 def create_solo12_problem(MU):
     '''
@@ -192,8 +194,8 @@ def create_kuka_problem(x0):
     ee_contraint = crocoddyl.ConstraintModelResidual(
         state,
         frameTranslationResidual,
-        np.array([0.4, 0., 0.4]),
-        np.array([0.4, 0., 0.4]),
+        np.array([0.6, 0., 0.15]),
+        np.array([0.6, 0., 0.15]),
     )
     #  Constraint on frame velocity
     frameVelocityResidual = crocoddyl.ResidualModelFrameVelocity(
@@ -210,7 +212,7 @@ def create_kuka_problem(x0):
         runningCostModel.addCost("stateReg", xRegCost, 1e-1)
         runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
 
-        acc_refs = crocoddyl.ResidualModelJointAcceleration(state, actuation.nu)
+        acc_refs = crocoddyl.ResidualModelJointAcceleration(state, np.zeros(7), actuation.nu)
         accCost = crocoddyl.CostModelResidual(state, acc_refs)
 
         acc_contraint = crocoddyl.ConstraintModelResidual(
