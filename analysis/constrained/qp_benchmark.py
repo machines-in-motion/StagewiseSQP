@@ -507,14 +507,14 @@ EPS_ABS     = 1e-2
 EPS_REL     = 0.
 SAVE        = False # Save figure 
 
-TIME_DISCRETIZATION = 1  # the larger the faster (usefull for very fast problems) 
+TIME_DISCRETIZATION = 0.01  # the larger the faster (usefull for very fast problems) 
 
 # Benchmark params
 SEED = 10 ; np.random.seed(SEED)
-N_samples = 20
+N_samples = 5
 names = [
-       'solo12'] # maxiter = 500
-        #  'Kuka'] # maxiter = 100
+    #    'solo12'] # maxiter = 500
+         'Kuka'] # maxiter = 100
         #  'Taichi'] #
         # #  'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
         #  'Quadrotor'] # maxiter = 200
@@ -723,8 +723,8 @@ for i in range(N_samples):
                 for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), p0.copy())
             else:
                 solvercsqp.problem.x0 = x0
-            # solverosqp.xs = [solverosqp.problem.x0] * (solverosqp.problem.T + 1) 
-            # solverosqp.us = solverosqp.problem.quasiStatic([solverosqp.problem.x0] * solverosqp.problem.T)
+            solverosqp.xs = [solverosqp.problem.x0] * (solverosqp.problem.T + 1) 
+            solverosqp.us = solverosqp.problem.quasiStatic([solverosqp.problem.x0] * solverosqp.problem.T)
             solverosqp.solve(solverosqp.xs, solverosqp.us, MAXITER, False)
             solved = (solverosqp.found_qp_sol and solverosqp.norm_primal < EPS_ABS and solverosqp.norm_dual < EPS_ABS and solverosqp.qp_iters <= MAX_QP_ITER)
             osqp_solved_samples[i].append( solved )
@@ -753,8 +753,8 @@ for i in range(N_samples):
                 for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), p0.copy())
             else:
                 solvercsqp.problem.x0 = x0
-            # solverhpipm_dense.xs = [solverhpipm_dense.problem.x0] * (solverhpipm_dense.problem.T + 1) 
-            # solverhpipm_dense.us = solverhpipm_dense.problem.quasiStatic([solverhpipm_dense.problem.x0] * solverhpipm_dense.problem.T)
+            solverhpipm_dense.xs = [solverhpipm_dense.problem.x0] * (solverhpipm_dense.problem.T + 1) 
+            solverhpipm_dense.us = solverhpipm_dense.problem.quasiStatic([solverhpipm_dense.problem.x0] * solverhpipm_dense.problem.T)
             solverhpipm_dense.solve(solverhpipm_dense.xs, solverhpipm_dense.us, MAXITER, False)
             solverhpipm_dense.found_qp_sol = False
             if(solverhpipm_dense.found_qp_sol):
@@ -788,8 +788,8 @@ for i in range(N_samples):
                 for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), p0.copy())
             else:
                 solvercsqp.problem.x0 = x0
-            # solverhpipm_ocp.xs = [solverhpipm_ocp.problem.x0] * (solverhpipm_ocp.problem.T + 1) 
-            # solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([solverhpipm_ocp.problem.x0] * solverhpipm_ocp.problem.T)
+            solverhpipm_ocp.xs = [solverhpipm_ocp.problem.x0] * (solverhpipm_ocp.problem.T + 1) 
+            solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([solverhpipm_ocp.problem.x0] * solverhpipm_ocp.problem.T)
             solverhpipm_ocp.solve(solverhpipm_ocp.xs, solverhpipm_ocp.us, MAXITER, False)
                 # Check convergence
             if(solverhpipm_ocp.found_qp_sol):
