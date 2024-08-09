@@ -4,7 +4,7 @@ import mim_solvers
 
 import time
 
-from croco_mpc_utils.ocp_constraints import OptimalControlProblemClassicalWithConstraints
+from croco_mpc_utils.ocp import OptimalControlProblemClassical
 import croco_mpc_utils.pinocchio_utils as pin_utils
 
 from croco_mpc_utils.utils import CustomLogger, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT
@@ -90,7 +90,7 @@ class KukaSquareCSSQP:
         self.OCP_TO_CTRL_RATIO = int(self.dt_ocp/self.dt_ctrl)
         self.u0 = pin_utils.get_u_grav(self.q0, self.robot.model, np.zeros(self.robot.model.nq))
         # Create OCP 
-        problem = OptimalControlProblemClassicalWithConstraints(self.robot, self.config).initialize(self.x0)
+        problem = OptimalControlProblemClassical(self.robot, self.config).initialize(self.x0)
 
         # Initialize the solver
         if(config['SOLVER'] == 'proxqp'):
