@@ -180,7 +180,6 @@ def create_kuka_problem(x0):
     xRegCost = crocoddyl.CostModelResidual(state, xResidual)
     # endeff frame translation cost
     endeff_frame_id = model.getFrameId("contact")
-    # frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
     # ee velocity cost
     frameVelocityResidual = crocoddyl.ResidualModelFrameVelocity(
         state, endeff_frame_id, pin.Motion.Zero(), pin.LOCAL_WORLD_ALIGNED
@@ -190,13 +189,18 @@ def create_kuka_problem(x0):
     frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
         state, endeff_frame_id, np.zeros(3)
     )
+    frameTranslationResidualCost = crocoddyl.ResidualModelFrameTranslation(
+        state, endeff_frame_id, np.array([0.45, -0.2, 0.15])
+    )
+    frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidualCost)
 
     ee_contraint = crocoddyl.ConstraintModelResidual(
         state,
         frameTranslationResidual,
-        np.array([0.6, 0., 0.15]),
-        np.array([0.6, 0., 0.15]),
+        np.array([0.45, -0.2, 0.15]),
+        np.array([0.75, +0.2, 0.5]),
     )
+
     #  Constraint on frame velocity
     frameVelocityResidual = crocoddyl.ResidualModelFrameVelocity(
         state, endeff_frame_id, pin.Motion.Zero(), pin.LOCAL_WORLD_ALIGNED
@@ -211,6 +215,7 @@ def create_kuka_problem(x0):
         # Add costs
         runningCostModel.addCost("stateReg", xRegCost, 1e-1)
         runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
+        runningCostModel.addCost("translation", frameTranslationCost, 1.)
 
         acc_refs = crocoddyl.ResidualModelJointAcceleration(state, np.zeros(7), actuation.nu)
         accCost = crocoddyl.CostModelResidual(state, acc_refs)
@@ -230,10 +235,10 @@ def create_kuka_problem(x0):
             runningCostModel.addCost("velocity", frameVelocityCost, 1e-1)
         # Define contraints
         constraints = crocoddyl.ConstraintModelManager(state, actuation.nu)
-        if t == T:
+        if t == T: 
             constraints.addConstraint("ee_bound", ee_contraint)
-        if t == T-1:
-            constraints.addConstraint("acc_contraint", acc_contraint)
+        # if t == T-1:
+        #     constraints.addConstraint("acc_contraint", acc_contraint)
         # Create Differential action model
         running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
             state, actuation, runningCostModel, constraints
@@ -514,7 +519,7 @@ def create_quadrotor_problem(x0):
     )
 
     # Creating the shooting problem and the BoxDDP solver
-    T = 33
+    T = 200 #33
     print(hector.q0)
     problem = crocoddyl.ShootingProblem(
         x0, [runningModel] * T, terminalModel
