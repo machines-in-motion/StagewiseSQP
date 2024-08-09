@@ -25,9 +25,11 @@ import mim_solvers
 
 import pathlib
 import os
-python_path = pathlib.Path('/home/ajordana/eigen_workspace/mim_solvers/python/').absolute()
+# python_path = pathlib.Path('/home/ajordana/eigen_workspace/mim_solvers/python/').absolute()
+python_path = pathlib.Path('/home/skleff/workspace_native/mim_solvers/python/').absolute()
 os.sys.path.insert(1, str(python_path))
 from csqp import CSQP
+from plot_config import LABELS, COLORS, LINESTYLES
 
 import time
 
@@ -35,23 +37,29 @@ import time
 MAXITER     = 1     
 TOL         = 1e-4
 CALLBACKS   = False
-MAX_QP_ITER = 10000
-MAX_QP_TIME = int(1e2) # in ms
-EPS_ABS     = 1e-8
+MAX_QP_ITER = 100000
+EPS_ABS     = 1e-2
 EPS_REL     = 0.
-SAVE        = False # Save figure 
+SAVE        = True # Save figure 
 
-TIME_DISCRETIZATION = 0.01  # the larger the faster (usefull for very fast problems) 
 
 # Benchmark params
 SEED = 10 ; np.random.seed(SEED)
-N_samples = 5
+N_samples = 10
 names = [
-    #    'solo12'] # maxiter = 500
-        #  'Kuka'] # maxiter = 100
-        #  'Taichi'] #
-        # #  'Cartpole']  #--> need to explain why it doesn't converge otherwise leave it out 
-         'Quadrotor'] # maxiter = 200
+        'solo12']      # maxiter = 500 TIME_DISCRETIZATION=0.1 TOL=1e-4 MAX_QP_TIME=1e5
+        #  'Kuka']       # maxiter = 100
+        #  'Taichi']       #
+        #  'Quadrotor']  # maxiter = 200
+if('Taichi' in names):
+    MAX_QP_TIME = int(1e5)     # in ms
+    TIME_DISCRETIZATION = 1.  # the larger the faster (usefull for very fast problems) 
+if('Kuka' in names):
+    MAX_QP_TIME = int(1e2)       # in ms
+    TIME_DISCRETIZATION = 0.01  # the larger the faster (usefull for very fast problems) 
+if('solo12' in names):
+    MAX_QP_TIME = int(2e3)     # in ms
+    TIME_DISCRETIZATION = 0.01  # the larger the faster (usefull for very fast problems) 
 
 N_pb = len(names)
 
@@ -170,7 +178,7 @@ for i in range(N_samples):
     err = np.zeros(3)
     err[2] = 2*np.random.rand() - 1
     taichi_p0_samples[i,:]  = taichi_p0 + 0.05*err
-    solo12_mu_samples[i]  = 0.8 + 0*0.01 * (2*np.random.rand() - 1)
+    solo12_mu_samples[i]  = 0.8 + 0.01 * (2*np.random.rand() - 1)
 
 print("Created "+str(N_samples)+" random initial states per model !")
 
@@ -233,7 +241,7 @@ for i in range(N_samples):
             if(not solved): 
                 print("      FAILED !!!!")
                 csqp_iter_samples[i].append(MAX_QP_ITER)
-                csqp_time_samples[i].append(MAX_QP_TIME)
+                csqp_time_samples[i].append(MAX_QP_TIME+1)
             else:
                 csqp_iter_samples[i].append(solvercsqp.qp_iters)
                 csqp_time_samples[i].append(solvercsqp.qp_time*1e3)
@@ -260,12 +268,13 @@ for i in range(N_samples):
             solverosqp.xs = [solverosqp.problem.x0] * (solverosqp.problem.T + 1) 
             solverosqp.us = solverosqp.problem.quasiStatic([solverosqp.problem.x0] * solverosqp.problem.T)
             solverosqp.solve(solverosqp.xs, solverosqp.us, MAXITER, False)
-            solved = (solverosqp.found_qp_sol and solverosqp.norm_primal < EPS_ABS and solverosqp.norm_dual < EPS_ABS and solverosqp.qp_iters <= MAX_QP_ITER)
+            # solved = (solverosqp.found_qp_sol and solverosqp.norm_primal < EPS_ABS and solverosqp.norm_dual < EPS_ABS and solverosqp.qp_iters <= MAX_QP_ITER)
+            solved = (solverosqp.norm_primal < EPS_ABS and solverosqp.norm_dual < EPS_ABS and solverosqp.qp_iters <= MAX_QP_ITER)
             osqp_solved_samples[i].append( solved )
             if(not solved): 
                 print("      FAILED !!!!")
                 osqp_iter_samples[i].append(MAX_QP_ITER)
-                osqp_time_samples[i].append(MAX_QP_TIME)
+                osqp_time_samples[i].append(MAX_QP_TIME+1)
             else:
                 osqp_iter_samples[i].append(solverosqp.qp_iters)
                 osqp_time_samples[i].append(solverosqp.qp_time*1e3)
@@ -290,17 +299,18 @@ for i in range(N_samples):
             solverhpipm_dense.xs = [solverhpipm_dense.problem.x0] * (solverhpipm_dense.problem.T + 1) 
             solverhpipm_dense.us = solverhpipm_dense.problem.quasiStatic([solverhpipm_dense.problem.x0] * solverhpipm_dense.problem.T)
             solverhpipm_dense.solve(solverhpipm_dense.xs, solverhpipm_dense.us, MAXITER, False)
-            solverhpipm_dense.found_qp_sol = False
-            if(solverhpipm_dense.found_qp_sol):
-                solved = (solverhpipm_dense.norm_primal < EPS_ABS and solverhpipm_dense.norm_dual < EPS_ABS and solverhpipm_dense.qp_iters <= MAX_QP_ITER)
-            else:
-                solved = False
-            solved = False
+            solved = (solverhpipm_dense.norm_primal < EPS_ABS and solverhpipm_dense.norm_dual < EPS_ABS and solverhpipm_dense.qp_iters <= MAX_QP_ITER)
+            # solverhpipm_dense.found_qp_sol = False
+            # if(solverhpipm_dense.found_qp_sol):
+            #     solved = (solverhpipm_dense.norm_primal < EPS_ABS and solverhpipm_dense.norm_dual < EPS_ABS and solverhpipm_dense.qp_iters <= MAX_QP_ITER)
+            # else:
+            #     solved = False
+            # solved = False
             hpipm_dense_solved_samples[i].append( solved )
             if(not solved): 
                 print("      FAILED !!!!")
                 hpipm_dense_iter_samples[i].append(MAX_QP_ITER)
-                hpipm_dense_time_samples[i].append(MAX_QP_TIME)
+                hpipm_dense_time_samples[i].append(MAX_QP_TIME+1)
             else:
                 hpipm_dense_iter_samples[i].append(solverhpipm_dense.qp_iters)
                 hpipm_dense_time_samples[i].append(solverhpipm_dense.qp_time*1e3)
@@ -326,15 +336,16 @@ for i in range(N_samples):
             solverhpipm_ocp.us = solverhpipm_ocp.problem.quasiStatic([solverhpipm_ocp.problem.x0] * solverhpipm_ocp.problem.T)
             solverhpipm_ocp.solve(solverhpipm_ocp.xs, solverhpipm_ocp.us, MAXITER, False)
                 # Check convergence
-            if(solverhpipm_ocp.found_qp_sol):
-                solved = (solverhpipm_ocp.norm_primal < EPS_ABS and solverhpipm_ocp.norm_dual < EPS_ABS and solverhpipm_ocp.qp_iters <= MAX_QP_ITER)
-            else:
-                solved = False
+            solved = (solverhpipm_ocp.norm_primal < EPS_ABS and solverhpipm_ocp.norm_dual < EPS_ABS and solverhpipm_ocp.qp_iters <= MAX_QP_ITER)
+            # if(solverhpipm_ocp.found_qp_sol):
+            #     solved = (solverhpipm_ocp.norm_primal < EPS_ABS and solverhpipm_ocp.norm_dual < EPS_ABS and solverhpipm_ocp.qp_iters <= MAX_QP_ITER)
+            # else:
+            #     solved = False
             hpipm_ocp_solved_samples[i].append( solved )
             if(not solved): 
                 print("      FAILED !!!!")
                 hpipm_ocp_iter_samples[i].append(MAX_QP_ITER)
-                hpipm_ocp_time_samples[i].append(MAX_QP_TIME)
+                hpipm_ocp_time_samples[i].append(MAX_QP_TIME+1)
             else:
                 hpipm_ocp_iter_samples[i].append(solverhpipm_ocp.qp_iters)
                 hpipm_ocp_time_samples[i].append(solverhpipm_ocp.qp_time*1e3)
@@ -405,17 +416,18 @@ xdata     = range(0,MAX_QP_ITER)
 for k in range(N_pb):
     fig0, ax0 = plt.subplots(1, 1, figsize=(19.2,10.8))
     if('CSQP' in SOLVERS): 
-        ax0.plot(xdata, csqp_iter_solved[:,k]/N_samples, color='r', linestyle='solid', linewidth=4, label='CSQP') 
+        ax0.plot(xdata, csqp_iter_solved[:,k]/N_samples, color=COLORS['CSQP'], linestyle=LINESTYLES['CSQP'], linewidth=4, label=LABELS['CSQP']) 
     if('OSQP' in SOLVERS): 
-        ax0.plot(xdata, osqp_iter_solved[:,k]/N_samples, color='y', linestyle='dashed', linewidth=4, label='OSQP') 
+        ax0.plot(xdata, osqp_iter_solved[:,k]/N_samples, color=COLORS['OSQP'], linestyle=LINESTYLES['OSQP'], linewidth=4, label=LABELS['OSQP'])
     if('HPIPM_DENSE' in SOLVERS): 
-        ax0.plot(xdata, hpipm_dense_iter_solved[:,k]/N_samples, color='g', linestyle='dotted',linewidth=4, label='HPIPM (dense)') 
+        ax0.plot(xdata, hpipm_dense_iter_solved[:,k]/N_samples, color=COLORS['HPIPM_DENSE'], linestyle=LINESTYLES['HPIPM_DENSE'], linewidth=4, label=LABELS['HPIPM_DENSE'])
     if('HPIPM_OCP' in SOLVERS): 
-        ax0.plot(xdata, hpipm_ocp_iter_solved[:,k]/N_samples, color='b', linestyle='dashdot', linewidth=4, label='HPIPM (OCP)') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
+        ax0.plot(xdata, hpipm_ocp_iter_solved[:,k]/N_samples, color=COLORS['HPIPM_OCP'], linestyle=LINESTYLES['HPIPM_OCP'], linewidth=4, label=LABELS['HPIPM_OCP'])
     # Set axis and stuff
     ax0.set_ylabel('Percentage of problems solved', fontsize=26)
     ax0.set_xlabel('Max. number of iterations', fontsize=26)
     ax0.set_ylim(-0.02, 1.02)
+    ax0.set_xscale('log')
     ax0.tick_params(axis = 'y', labelsize=22)
     ax0.tick_params(axis = 'x', labelsize=22)
     ax0.grid(True) 
@@ -432,13 +444,13 @@ xdata     = np.linspace(0, MAX_QP_TIME, TIME_VECTOR_SIZE)
 for k in range(N_pb):
     fig0, ax0 = plt.subplots(1, 1, figsize=(19.2,10.8))
     if('CSQP' in SOLVERS): 
-        ax0.plot(xdata, csqp_time_solved[:,k]/N_samples, color='r', linestyle='solid', linewidth=4, label='CSQP') 
+        ax0.plot(xdata, csqp_time_solved[:,k]/N_samples, color=COLORS['CSQP'], linestyle=LINESTYLES['CSQP'], linewidth=4, label=LABELS['CSQP']) 
     if('OSQP' in SOLVERS): 
-        ax0.plot(xdata, osqp_time_solved[:,k]/N_samples, color='y', linestyle='dashed', linewidth=4, label='OSQP') 
+        ax0.plot(xdata, osqp_time_solved[:,k]/N_samples, color=COLORS['OSQP'], linestyle=LINESTYLES['OSQP'], linewidth=4, label=LABELS['OSQP'])
     if('HPIPM_DENSE' in SOLVERS): 
-        ax0.plot(xdata, hpipm_dense_time_solved[:,k]/N_samples, color='g', linestyle='dotted', linewidth=4, label='HPIPM (dense)') 
+        ax0.plot(xdata, hpipm_dense_time_solved[:,k]/N_samples, color=COLORS['HPIPM_DENSE'], linestyle=LINESTYLES['HPIPM_DENSE'], linewidth=4, label=LABELS['HPIPM_DENSE'])
     if('HPIPM_OCP' in SOLVERS): 
-        ax0.plot(xdata, hpipm_ocp_time_solved[:,k]/N_samples, color='b', linestyle='dashdot', linewidth=4, label='HPIPM (OCP)') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
+        ax0.plot(xdata, hpipm_ocp_time_solved[:,k]/N_samples, color=COLORS['HPIPM_OCP'], linestyle=LINESTYLES['HPIPM_OCP'], linewidth=4, label=LABELS['HPIPM_OCP'])
     # Set axis and stuff
     ax0.set_ylabel('Percentage of problems solved', fontsize=26)
     ax0.set_xlabel('Max. solving time (ms)', fontsize=26)
@@ -446,13 +458,14 @@ for k in range(N_pb):
     # ax0.set_xscale("log")
     ax0.tick_params(axis = 'y', labelsize=22)
     ax0.tick_params(axis = 'x', labelsize=22)
+    ax0.set_xscale('log')
     ax0.grid(True) 
     # Legend 
     handles0, labels0 = ax0.get_legend_handles_labels()
-    fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
+    fig0.legend(handles0, labels0, loc='lower right', prop={'size': 26}) 
     # Save, show , clean
     if(SAVE):
-        fig0.savefig('/tmp/data_sqp_paper_croc2/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
+        fig0.savefig('/tmp/bench_'+names[k]+'_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'.pdf', bbox_inches="tight")
 
 
 
