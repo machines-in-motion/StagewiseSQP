@@ -417,7 +417,6 @@ def create_humanoid_taichi_problem(target=np.array([0.4, 0, 1.2]),
 
         constraintForceright = crocoddyl.ConstraintModelResidual(state, ForceResidualright, F_lim_lb, F_lim_ub)
         constraintModelManager.addConstraint("force_right", constraintForceright)
-        constraintModelManager.addConstraint("force_right", constraintForceright)
 
 
     if JOINT_CONSTRAINT:

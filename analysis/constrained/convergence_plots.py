@@ -38,7 +38,7 @@ if name == "solo12":
 
 
 if name == "taichi":
-    MAX_QP_ITER_HPIPM = 30
+    MAX_QP_ITER_HPIPM = 50
     MAX_QP_ITER_ADMM  = 250
 
 if name == "kuka":
