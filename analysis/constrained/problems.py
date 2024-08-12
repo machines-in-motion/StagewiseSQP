@@ -4,7 +4,7 @@ import crocoddyl
 import pinocchio as pin
 import numpy as np
 from mim_robots.robot_loader import load_pinocchio_wrapper
-
+from crocoddyl.utils.pendulum import CostModelDoublePendulum, ActuationModelDoublePendulum
 
 def create_solo12_problem(MU):
     '''
@@ -250,7 +250,7 @@ def create_kuka_problem(x0):
     return pb
 
 def create_humanoid_taichi_problem(target=np.array([0.4, 0, 1.2]), 
-                                   JOINT_CONSTRAINT=False, 
+                                   JOINT_CONSTRAINT=False,
                                    FORCE_COST=True,
                                    FORCE_CONSTRAINT=True):
     '''
@@ -408,8 +408,18 @@ def create_humanoid_taichi_problem(target=np.array([0.4, 0, 1.2]),
         runningCostModel2.addCost("forcecost2", Forcecost, 1e-3)
         runningCostModel3.addCost("forcecost3", Forcecost, 1e-3)
     if FORCE_CONSTRAINT:
-        constraintForce = crocoddyl.ConstraintModelResidual(state, ForceResidual, np.array([-np.inf, -np.inf, 0]*2), np.array([np.inf, np.inf, np.inf]*2))
-        constraintModelManager.addConstraint("force", constraintForce)
+        fref = pin.Force.Zero()
+        ForceResidualright = crocoddyl.ResidualModelContactForce(state, rightFootId, fref, 6, actuation.nu)
+
+
+        F_lim_lb = np.array([-np.inf, -np.inf, 0,   -20,-20, -20])
+        F_lim_ub = np.array([np.inf, np.inf, np.inf, 20, 20, 20])
+
+        constraintForceright = crocoddyl.ConstraintModelResidual(state, ForceResidualright, F_lim_lb, F_lim_ub)
+        constraintModelManager.addConstraint("force_right", constraintForceright)
+        constraintModelManager.addConstraint("force_right", constraintForceright)
+
+
     if JOINT_CONSTRAINT:
         constraintState = crocoddyl.ConstraintModelResidual(state, xLimitResidual, xlb, xub)
         constraintModelManager.addConstraint("state", constraintState)
@@ -526,3 +536,48 @@ def create_quadrotor_problem(x0):
     )
 
     return problem
+
+def create_double_pendulum_problem(x0):
+    '''
+    Create shooting problem for the double pendulum model
+    '''
+    print("Created double pendulum problem ...")
+    # Loading the double pendulum model
+    pendulum = example_robot_data.load('double_pendulum')
+    model = pendulum.model
+    state = crocoddyl.StateMultibody(model)
+    actuation = ActuationModelDoublePendulum(state, actLink=1)
+    nu = actuation.nu
+    runningCostModel = crocoddyl.CostModelSum(state, nu)
+    terminalCostModel = crocoddyl.CostModelSum(state, nu)
+    xResidual = crocoddyl.ResidualModelState(state, state.zero(), nu)
+    xActivation = crocoddyl.ActivationModelQuad(state.ndx)
+    uResidual = crocoddyl.ResidualModelControl(state, nu)
+    xRegCost = crocoddyl.CostModelResidual(state, xActivation, xResidual)
+    uRegCost = crocoddyl.CostModelResidual(state, uResidual)
+    xPendCost = CostModelDoublePendulum(state, crocoddyl.ActivationModelWeightedQuad(np.array([1.] * 4 + [0.1] * 2)), nu)
+    dt = 1e-2
+    runningCostModel.addCost("uReg", uRegCost, 1e-4 / dt)
+    runningCostModel.addCost("xGoal", xPendCost, 1e-5 / dt)
+    terminalCostModel.addCost("xGoal", xPendCost, 100.)
+
+    l_lim, u_lim = -5, 5
+    constraints = crocoddyl.ConstraintModelManager(state, nu)
+
+    uResidual = crocoddyl.ResidualModelControl(state, nu)
+    u_contraint = crocoddyl.ConstraintModelResidual(
+        state,
+        uResidual,
+        np.array([l_lim]),
+        np.array([u_lim]),
+    )
+
+    constraints.addConstraint("u_contraint", u_contraint)
+
+    runningModel = crocoddyl.IntegratedActionModelEuler(
+        crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, runningCostModel, constraints), dt)
+    terminalModel = crocoddyl.IntegratedActionModelEuler(
+        crocoddyl.DifferentialActionModelFreeFwdDynamics(state, actuation, terminalCostModel), dt)
+    T = 100
+    pb = crocoddyl.ShootingProblem(x0, [runningModel] * T, terminalModel)
+    return pb
