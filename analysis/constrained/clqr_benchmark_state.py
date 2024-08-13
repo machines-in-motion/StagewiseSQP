@@ -1,0 +1,184 @@
+from clqr import ActionModelCLQR
+import mim_solvers
+import numpy as np
+import time
+import crocoddyl
+import pathlib
+import os
+# python_path = pathlib.Path('/home/ajordana/eigen_workspace/mim_solvers/python/').absolute()
+python_path = pathlib.Path('/home/skleff/workspace_native/mim_solvers/python/').absolute()
+os.sys.path.insert(1, str(python_path))
+from csqp import CSQP
+from plot_config import LABELS, COLORS, LINESTYLES
+
+
+# Solver params
+MAXITER     = 1     
+TOL         = 1e-4
+CALLBACKS   = False
+MAX_QP_ITER = 25
+MAX_QP_TIME = int(1e3) # in ms
+EPS_ABS     = 1e-100
+EPS_REL     = 0.
+SAVE        = True # Save figure 
+
+# Benchmark params
+SEED = 10 ; np.random.seed(SEED)
+
+# Solvers
+SOLVERS = ['CSQP',
+           'OSQP']
+        #    'HPIPM_DENSE', 
+        #    'HPIPM_OCP']
+
+names = "clqr"
+
+N_samples = 100
+horizon = 50
+dim_list = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+
+# Compute convergence statistics
+
+
+csqp_time_solved = np.zeros((len(dim_list), N_samples))
+osqp_time_solved = np.zeros((len(dim_list), N_samples))
+hpipm_dense_time_solved = np.zeros((len(dim_list), N_samples))
+hpipm_ocp_time_solved = np.zeros((len(dim_list), N_samples))
+
+for k, nx in enumerate(dim_list):
+    print("\n dim state = ", nx, "\n")
+    # loop on many problems
+    for pb_id in range(N_samples):
+
+        runningModels = [ActionModelCLQR(nx, isInitial=True)]
+        for j in range(horizon-1):
+            runningModels.append(ActionModelCLQR(nx))
+        terminalModel = ActionModelCLQR(nx, isTerminal=True)
+
+        x0 = np.zeros(nx)
+        problem = crocoddyl.ShootingProblem(
+            x0, runningModels, terminalModel
+        )
+
+
+        xs = [np.zeros(nx)] * (horizon+1)
+        us = [np.zeros(terminalModel.nu) for _ in range(horizon)]
+
+        # CSQP solver
+        if('CSQP' in SOLVERS):
+            solvercsqp = mim_solvers.SolverCSQP(problem)
+            solvercsqp.termination_tolerance = TOL
+            solvercsqp.max_qp_iters = MAX_QP_ITER
+            solvercsqp.eps_abs = EPS_ABS
+            solvercsqp.eps_rel = EPS_REL
+            solvercsqp.equality_qp_initial_guess = False
+            solvercsqp.update_rho_with_heuristic = False
+            solvercsqp.with_callbacks = CALLBACKS
+            solvercsqp.solve(xs, us, 0)
+            t1 = time.time()
+            solvercsqp.computeDirection(True)
+            csqp_qp_time = time.time() - t1
+            csqp_time_solved[k, pb_id] = csqp_qp_time*1e3
+            print("csqp = ", csqp_qp_time)
+            print("csqp = ", solvercsqp.qp_iters)
+
+        if('OSQP' in SOLVERS):
+            solverosqp = CSQP(problem, "OSQP")
+            solverosqp.xs = [solverosqp.problem.x0] * (solverosqp.problem.T + 1)  
+            solverosqp.us = solverosqp.problem.quasiStatic([solverosqp.problem.x0] * solverosqp.problem.T)
+            solverosqp.termination_tolerance = TOL
+            solverosqp.max_qp_iters = MAX_QP_ITER
+            solverosqp.eps_abs = EPS_ABS
+            solverosqp.eps_rel = EPS_REL
+            solverosqp.with_callbacks = CALLBACKS
+            solverosqp.solve(solverosqp.xs, solverosqp.us, MAXITER, False)
+            osqp_time_solved[k, pb_id] = solverosqp.qp_time*1e3
+            print("osqp = ", solverosqp.qp_time)
+            print("osqp = ", solverosqp.qp_iters)
+
+        if('HPIPM_DENSE' in SOLVERS):
+            hpipm_dense = CSQP(problem, "HPIPM_DENSE")
+            hpipm_dense.xs = [hpipm_dense.problem.x0] * (hpipm_dense.problem.T + 1)  
+            hpipm_dense.us = hpipm_dense.problem.quasiStatic([hpipm_dense.problem.x0] * hpipm_dense.problem.T)
+            hpipm_dense.termination_tolerance = TOL
+            hpipm_dense.max_qp_iters = MAX_QP_ITER
+            hpipm_dense.eps_abs = EPS_ABS
+            hpipm_dense.eps_rel = EPS_REL
+            hpipm_dense.with_callbacks = CALLBACKS
+            hpipm_dense.solve(hpipm_dense.xs, hpipm_dense.us, MAXITER, False)
+            hpipm_dense_time_solved[k, pb_id] = hpipm_dense.qp_time*1e3
+            print("hpipm_dense = ", hpipm_dense.qp_time)
+            print("hpipm_dense = ", hpipm_dense.qp_iters)
+
+        if('HPIPM_OCP' in SOLVERS):
+            hpipm_ocp = CSQP(problem, "HPIPM_OCP")
+            hpipm_ocp.xs = [hpipm_ocp.problem.x0] * (hpipm_ocp.problem.T + 1)  
+            hpipm_ocp.us = hpipm_ocp.problem.quasiStatic([hpipm_ocp.problem.x0] * hpipm_ocp.problem.T)
+            hpipm_ocp.termination_tolerance = TOL
+            hpipm_ocp.max_qp_iters = MAX_QP_ITER
+            hpipm_ocp.eps_abs = EPS_ABS
+            hpipm_ocp.eps_rel = EPS_REL
+            hpipm_ocp.with_callbacks = CALLBACKS
+            hpipm_ocp.solve(hpipm_ocp.xs, hpipm_ocp.us, MAXITER, False)
+            hpipm_ocp_time_solved[k, pb_id] = hpipm_ocp.qp_time*1e3
+            print("hpipm_ocp = ", hpipm_ocp.qp_time)
+            print("hpipm_ocp = ", hpipm_ocp.qp_iters)
+
+csqp_qp_time_mean        = np.mean(csqp_time_solved, axis=1)
+osqp_qp_time_mean        = np.mean(osqp_time_solved, axis=1)
+hpipm_dense_qp_time_mean = np.mean(hpipm_dense_time_solved, axis=1)
+hpipm_ocp_qp_time_mean   = np.mean(hpipm_ocp_time_solved, axis=1)
+
+csqp_qp_time_std        = np.std(csqp_time_solved, axis=1)
+osqp_qp_time_std        = np.std(osqp_time_solved, axis=1)
+hpipm_dense_qp_time_std = np.std(hpipm_dense_time_solved, axis=1)
+hpipm_ocp_qp_time_std   = np.std(hpipm_ocp_time_solved, axis=1)
+
+
+
+# Generate plot of number of iterations for each problem
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.rcParams["pdf.fonttype"] = 42
+matplotlib.rcParams["ps.fonttype"] = 42
+ 
+
+# x-axis : max time allowed to solve the QP (in ms)
+xdata     = np.array(dim_list)
+
+fig0 = plt.figure(figsize=(19.2,10.8))
+
+if('CSQP' in SOLVERS):
+    plt.plot(xdata, csqp_qp_time_mean, color=COLORS['CSQP'], linestyle=LINESTYLES['CSQP'], linewidth=4, label=LABELS['CSQP']) 
+    plt.fill_between(xdata, csqp_qp_time_mean+csqp_qp_time_std, csqp_qp_time_mean-csqp_qp_time_std, facecolor=COLORS['CSQP'], alpha=0.5)
+if('OSQP' in SOLVERS):
+    plt.plot(xdata, osqp_qp_time_mean, color=COLORS['OSQP'], linestyle=LINESTYLES['OSQP'], linewidth=4, label=LABELS['OSQP'])
+    plt.fill_between(xdata, osqp_qp_time_mean+osqp_qp_time_std, osqp_qp_time_mean-osqp_qp_time_std, facecolor=COLORS['OSQP'], alpha=0.5)
+if('HPIPM_DENSE' in SOLVERS):
+    plt.plot(xdata, hpipm_dense_qp_time_mean, color=COLORS['HPIPM_DENSE'], linestyle=LINESTYLES['HPIPM_DENSE'], linewidth=4, label=LABELS['HPIPM_DENSE'])
+    plt.fill_between(xdata, hpipm_dense_qp_time_mean+hpipm_dense_qp_time_std, hpipm_dense_qp_time_mean-hpipm_dense_qp_time_std, facecolor=COLORS['HPIPM_DENSE'], alpha=0.5)
+if('HPIPM_OCP' in SOLVERS):
+    plt.plot(xdata, hpipm_ocp_qp_time_mean, color=COLORS['HPIPM_OCP'], linestyle=LINESTYLES['HPIPM_OCP'], linewidth=4, label=LABELS['HPIPM_OCP'])
+    plt.fill_between(xdata, hpipm_ocp_qp_time_mean+hpipm_ocp_qp_time_std, hpipm_ocp_qp_time_mean-hpipm_ocp_qp_time_std, facecolor=COLORS['HPIPM_OCP'], alpha=0.5)
+
+
+# Set axis and stuff
+plt.ylabel('Time [ms]', fontsize=26)
+plt.xlabel('State dimension', fontsize=26)
+# ax0.set_ylim(-0.02, 1.02)
+plt.tick_params(axis = 'y', labelsize=22)
+plt.tick_params(axis = 'x', labelsize=22)
+plt.xticks(dim_list)
+plt.grid(True) 
+# Legend 
+plt.legend(loc='upper left', prop={'size': 26}) 
+# Save, show , clean
+save_path = '/tmp/clqr_benchmark_state_SAMPLES='+str(N_samples)+'.pdf'
+if(SAVE):
+    fig0.savefig(save_path, bbox_inches="tight")
+
+
+plt.show()
+plt.close('all')
+
+
