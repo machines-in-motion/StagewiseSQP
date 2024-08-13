@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 class ActionModelCLQR(crocoddyl.ActionModelAbstract):
     def __init__(self, nx, isInitial=False, isTerminal=False):
         nr = 0 
-        ng = int(0.1*nx/2)
+        ng = int(nx/2)
         nu = int(nx/2)
         nh = 0
         self.isTerminal = isTerminal
@@ -22,8 +22,8 @@ class ActionModelCLQR(crocoddyl.ActionModelAbstract):
         crocoddyl.ActionModelAbstract.__init__(self, state, nu, nr, ng, nh)
 
         if not self.isInitial:
-            lower_bound = np.array([-1.] * ng)
-            upper_bound = np.array([1.]* ng)
+            lower_bound = np.array([-10.] * ng)
+            upper_bound = np.array([10.]* ng)
 
             self.g_lb = lower_bound
             self.g_ub = upper_bound
