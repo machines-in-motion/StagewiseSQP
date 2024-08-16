@@ -20,8 +20,8 @@ SOLVERS = ['DDP',
            'FDDP_filter', 
            'SQP']
 # Load data 
-# file_name = "/home/skleff/SQP_REBUTAL_BENCH/"+BENCH_NAME + ".npz"
-file_name = "data/"+BENCH_NAME + ".npz"
+PREFIX = "data/"
+file_name = PREFIX + BENCH_NAME + ".npz"
 print("Loading " + file_name)
 npzfile = np.load(file_name)
 N_SAMPLES = npzfile['N_SAMPLES']
@@ -51,8 +51,7 @@ handles0, labels0 = ax0.get_legend_handles_labels()
 fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': FONTSIZE}) 
 # Save, show , clean
 if(SAVE_PLOT):
-    fig0.savefig('/home/skleff/SQP_REBUTAL_BENCH/bench_'+BENCH_NAME+'.pdf', bbox_inches="tight")
-    fig0.savefig('figures/bench_'+BENCH_NAME+'.pdf', bbox_inches="tight")
+    fig0.savefig('/tmp/bench_'+BENCH_NAME+'.pdf', bbox_inches="tight")
 
 plt.show()
 plt.close('all')

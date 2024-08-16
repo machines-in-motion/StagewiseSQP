@@ -297,24 +297,7 @@ for i in range(N_SAMPLES):
 
 # Save the benchmark data 
 if(SAVE):
-    file_name = "/home/skleff/SQP_REBUTAL_BENCH/"+BENCH_NAME 
-    np.savez_compressed(file_name, 
-            N_SAMPLES=N_SAMPLES,
-            MAXITER=MAXITER,
-            ddp_iter_solved=ddp_iter_solved, 
-            fddp_iter_solved=fddp_iter_solved,
-            fddp_filter_iter_solved=fddp_filter_iter_solved,
-            SQP_iter_solved=SQP_iter_solved, 
-            ddp_mean_solve_time=ddp_mean_solve_time,
-            ddp_std_solve_time=ddp_std_solve_time,
-            fddp_mean_solve_time=fddp_mean_solve_time, 
-            fddp_std_solve_time=fddp_std_solve_time,
-            fddp_filter_mean_solve_time=fddp_filter_mean_solve_time,
-            fddp_filter_std_solve_time=fddp_filter_std_solve_time, 
-            SQP_mean_solve_time=SQP_mean_solve_time,
-            SQP_std_solve_time=SQP_std_solve_time)
-
-    file_name = "data/"+BENCH_NAME 
+    file_name = "/tmp/"+BENCH_NAME 
     np.savez_compressed(file_name, 
             N_SAMPLES=N_SAMPLES,
             MAXITER=MAXITER,

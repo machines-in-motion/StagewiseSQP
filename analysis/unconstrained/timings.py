@@ -25,8 +25,9 @@ PROBLEMS = ['Kuka',
 npz_data = {}
 
 # Load data and display timings
+PREFIX = "data/"
 if('Kuka' in PROBLEMS):
-    kuka_name      = "data/Kuka.npz"
+    kuka_name      = PREFIX + "Kuka.npz"
     print("Loading " + kuka_name)
     npz_kuka = np.load(kuka_name)
     npz_data['Kuka'] = npz_kuka
@@ -39,7 +40,7 @@ if('Kuka' in PROBLEMS):
     print(" SQP          = " , npz_kuka['SQP_mean_solve_time']         ,  ' \xB1 ' , npz_kuka['SQP_std_solve_time'])
 
 if('Quadrotor' in PROBLEMS):
-    quadrotor_name = "data/Quadrotor.npz"
+    quadrotor_name = PREFIX + "Quadrotor.npz"
     print("Loading " + quadrotor_name)
     npz_quadrotor = np.load(quadrotor_name)
     npz_data['Quadrotor'] = npz_quadrotor
@@ -52,7 +53,7 @@ if('Quadrotor' in PROBLEMS):
     print(" SQP          = " , npz_quadrotor['SQP_mean_solve_time']         ,  ' \xB1 ' , npz_quadrotor['SQP_std_solve_time'])
 
 if('Pendulum' in PROBLEMS):
-    pendulum_name  = "data/Pendulum.npz"
+    pendulum_name  = PREFIX + "Pendulum.npz"
     print("Loading " + pendulum_name)
     npz_pendulum = np.load(pendulum_name)
     npz_data['Pendulum'] = npz_pendulum
@@ -65,7 +66,7 @@ if('Pendulum' in PROBLEMS):
     print(" SQP          = " , npz_pendulum['SQP_mean_solve_time']         ,  ' \xB1 ' , npz_pendulum['SQP_std_solve_time'])
 
 if('Taichi' in PROBLEMS):
-    taichi_name    = "data/Taichi.npz"
+    taichi_name    = PREFIX + "Taichi.npz"
     print("Loading " + taichi_name)
     npz_taichi = np.load(taichi_name)
     npz_data['Taichi'] = npz_taichi
@@ -114,6 +115,5 @@ handles, labels = ax.get_legend_handles_labels()
 fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.1, 0.95), prop={'size': 26}) 
 # Save, show , clean
 if(SAVE_PLOT):
-    fig.savefig('/home/skleff/SQP_REBUTAL_BENCH/rollout_timings.pdf', bbox_inches="tight")
-    fig.savefig('figures/rollout_timings.pdf', bbox_inches="tight")
+    fig.savefig('/tmp/rollout_timings.pdf', bbox_inches="tight")
 plt.show()
