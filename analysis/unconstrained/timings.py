@@ -1,48 +1,92 @@
-
-# KUKA
-#  DDP      =  0.0012729454804721201  ±  7.184014244231122e-05
-#  FDDP     =  0.0012946259530339597  ±  7.911383836089339e-05
-#  FDDP_LS  =  0.0012894834670354072  ±  6.153018952347711e-05
-#  SQP      =  0.0012895163413882446  ±  6.368322985446061e-05
-
-# PENDULUM
-#  DDP      =  0.007536630440878056  ±  0.0023201423141219466
-#  FDDP     =  0.009560386866073488  ±  0.0023067396671562256
-#  FDDP_LS  =  0.009172463853995954  ±  0.0011853600237480715
-#  SQP      =  0.008574847086472666  ±  0.0008257810186892844
-
-# QUADROTOR 
-#  DDP      =  0.0005654333411325002  ±  0.00015347977080762748
-#  FDDP     =  0.0005132857817721445  ±  6.272549235445462e-05
-#  FDDP_LS  =  0.0005001691924962936  ±  2.1469450766082447e-05
-#  SQP      =  0.00045154549281226216  ±  1.7919104324827164e-05
-
-# TAICHI
-#  DDP      =  0.0763195102805348  ±  0.002204728627072052
-#  FDDP     =  0.07692396276051267  ±  0.0024015259138921827
-#  FDDP_LS  =  0.07643597870891058  ±  0.002634458753534008
-#  SQP      =  0.06881684795170281  ±  0.0017213882554702941
-
-
-import matplotlib.pyplot as plt
+'''
+Plot the rollout benchmarks
+'''
 import numpy as np
-# kuka, pendulum quadritir, taichi
-SOLVERS  = ['DDP', 'FDDP', 'FDDP_LS', 'SQP']
-PROBLEMS = ['Kuka', 'Pendulum', 'Quadrotor', 'Taichi']
+
+from plot_config import LABELS, COLORS, LINESTYLES, LABELSIZE, FONTSIZE, FIGSIZE
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.rcParams["pdf.fonttype"] = 42
+matplotlib.rcParams["ps.fonttype"] = 42
+
+SAVE_PLOT = True
+
+# Solvers
+SOLVERS = ['DDP',
+           'FDDP',
+           'FDDP_filter', 
+           'SQP']
+
+PROBLEMS = ['Kuka', 
+            'Quadrotor', 
+            'Pendulum', 
+            'Taichi']
+
+npz_data = {}
+
+# Load data and display timings
+if('Kuka' in PROBLEMS):
+    kuka_name      = "data/Kuka.npz"
+    print("Loading " + kuka_name)
+    npz_kuka = np.load(kuka_name)
+    npz_data['Kuka'] = npz_kuka
+    N_SAMPLES_kuka = npz_kuka['N_SAMPLES']
+    MAXITER_kuka   = npz_kuka['MAXITER']
+    print("Average solving time per iteration Kuka \n")
+    print(" DDP          = " , npz_kuka['ddp_mean_solve_time']         ,  ' \xB1 ' , npz_kuka['ddp_std_solve_time'])
+    print(" FDDP         = " , npz_kuka['fddp_mean_solve_time']        ,  ' \xB1 ' , npz_kuka['fddp_std_solve_time'])
+    print(" FDDP_filter  = " , npz_kuka['fddp_filter_mean_solve_time'] ,  ' \xB1 ' , npz_kuka['fddp_filter_std_solve_time'])
+    print(" SQP          = " , npz_kuka['SQP_mean_solve_time']         ,  ' \xB1 ' , npz_kuka['SQP_std_solve_time'])
+
+if('Quadrotor' in PROBLEMS):
+    quadrotor_name = "data/Quadrotor.npz"
+    print("Loading " + quadrotor_name)
+    npz_quadrotor = np.load(quadrotor_name)
+    npz_data['Quadrotor'] = npz_quadrotor
+    N_SAMPLES_quadrotor = npz_quadrotor['N_SAMPLES']
+    MAXITER_quadrotor   = npz_quadrotor['MAXITER']
+    print("Average solving time per iteration Quadrotor \n")
+    print(" DDP          = " , npz_quadrotor['ddp_mean_solve_time']         ,  ' \xB1 ' , npz_quadrotor['ddp_std_solve_time'])
+    print(" FDDP         = " , npz_quadrotor['fddp_mean_solve_time']        ,  ' \xB1 ' , npz_quadrotor['fddp_std_solve_time'])
+    print(" FDDP_filter  = " , npz_quadrotor['fddp_filter_mean_solve_time'] ,  ' \xB1 ' , npz_quadrotor['fddp_filter_std_solve_time'])
+    print(" SQP          = " , npz_quadrotor['SQP_mean_solve_time']         ,  ' \xB1 ' , npz_quadrotor['SQP_std_solve_time'])
+
+if('Pendulum' in PROBLEMS):
+    pendulum_name  = "data/Pendulum.npz"
+    print("Loading " + pendulum_name)
+    npz_pendulum = np.load(pendulum_name)
+    npz_data['Pendulum'] = npz_pendulum
+    N_SAMPLES_pendulum = npz_pendulum['N_SAMPLES']
+    MAXITER_pendulum   = npz_pendulum['MAXITER']
+    print("Average solving time per iteration Pendulum \n")
+    print(" DDP          = " , npz_pendulum['ddp_mean_solve_time']         ,  ' \xB1 ' , npz_pendulum['ddp_std_solve_time'])
+    print(" FDDP         = " , npz_pendulum['fddp_mean_solve_time']        ,  ' \xB1 ' , npz_pendulum['fddp_std_solve_time'])
+    print(" FDDP_filter  = " , npz_pendulum['fddp_filter_mean_solve_time'] ,  ' \xB1 ' , npz_pendulum['fddp_filter_std_solve_time'])
+    print(" SQP          = " , npz_pendulum['SQP_mean_solve_time']         ,  ' \xB1 ' , npz_pendulum['SQP_std_solve_time'])
+
+if('Taichi' in PROBLEMS):
+    taichi_name    = "data/Taichi.npz"
+    print("Loading " + taichi_name)
+    npz_taichi = np.load(taichi_name)
+    npz_data['Taichi'] = npz_taichi
+    N_SAMPLES_taichi = npz_taichi['N_SAMPLES']
+    MAXITER_taichi   = npz_taichi['MAXITER']
+    print("Average solving time per iteration Taichi \n")
+    print(" DDP          = " , npz_taichi['ddp_mean_solve_time']         ,  ' \xB1 ' , npz_taichi['ddp_std_solve_time'])
+    print(" FDDP         = " , npz_taichi['fddp_mean_solve_time']        ,  ' \xB1 ' , npz_taichi['fddp_std_solve_time'])
+    print(" FDDP_filter  = " , npz_taichi['fddp_filter_mean_solve_time'] ,  ' \xB1 ' , npz_taichi['fddp_filter_std_solve_time'])
+    print(" SQP          = " , npz_taichi['SQP_mean_solve_time']         ,  ' \xB1 ' , npz_taichi['SQP_std_solve_time'])
+
 solving_times = {
-    'DDP':     [1e3*0.0012729454804721201, 1e3*0.007536630440878056, 1e3*0.0005654333411325002, 1e3*0.0763195102805348],
-    'FDDP':    [1e3*0.0012729454804721201, 1e3*0.009560386866073488, 1e3*0.0005132857817721445, 1e3*0.07692396276051267],
-    'FDDP_LS': [1e3*0.0012894834670354072, 1e3*0.009172463853995954, 1e3*0.0005001691924962936, 1e3*0.07643597870891058],
-    'SQP':     [1e3*0.0012895163413882446, 1e3*0.008574847086472666, 1e3*0.0004515454928122621, 1e3*0.06881684795170281],
+    'DDP':         [1e3*npz_kuka['ddp_mean_solve_time'] , 1e3*npz_quadrotor['ddp_mean_solve_time'], 1e3*npz_pendulum['ddp_mean_solve_time'] , 1e3*npz_taichi['ddp_mean_solve_time'] ],
+    'FDDP':        [1e3*npz_kuka['fddp_mean_solve_time'] , 1e3*npz_quadrotor['fddp_mean_solve_time'], 1e3*npz_pendulum['fddp_mean_solve_time'] , 1e3*npz_taichi['fddp_mean_solve_time'] ],
+    'FDDP_filter': [1e3*npz_kuka['fddp_filter_mean_solve_time'] , 1e3*npz_quadrotor['fddp_filter_mean_solve_time'], 1e3*npz_pendulum['fddp_filter_mean_solve_time'] , 1e3*npz_taichi['fddp_filter_mean_solve_time'] ],
+    'SQP':         [1e3*npz_kuka['SQP_mean_solve_time'] , 1e3*npz_quadrotor['SQP_mean_solve_time'], 1e3*npz_pendulum['SQP_mean_solve_time'] , 1e3*npz_taichi['SQP_mean_solve_time'] ],
 }
-colors     = ['r', 'y', 'g', 'b']
-linestyles = ['dashdot', 'dashed', 'dotted', 'solid']
-linewidths = [4, 4, 4, 4]
-labels     = ['DDP', 'FDDP (default LS)', 'FDDP (filter LS)', 'SQP']
 
 # Calculate the number of bars needed
-n_solvers = 4
-n_problems = 4
+n_solvers = len(SOLVERS)
+n_problems = len(PROBLEMS)
 total_bars = n_solvers * n_problems
 
 # Define bar width and positions
@@ -52,8 +96,9 @@ index = np.arange(n_problems)
 # Plotting the bars
 fig, ax = plt.subplots(figsize=(13.8,10.8), constrained_layout=True)
 
-for i in range(n_solvers):
-    ax.bar(index + i * bar_width, solving_times[SOLVERS[i]], bar_width, color=colors[i], label=labels[i])
+for i, solver in enumerate(SOLVERS):
+    print(solver)
+    ax.bar(index + i * bar_width, solving_times[solver], bar_width, color=COLORS[solver], label=LABELS[solver])
 
 # Adding labels, title, and legend
 ax.set_xlabel('Problems', fontsize=26)
@@ -67,7 +112,8 @@ ax.tick_params(axis = 'y', labelsize=22)
 ax.tick_params(axis = 'x', labelsize=22)
 handles, labels = ax.get_legend_handles_labels()
 fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.1, 0.95), prop={'size': 26}) 
-save_path = "/tmp/unconstrained_timings.pdf"
-print("Saving figure to "+str(save_path))
-fig.savefig(save_path, bbox_inches="tight")
+# Save, show , clean
+if(SAVE_PLOT):
+    fig.savefig('/home/skleff/SQP_REBUTAL_BENCH/rollout_timings.pdf', bbox_inches="tight")
+    fig.savefig('figures/rollout_timings.pdf', bbox_inches="tight")
 plt.show()

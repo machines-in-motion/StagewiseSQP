@@ -20,7 +20,7 @@ import time
 from plot_config import LABELS, COLORS, LINESTYLES, LABELSIZE, FONTSIZE, FIGSIZE
 
 # Benchmark name 
-BENCH_NAME = 'Taichi'
+BENCH_NAME = 'Pendulum'
 # BENCH_NAME must be :
 #  'Pendulum'  # maxiter = 500
 #  'Kuka'      # maxiter = 100
@@ -113,10 +113,8 @@ solverCSSQP.append(solverSQP)
 
 if(BENCH_NAME == "Pendulum"):  
     pendulum_x0_samples  = np.zeros((N_SAMPLES, 4))
-
     for i in range(N_SAMPLES):
         pendulum_x0_samples[i,:]  = np.array([np.pi*(2*np.random.rand()-1), 0., 0., 0.])
-
 if(BENCH_NAME == "Kuka"):      
     kuka                 = load_pinocchio_wrapper("iiwa")
     kuka_x0_samples      = np.zeros((N_SAMPLES, kuka.model.nq + kuka.model.nv))
@@ -127,7 +125,6 @@ if(BENCH_NAME == "Quadrotor"):
     quadrotor_x0_samples = np.zeros((N_SAMPLES, quadrotor.model.nq + quadrotor.model.nv))
     for i in range(N_SAMPLES):
         quadrotor_x0_samples[i,:] = np.concatenate([pin.randomConfiguration(quadrotor.model), np.zeros(quadrotor.model.nv)])
-
 if(BENCH_NAME == "Taichi"): 
     humanoid             = example_robot_data.load('talos')
     humanoid_x0_samples  = np.zeros((N_SAMPLES, 3))
@@ -299,19 +296,37 @@ for i in range(N_SAMPLES):
         if(SQP_iter_ik < j): SQP_iter_solved[j] += 1
 
 # Save the benchmark data 
-file_name = "/home/skleff/SQP_REBUTAL_BENCH/"+BENCH_NAME 
-np.savez_compressed(file_name, 
-         N_SAMPLES=N_SAMPLES,
-         MAXITER=MAXITER,
-         ddp_iter_solved=ddp_iter_solved, 
-         fddp_iter_solved=fddp_iter_solved,
-         fddp_filter_iter_solved=fddp_filter_iter_solved,
-         SQP_iter_solved=SQP_iter_solved, 
-         ddp_mean_solve_time=ddp_mean_solve_time,
-         ddp_std_solve_time=ddp_std_solve_time,
-         fddp_mean_solve_time=fddp_mean_solve_time, 
-         fddp_std_solve_time=fddp_std_solve_time,
-         fddp_filter_mean_solve_time=fddp_filter_mean_solve_time,
-         fddp_filter_std_solve_time=fddp_filter_std_solve_time, 
-         SQP_mean_solve_time=SQP_mean_solve_time,
-         SQP_std_solve_time=SQP_std_solve_time)
+if(SAVE):
+    file_name = "/home/skleff/SQP_REBUTAL_BENCH/"+BENCH_NAME 
+    np.savez_compressed(file_name, 
+            N_SAMPLES=N_SAMPLES,
+            MAXITER=MAXITER,
+            ddp_iter_solved=ddp_iter_solved, 
+            fddp_iter_solved=fddp_iter_solved,
+            fddp_filter_iter_solved=fddp_filter_iter_solved,
+            SQP_iter_solved=SQP_iter_solved, 
+            ddp_mean_solve_time=ddp_mean_solve_time,
+            ddp_std_solve_time=ddp_std_solve_time,
+            fddp_mean_solve_time=fddp_mean_solve_time, 
+            fddp_std_solve_time=fddp_std_solve_time,
+            fddp_filter_mean_solve_time=fddp_filter_mean_solve_time,
+            fddp_filter_std_solve_time=fddp_filter_std_solve_time, 
+            SQP_mean_solve_time=SQP_mean_solve_time,
+            SQP_std_solve_time=SQP_std_solve_time)
+
+    file_name = "data/"+BENCH_NAME 
+    np.savez_compressed(file_name, 
+            N_SAMPLES=N_SAMPLES,
+            MAXITER=MAXITER,
+            ddp_iter_solved=ddp_iter_solved, 
+            fddp_iter_solved=fddp_iter_solved,
+            fddp_filter_iter_solved=fddp_filter_iter_solved,
+            SQP_iter_solved=SQP_iter_solved, 
+            ddp_mean_solve_time=ddp_mean_solve_time,
+            ddp_std_solve_time=ddp_std_solve_time,
+            fddp_mean_solve_time=fddp_mean_solve_time, 
+            fddp_std_solve_time=fddp_std_solve_time,
+            fddp_filter_mean_solve_time=fddp_filter_mean_solve_time,
+            fddp_filter_std_solve_time=fddp_filter_std_solve_time, 
+            SQP_mean_solve_time=SQP_mean_solve_time,
+            SQP_std_solve_time=SQP_std_solve_time)
