@@ -1,6 +1,6 @@
 
 
-LABELS = {'CSQP': 'ADMM_OCP',
+LABELS = {'CSQP': 'OSQP_OCP',
           'OSQP': 'OSQP',
           'HPIPM_DENSE': 'HPIPM_DENSE',
           'HPIPM_OCP': 'HPIPM_OCP',

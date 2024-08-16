@@ -17,141 +17,7 @@ import example_robot_data
 import mim_solvers
 import time
 
-def create_humanoid_taichi_problem(target):
-    '''
-    Create shooting problem for Talos taichi task
-    '''
-    print("Create humanoid problem ...")
-    # Load robot
-    robot = example_robot_data.load('talos')
-    rmodel = robot.model
-    # Create data structures
-    rdata = rmodel.createData()
-    state = crocoddyl.StateMultibody(rmodel)
-    actuation = crocoddyl.ActuationModelFloatingBase(state)
-    # Set integration time
-    DT = 5e-2
-    T = 40
-    # target = np.array([0.4, 0, 1.2])
-    # Initialize reference state, target and reference CoM
-    rightFoot = 'right_sole_link'
-    leftFoot = 'left_sole_link'
-    endEffector = 'gripper_left_joint'
-    endEffectorId = rmodel.getFrameId(endEffector)
-    rightFootId = rmodel.getFrameId(rightFoot)
-    leftFootId = rmodel.getFrameId(leftFoot)
-    q0 = rmodel.referenceConfigurations["half_sitting"]
-    x0reg = np.concatenate([q0, np.zeros(rmodel.nv)])
-    pin.forwardKinematics(rmodel, rdata, q0)
-    pin.updateFramePlacements(rmodel, rdata)
-    rfPos0 = rdata.oMf[rightFootId].translation
-    lfPos0 = rdata.oMf[leftFootId].translation
-    refGripper = rdata.oMf[rmodel.getFrameId("gripper_left_joint")].translation
-    comRef = (rfPos0 + lfPos0) / 2
-    comRef[2] = pin.centerOfMass(rmodel, rdata, q0)[2].item()
-    # Create two contact models used along the motion
-    contactModel1Foot = crocoddyl.ContactModelMultiple(state, actuation.nu)
-    contactModel2Feet = crocoddyl.ContactModelMultiple(state, actuation.nu)
-    supportContactModelLeft = crocoddyl.ContactModel6D(state, leftFootId, pin.SE3.Identity(), pin.LOCAL, actuation.nu,
-                                                    np.array([0, 40]))
-    supportContactModelRight = crocoddyl.ContactModel6D(state, rightFootId, pin.SE3.Identity(), pin.LOCAL, actuation.nu,
-                                                        np.array([0, 40]))
-    contactModel1Foot.addContact(rightFoot + "_contact", supportContactModelRight)
-    contactModel2Feet.addContact(leftFoot + "_contact", supportContactModelLeft)
-    contactModel2Feet.addContact(rightFoot + "_contact", supportContactModelRight)
-    # Cost for self-collision
-    maxfloat = sys.float_info.max
-    xlb = np.concatenate([ 
-        -maxfloat * np.ones(6),  # dimension of the SE(3) manifold
-        rmodel.lowerPositionLimit[7:],
-        -maxfloat * np.ones(state.nv)
-    ])
-    xub = np.concatenate([
-        maxfloat * np.ones(6),  # dimension of the SE(3) manifold
-        rmodel.upperPositionLimit[7:],
-        maxfloat * np.ones(state.nv)
-    ])
-    bounds = crocoddyl.ActivationBounds(xlb, xub, 1.)
-    xLimitResidual = crocoddyl.ResidualModelState(state, x0reg, actuation.nu)
-    xLimitActivation = crocoddyl.ActivationModelQuadraticBarrier(bounds)
-    limitCost = crocoddyl.CostModelResidual(state, xLimitActivation, xLimitResidual)
-    # Cost for state and control
-    xResidual = crocoddyl.ResidualModelState(state, x0reg, actuation.nu)
-    xActivation = crocoddyl.ActivationModelWeightedQuad(
-        np.array([0] * 3 + [10.] * 3 + [0.01] * (state.nv - 6) + [10] * state.nv)**2)
-    uResidual = crocoddyl.ResidualModelControl(state, actuation.nu)
-    xTActivation = crocoddyl.ActivationModelWeightedQuad(
-        np.array([0] * 3 + [10.] * 3 + [0.01] * (state.nv - 6) + [100] * state.nv)**2)
-    xRegCost = crocoddyl.CostModelResidual(state, xActivation, xResidual)
-    uRegCost = crocoddyl.CostModelResidual(state, uResidual)
-    xRegTermCost = crocoddyl.CostModelResidual(state, xTActivation, xResidual)
-    # Cost for target reaching: hand and foot
-    handTrackingResidual = crocoddyl.ResidualModelFramePlacement(state, endEffectorId, pin.SE3(np.eye(3), target),
-                                                                actuation.nu)
-    handTrackingActivation = crocoddyl.ActivationModelWeightedQuad(np.array([1] * 3 + [0.0001] * 3)**2)
-    handTrackingCost = crocoddyl.CostModelResidual(state, handTrackingActivation, handTrackingResidual)
-
-    footTrackingResidual = crocoddyl.ResidualModelFramePlacement(state, leftFootId,
-                                                                pin.SE3(np.eye(3), np.array([0., 0.4, 0.])),
-                                                                actuation.nu)
-    footTrackingActivation = crocoddyl.ActivationModelWeightedQuad(np.array([1, 1, 0.1] + [1.] * 3)**2)
-    footTrackingCost1 = crocoddyl.CostModelResidual(state, footTrackingActivation, footTrackingResidual)
-    footTrackingResidual = crocoddyl.ResidualModelFramePlacement(state, leftFootId,
-                                                                pin.SE3(np.eye(3), np.array([0.3, 0.15, 0.35])),
-                                                                actuation.nu)
-    footTrackingCost2 = crocoddyl.CostModelResidual(state, footTrackingActivation, footTrackingResidual)
-    # Cost for CoM reference
-    comResidual = crocoddyl.ResidualModelCoMPosition(state, comRef, actuation.nu)
-    comTrack = crocoddyl.CostModelResidual(state, comResidual)
-    # Create cost model per each action model. We divide the motion in 3 phases plus its terminal model
-    runningCostModel1 = crocoddyl.CostModelSum(state, actuation.nu)
-    runningCostModel2 = crocoddyl.CostModelSum(state, actuation.nu)
-    runningCostModel3 = crocoddyl.CostModelSum(state, actuation.nu)
-    terminalCostModel = crocoddyl.CostModelSum(state, actuation.nu)
-    # Then let's add the running and terminal cost functions
-    runningCostModel1.addCost("gripperPose", handTrackingCost, 1e2)
-    runningCostModel1.addCost("stateReg", xRegCost, 1e-3)
-    runningCostModel1.addCost("ctrlReg", uRegCost, 1e-4)
-    runningCostModel1.addCost("limitCost", limitCost, 1e3)
-
-    runningCostModel2.addCost("gripperPose", handTrackingCost, 1e2)
-    runningCostModel2.addCost("footPose", footTrackingCost1, 1e1)
-    runningCostModel2.addCost("stateReg", xRegCost, 1e-3)
-    runningCostModel2.addCost("ctrlReg", uRegCost, 1e-4)
-    runningCostModel2.addCost("limitCost", limitCost, 1e3)
-
-    runningCostModel3.addCost("gripperPose", handTrackingCost, 1e2)
-    runningCostModel3.addCost("footPose", footTrackingCost2, 1e1)
-    runningCostModel3.addCost("stateReg", xRegCost, 1e-3)
-    runningCostModel3.addCost("ctrlReg", uRegCost, 1e-4)
-    runningCostModel3.addCost("limitCost", limitCost, 1e3)
-
-    terminalCostModel.addCost("gripperPose", handTrackingCost, 1e2)
-    terminalCostModel.addCost("stateReg", xRegTermCost, 1e-3)
-    terminalCostModel.addCost("limitCost", limitCost, 1e3)
-
-    # Create the action model
-    dmodelRunning1 = crocoddyl.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel2Feet,
-                                                                        runningCostModel1)
-    dmodelRunning2 = crocoddyl.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel1Foot,
-                                                                        runningCostModel2)
-    dmodelRunning3 = crocoddyl.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel1Foot,
-                                                                        runningCostModel3)
-    dmodelTerminal = crocoddyl.DifferentialActionModelContactFwdDynamics(state, actuation, contactModel1Foot,
-                                                                        terminalCostModel)
-
-    runningModel1 = crocoddyl.IntegratedActionModelEuler(dmodelRunning1, DT)
-    runningModel2 = crocoddyl.IntegratedActionModelEuler(dmodelRunning2, DT)
-    runningModel3 = crocoddyl.IntegratedActionModelEuler(dmodelRunning3, DT)
-    terminalModel = crocoddyl.IntegratedActionModelEuler(dmodelTerminal, 0)
-
-    # Problem definition
-    x0 = np.concatenate([q0, pin.utils.zero(state.nv)])
-    pb = crocoddyl.ShootingProblem(x0, [runningModel1] * T + [runningModel2] * T + [runningModel3] * T, terminalModel)
-    return pb
-
-
-
+from problems import create_humanoid_taichi_problem
 
 # Solver params
 MAXITER     = 300 
@@ -162,7 +28,7 @@ SAVE        = True # Save figure
 
 # Benchmark params
 SEED = 1 ; np.random.seed(SEED)
-N_samples = 100
+N_samples = 2
 names = ['Humanoid']
 
 N_pb = len(names)
@@ -344,7 +210,6 @@ for i in range(N_samples):
 
         #  SQP        
         print("   Problem : "+name+" SQP")
-        # pb = create_humanoid_taichi_problem(x0)
         solverSQP = solverCSSQP[k]
         models = list(solverSQP.problem.runningModels) + [solverSQP.problem.terminalModel]
         for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), x0.copy())
@@ -403,12 +268,28 @@ print(" FDDP     = " , fddp_mean_solve_time        ,  ' \xB1 ' , fddp_std_solve_
 print(" FDDP_LS  = " , fddp_filter_mean_solve_time ,  ' \xB1 ' , fddp_filter_std_solve_time)
 print(" SQP      = " , SQP_mean_solve_time         ,  ' \xB1 ' , SQP_std_solve_time)
 
+import time
+file_name = "/tmp/Taichi_data_"+str(time.ctime())
+np.savez_compressed(file_name, 
+        ddp_iter_solved=ddp_iter_solved, 
+        fddp_iter_solved=fddp_iter_solved,
+        fddp_filter_iter_solved=fddp_filter_iter_solved,
+        SQP_iter_solved=SQP_iter_solved, 
+        ddp_mean_solve_time=ddp_mean_solve_time,
+        ddp_std_solve_time=ddp_std_solve_time,
+        fddp_mean_solve_time=fddp_mean_solve_time, 
+        fddp_std_solve_time=fddp_std_solve_time,
+        fddp_filter_mean_solve_time=fddp_filter_mean_solve_time,
+        fddp_filter_std_solve_time=fddp_filter_std_solve_time, 
+        SQP_mean_solve_time=SQP_mean_solve_time,
+        SQP_std_solve_time=SQP_std_solve_time)
+
 # Generate plot of number of iterations for each problem
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.rcParams["pdf.fonttype"] = 42
 matplotlib.rcParams["ps.fonttype"] = 42
- 
+
 # x-axis : max number of iterations
 xdata     = range(0,MAXITER)
 xdata2     = range(0,N_samples)
@@ -431,30 +312,30 @@ for k in range(N_pb):
     fig0.legend(handles0, labels0, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
     # Save, show , clean
     if(SAVE):
-        fig0.savefig('/home/skleff/Desktop/TRO-SQP/data/rollout_benchmarks/bench_Taichi_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'_MIM_SOLVERS_MAIN.pdf', bbox_inches="tight")
+        fig0.savefig('/tmp/bench_Taichi_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'_MIM_SOLVERS_v1.pdf', bbox_inches="tight")
 
-    # fig1, ax1 = plt.subplots(1, 1, figsize=(19.2,10.8))
-    # ax1.plot(xdata2, ddp_avg_time_per_iter_samples, color='r', linewidth=4, label='DDP') 
-    # ax1.plot(xdata2, np.mean(ddp_avg_time_per_iter_samples)*np.ones(N_samples), color='r', linewidth=8, alpha=0.3, linestyle='-.') 
-    # ax1.plot(xdata2, fddp_avg_time_per_iter_samples, color='y', linewidth=4, label='FDDP (default LS)') 
-    # ax1.plot(xdata2, np.mean(fddp_avg_time_per_iter_samples)*np.ones(N_samples), color='y', linewidth=8, alpha=0.3, linestyle='-.') 
-    # ax1.plot(xdata2, fddp_filter_avg_time_per_iter_samples, color='g', linewidth=4, label='FDDP (filter LS)') 
-    # ax1.plot(xdata2, np.mean(fddp_filter_avg_time_per_iter_samples)*np.ones(N_samples), color='g', linewidth=8, alpha=0.3, linestyle='-.') 
-    # ax1.plot(xdata2, SQP_avg_time_per_iter_samples, color='b', linewidth=4, label='SQP') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
-    # ax1.plot(xdata2, np.mean(SQP_avg_time_per_iter_samples)*np.ones(N_samples), color='b', linewidth=8, alpha=0.3, linestyle='-.') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
-    # # Set axis and stuff
-    # ax1.set_ylabel('Avg time per iteration', fontsize=26)
-    # ax1.set_xlabel('Random problem', fontsize=26)
-    # # ax1.set_ylim(-0.02, 1.02)
-    # ax1.tick_params(axis = 'y', labelsize=22)
-    # ax1.tick_params(axis = 'x', labelsize=22)
-    # ax1.grid(True) 
-    # # Legend 
-    # handles1, labels1 = ax1.get_legend_handles_labels()
-    # fig1.legend(handles1, labels1, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
-    # # Save, show , clean
-    # if(SAVE):
-    #     fig1.savefig('/home/skleff/Desktop/TRO-SQP/data/rollout_benchmarks/bench_Taichi_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'AVG_TIME.pdf', bbox_inches="tight")
+        # fig1, ax1 = plt.subplots(1, 1, figsize=(19.2,10.8))
+        # ax1.plot(xdata2, ddp_avg_time_per_iter_samples, color='r', linewidth=4, label='DDP') 
+        # ax1.plot(xdata2, np.mean(ddp_avg_time_per_iter_samples)*np.ones(N_samples), color='r', linewidth=8, alpha=0.3, linestyle='-.') 
+        # ax1.plot(xdata2, fddp_avg_time_per_iter_samples, color='y', linewidth=4, label='FDDP (default LS)') 
+        # ax1.plot(xdata2, np.mean(fddp_avg_time_per_iter_samples)*np.ones(N_samples), color='y', linewidth=8, alpha=0.3, linestyle='-.') 
+        # ax1.plot(xdata2, fddp_filter_avg_time_per_iter_samples, color='g', linewidth=4, label='FDDP (filter LS)') 
+        # ax1.plot(xdata2, np.mean(fddp_filter_avg_time_per_iter_samples)*np.ones(N_samples), color='g', linewidth=8, alpha=0.3, linestyle='-.') 
+        # ax1.plot(xdata2, SQP_avg_time_per_iter_samples, color='b', linewidth=4, label='SQP') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
+        # ax1.plot(xdata2, np.mean(SQP_avg_time_per_iter_samples)*np.ones(N_samples), color='b', linewidth=8, alpha=0.3, linestyle='-.') #marker='o', markerfacecolor='b', linestyle='-', markersize=12, markeredgecolor='k', alpha=1., label='SQP')
+        # # Set axis and stuff
+        # ax1.set_ylabel('Avg time per iteration', fontsize=26)
+        # ax1.set_xlabel('Random problem', fontsize=26)
+        # # ax1.set_ylim(-0.02, 1.02)
+        # ax1.tick_params(axis = 'y', labelsize=22)
+        # ax1.tick_params(axis = 'x', labelsize=22)
+        # ax1.grid(True) 
+        # # Legend 
+        # handles1, labels1 = ax1.get_legend_handles_labels()
+        # fig1.legend(handles1, labels1, loc='lower right', bbox_to_anchor=(0.902, 0.1), prop={'size': 26}) 
+        # # Save, show , clean
+        # if(SAVE):
+        #     fig1.savefig('/home/skleff/Desktop/TRO-SQP/data/rollout_benchmarks/bench_Taichi_SEED='+str(SEED)+'_MAXITER='+str(MAXITER)+'_TOL='+str(TOL)+'AVG_TIME.pdf', bbox_inches="tight")
 
 
 plt.show()

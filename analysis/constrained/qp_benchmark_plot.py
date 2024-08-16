@@ -1,3 +1,6 @@
+'''
+Plot the QP benchmarks
+'''
 import numpy as np
 
 from plot_config import LABELS, COLORS, LINESTYLES

@@ -132,34 +132,6 @@ def create_solo12_problem(MU):
 
     return ocp
 
-def create_cartpole_problem(x0):
-    '''
-    Create shooting problem for Cartpole
-    '''
-    print("Create cartpole problem ...")
-    # Creating the DAM for the cartpole
-    cartpoleDAM = DifferentialActionModelCartpole()
-    # Using NumDiff for computing the derivatives. We specify the
-    # withGaussApprox=True to have approximation of the Hessian based on the
-    # Jacobian of the cost residuals.
-    cartpoleND = crocoddyl.DifferentialActionModelNumDiff(cartpoleDAM, True)
-    # Getting the IAM using the simpletic Euler rule
-    timeStep = 5e-2
-    cartpoleIAM = crocoddyl.IntegratedActionModelEuler(cartpoleND, timeStep)
-    # Creating the shooting problem
-    T = 50
-    terminalCartpole = DifferentialActionModelCartpole()
-    terminalCartpoleDAM = crocoddyl.DifferentialActionModelNumDiff(terminalCartpole, True)
-    terminalCartpoleIAM = crocoddyl.IntegratedActionModelEuler(terminalCartpoleDAM, 0.)
-    terminalCartpole.costWeights[0] = 200
-    terminalCartpole.costWeights[1] = 200
-    terminalCartpole.costWeights[2] = 1.
-    terminalCartpole.costWeights[3] = 0.1
-    terminalCartpole.costWeights[4] = 0.01
-    terminalCartpole.costWeights[5] = 0.0001
-    pb = crocoddyl.ShootingProblem(x0, [cartpoleIAM] * T, terminalCartpoleIAM)
-    return pb 
-
 def create_kuka_problem(x0):
     '''
     Create shooting problem for kuka reaching task
