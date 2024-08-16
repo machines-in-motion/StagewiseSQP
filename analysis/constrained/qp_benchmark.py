@@ -49,8 +49,8 @@ N_samples = 100
 
 
 # name = 'solo12'
-name = 'Kuka'
-# name = 'Taichi'
+# name = 'Kuka'
+name = 'Taichi'
         
 
 # Solvers
@@ -314,19 +314,34 @@ for sample_id in range(N_samples):
         print("     QP Time = ", solverhpipm_ocp.qp_time)
         print("     QP Iter = ", solverhpipm_ocp.qp_iters)
 
-file_name = name + "_data"
-np.savez(file_name, 
-         csqp_iter_solved_samples=csqp_solved_samples, 
-         csqp_time_samples=csqp_time_samples,
-         csqp_iter_samples=csqp_iter_samples,
-         osqp_iter_solved_samples=osqp_solved_samples, 
-         osqp_time_samples=osqp_time_samples,
-         osqp_iter_samples=osqp_iter_samples,
-         hpipm_dense_solved_samples=hpipm_dense_solved_samples, 
-         hpipm_dense_time_samples=hpipm_dense_time_samples,
-         hpipm_dense_iter_samples=hpipm_dense_iter_samples,
-         hpipm_ocp_solved_samples=hpipm_ocp_solved_samples, 
-         hpipm_ocp_time_samples=hpipm_ocp_time_samples,
-         hpipm_ocp_iter_samples=hpipm_ocp_iter_samples)
-
-
+if(SAVE):
+    PREFIX = 'data/'
+    file_name = PREFIX + name + "_qp_benchmark"
+    np.savez(file_name, 
+            csqp_iter_solved_samples=csqp_solved_samples, 
+            csqp_time_samples=csqp_time_samples,
+            csqp_iter_samples=csqp_iter_samples,
+            osqp_iter_solved_samples=osqp_solved_samples, 
+            osqp_time_samples=osqp_time_samples,
+            osqp_iter_samples=osqp_iter_samples,
+            hpipm_dense_solved_samples=hpipm_dense_solved_samples, 
+            hpipm_dense_time_samples=hpipm_dense_time_samples,
+            hpipm_dense_iter_samples=hpipm_dense_iter_samples,
+            hpipm_ocp_solved_samples=hpipm_ocp_solved_samples, 
+            hpipm_ocp_time_samples=hpipm_ocp_time_samples,
+            hpipm_ocp_iter_samples=hpipm_ocp_iter_samples)
+    PREFIX = '/home/skleff/SQP_REBUTAL_BENCH/'
+    file_name = name + "_qp_benchmark"
+    np.savez(file_name, 
+            csqp_iter_solved_samples=csqp_solved_samples, 
+            csqp_time_samples=csqp_time_samples,
+            csqp_iter_samples=csqp_iter_samples,
+            osqp_iter_solved_samples=osqp_solved_samples, 
+            osqp_time_samples=osqp_time_samples,
+            osqp_iter_samples=osqp_iter_samples,
+            hpipm_dense_solved_samples=hpipm_dense_solved_samples, 
+            hpipm_dense_time_samples=hpipm_dense_time_samples,
+            hpipm_dense_iter_samples=hpipm_dense_iter_samples,
+            hpipm_ocp_solved_samples=hpipm_ocp_solved_samples, 
+            hpipm_ocp_time_samples=hpipm_ocp_time_samples,
+            hpipm_ocp_iter_samples=hpipm_ocp_iter_samples)

@@ -23,8 +23,8 @@ SOLVERS = ['CSQP',
 
 
 # name = 'solo12'
-name = 'Kuka'
-# name = 'Taichi'
+# name = 'Kuka'
+name = 'Taichi'
 
 if(name == 'Taichi'):
     MAX_QP_TIME = int(1e5)     # in ms
@@ -42,7 +42,7 @@ if(name == 'solo12'):
 
 
 
-file_name = name + "_data.npz"
+file_name = name + "_qp_benchmark.npz"
 print("Loading " + file_name)
 npzfile = np.load(file_name)
 
@@ -179,7 +179,8 @@ plt.gca().axes.yaxis.set_ticklabels([])
 # plt.tight_layout()
 
 if(SAVE_PLOT):
-    fig0.savefig('/tmp/constrained_bench_' + name + '.pdf', bbox_inches="tight")
+    fig0.savefig('figures/qp_bench_' + name + '.pdf', bbox_inches="tight")
+    fig0.savefig('/home/skleff/SQP_REBUTAL_BENCH/qp_bench_' + name + '.pdf', bbox_inches="tight")
 
 plt.show()
 plt.close('all')

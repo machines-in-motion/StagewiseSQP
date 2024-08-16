@@ -20,7 +20,7 @@ import time
 from plot_config import LABELS, COLORS, LINESTYLES, LABELSIZE, FONTSIZE, FIGSIZE
 
 # Benchmark name 
-BENCH_NAME = 'Pendulum'
+BENCH_NAME = 'Taichi'
 # BENCH_NAME must be :
 #  'Pendulum'  # maxiter = 500
 #  'Kuka'      # maxiter = 100

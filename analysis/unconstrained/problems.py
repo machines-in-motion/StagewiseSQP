@@ -137,6 +137,7 @@ def create_humanoid_taichi_problem(target):
     rdata = rmodel.createData()
     state = crocoddyl.StateMultibody(rmodel)
     actuation = crocoddyl.ActuationModelFloatingBase(state)
+    rmodel.armature = np.zeros(state.nv)
     # Set integration time
     DT = 5e-2
     T = 40
