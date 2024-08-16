@@ -135,50 +135,19 @@ hpipm_dense_qp_time_std = np.std(hpipm_dense_time_solved, axis=1)
 hpipm_ocp_qp_time_std   = np.std(hpipm_ocp_time_solved, axis=1)
 
 
-
-# Generate plot of number of iterations for each problem
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.rcParams["pdf.fonttype"] = 42
-matplotlib.rcParams["ps.fonttype"] = 42
- 
-
-# x-axis : max time allowed to solve the QP (in ms)
-xdata     = np.array(dim_list)
-
-fig0 = plt.figure(figsize=(19.2,10.8))
-
-if('CSQP' in SOLVERS):
-    plt.plot(xdata, csqp_qp_time_mean, color=COLORS['CSQP'], linestyle=LINESTYLES['CSQP'], linewidth=4, label=LABELS['CSQP']) 
-    plt.fill_between(xdata, csqp_qp_time_mean+csqp_qp_time_std, csqp_qp_time_mean-csqp_qp_time_std, facecolor=COLORS['CSQP'], alpha=0.5)
-if('OSQP' in SOLVERS):
-    plt.plot(xdata, osqp_qp_time_mean, color=COLORS['OSQP'], linestyle=LINESTYLES['OSQP'], linewidth=4, label=LABELS['OSQP'])
-    plt.fill_between(xdata, osqp_qp_time_mean+osqp_qp_time_std, osqp_qp_time_mean-osqp_qp_time_std, facecolor=COLORS['OSQP'], alpha=0.5)
-if('HPIPM_DENSE' in SOLVERS):
-    plt.plot(xdata, hpipm_dense_qp_time_mean, color=COLORS['HPIPM_DENSE'], linestyle=LINESTYLES['HPIPM_DENSE'], linewidth=4, label=LABELS['HPIPM_DENSE'])
-    plt.fill_between(xdata, hpipm_dense_qp_time_mean+hpipm_dense_qp_time_std, hpipm_dense_qp_time_mean-hpipm_dense_qp_time_std, facecolor=COLORS['HPIPM_DENSE'], alpha=0.5)
-if('HPIPM_OCP' in SOLVERS):
-    plt.plot(xdata, hpipm_ocp_qp_time_mean, color=COLORS['HPIPM_OCP'], linestyle=LINESTYLES['HPIPM_OCP'], linewidth=4, label=LABELS['HPIPM_OCP'])
-    plt.fill_between(xdata, hpipm_ocp_qp_time_mean+hpipm_ocp_qp_time_std, hpipm_ocp_qp_time_mean-hpipm_ocp_qp_time_std, facecolor=COLORS['HPIPM_OCP'], alpha=0.5)
-
-
-# Set axis and stuff
-plt.ylabel('Time [ms]', fontsize=26)
-plt.xlabel('State dimension', fontsize=26)
-# ax0.set_ylim(-0.02, 1.02)
-plt.tick_params(axis = 'y', labelsize=22)
-plt.tick_params(axis = 'x', labelsize=22)
-plt.xticks(dim_list)
-plt.grid(True) 
-# Legend 
-plt.legend(loc='upper left', prop={'size': 26}) 
-# Save, show , clean
-save_path = '/tmp/clqr_benchmark_state_SAMPLES='+str(N_samples)+'.pdf'
+# Save data
 if(SAVE):
-    fig0.savefig(save_path, bbox_inches="tight")
-
-
-plt.show()
-plt.close('all')
-
-
+    PREFIX = '/tmp/'
+    file_name = PREFIX + "CLQR_state_benchmark"
+    np.savez(file_name, 
+             N_samples=N_samples,
+             horizon=horizon,
+             dim_list=dim_list,
+             csqp_qp_time_mean=csqp_qp_time_mean, 
+             osqp_qp_time_mean=osqp_qp_time_mean,
+             hpipm_dense_qp_time_mean=hpipm_dense_qp_time_mean,
+             hpipm_ocp_qp_time_mean=hpipm_ocp_qp_time_mean, 
+             csqp_qp_time_std=csqp_qp_time_std,
+             osqp_qp_time_std=osqp_qp_time_std,
+             hpipm_dense_qp_time_std=hpipm_dense_qp_time_std,
+             hpipm_ocp_qp_time_std=hpipm_ocp_qp_time_std)

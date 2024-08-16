@@ -1,5 +1,3 @@
-
-
 LABELS = {'CSQP': 'OSQP_OCP',
           'OSQP': 'OSQP',
           'HPIPM_DENSE': 'HPIPM_DENSE',
@@ -16,3 +14,7 @@ LINESTYLES = {'CSQP': 'solid',
               'HPIPM_DENSE': 'dashdot',
               'HPIPM_OCP': 'dotted',
               }
+
+LABELSIZE = 22
+FONTSIZE  = 26
+FIGSIZE   = (19.2,10.8)
