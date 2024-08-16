@@ -12,7 +12,7 @@ matplotlib.rcParams["ps.fonttype"] = 42
 SAVE_PLOT = True
 
 # Benchmark name 
-BENCH_NAME = 'Pendulum'
+BENCH_NAME = 'Taichi'
 
 # Solvers
 SOLVERS = ['DDP',
