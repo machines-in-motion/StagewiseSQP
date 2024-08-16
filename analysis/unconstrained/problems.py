@@ -5,7 +5,7 @@ import numpy as np
 from mim_robots.robot_loader import load_pinocchio_wrapper
 from crocoddyl.utils.pendulum import CostModelDoublePendulum, ActuationModelDoublePendulum
 from mim_robots.robot_loader import load_pinocchio_wrapper
-
+import sys
 
 def create_double_pendulum_problem(x0):
     '''

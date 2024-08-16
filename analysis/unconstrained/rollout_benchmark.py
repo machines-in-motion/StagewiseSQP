@@ -110,23 +110,31 @@ solverSQP.with_callbacks         = CALLBACKS
 solverCSSQP.append(solverSQP)
 
 
-# Initial state samples
-pendulum_x0_samples  = np.zeros((N_SAMPLES, 4))
-cartpole_x0_samples  = np.zeros((N_SAMPLES, 4))
-kuka                 = load_pinocchio_wrapper("iiwa")
-kuka_x0_samples      = np.zeros((N_SAMPLES, kuka.model.nq + kuka.model.nv))
-quadrotor            = example_robot_data.load('hector') 
-humanoid             = example_robot_data.load('talos')
-quadrotor_x0_samples = np.zeros((N_SAMPLES, quadrotor.model.nq + quadrotor.model.nv))
-humanoid_x0_samples  = np.zeros((N_SAMPLES, 3))
-for i in range(N_SAMPLES):
-    pendulum_x0_samples[i,:]  = np.array([np.pi*(2*np.random.rand()-1), 0., 0., 0.])
-    cartpole_x0_samples[i,:]  = np.array([0., np.pi/2, 0., 0.])
-    kuka_x0_samples[i,:]      = np.concatenate([pin.randomConfiguration(kuka.model), np.zeros(kuka.model.nv)])
-    quadrotor_x0_samples[i,:] = np.concatenate([pin.randomConfiguration(quadrotor.model), np.zeros(quadrotor.model.nv)])
-    err = np.zeros(3)
-    err[2] = 2*np.random.rand(1) - 1
-    humanoid_x0_samples[i,:]  = np.array([0.4, 0, 1.2]) + 0.5*err
+
+if(BENCH_NAME == "Pendulum"):  
+    pendulum_x0_samples  = np.zeros((N_SAMPLES, 4))
+
+    for i in range(N_SAMPLES):
+        pendulum_x0_samples[i,:]  = np.array([np.pi*(2*np.random.rand()-1), 0., 0., 0.])
+
+if(BENCH_NAME == "Kuka"):      
+    kuka                 = load_pinocchio_wrapper("iiwa")
+    kuka_x0_samples      = np.zeros((N_SAMPLES, kuka.model.nq + kuka.model.nv))
+    for i in range(N_SAMPLES):
+        kuka_x0_samples[i,:]      = np.concatenate([pin.randomConfiguration(kuka.model), np.zeros(kuka.model.nv)])
+if(BENCH_NAME == "Quadrotor"): 
+    quadrotor            = example_robot_data.load('hector') 
+    quadrotor_x0_samples = np.zeros((N_SAMPLES, quadrotor.model.nq + quadrotor.model.nv))
+    for i in range(N_SAMPLES):
+        quadrotor_x0_samples[i,:] = np.concatenate([pin.randomConfiguration(quadrotor.model), np.zeros(quadrotor.model.nv)])
+
+if(BENCH_NAME == "Taichi"): 
+    humanoid             = example_robot_data.load('talos')
+    humanoid_x0_samples  = np.zeros((N_SAMPLES, 3))
+    for i in range(N_SAMPLES):
+        err = np.zeros(3)
+        err[2] = 2*np.random.rand(1) - 1
+        humanoid_x0_samples[i,:]  = np.array([0.4, 0, 1.2]) + 0.5*err
 
 print("Created "+str(N_SAMPLES)+" random initial states per model !")
 
