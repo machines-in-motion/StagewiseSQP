@@ -49,7 +49,7 @@ N_samples = 100
 
 
 # name = 'solo12'
-name = 'Kuka'
+# name = 'Kuka'
 # name = 'Taichi'
         
 
@@ -59,26 +59,22 @@ SOLVERS = ['CSQP',
            'HPIPM_DENSE', 
            'HPIPM_OCP']
 
-if('CSQP' in SOLVERS):
-    solversCSQP         = [] 
-    csqp_iter_samples   = []  
-    csqp_time_samples   = []
-    csqp_solved_samples = []
-if('OSQP' in SOLVERS):
-    solversOSQP         = [] 
-    osqp_iter_samples   = []  
-    osqp_time_samples   = []
-    osqp_solved_samples = []
-if('HPIPM_DENSE' in SOLVERS):
-    solversHPIPM_dense         = [] 
-    hpipm_dense_iter_samples   = []  
-    hpipm_dense_time_samples   = []
-    hpipm_dense_solved_samples = []
-if('HPIPM_OCP' in SOLVERS):
-    solversHPIPM_ocp         = [] 
-    hpipm_ocp_iter_samples   = []  
-    hpipm_ocp_time_samples   = []
-    hpipm_ocp_solved_samples = []
+solversCSQP         = [] 
+csqp_iter_samples   = []  
+csqp_time_samples   = []
+csqp_solved_samples = []
+solversOSQP         = [] 
+osqp_iter_samples   = []  
+osqp_time_samples   = []
+osqp_solved_samples = []
+solversHPIPM_dense         = [] 
+hpipm_dense_iter_samples   = []  
+hpipm_dense_time_samples   = []
+hpipm_dense_solved_samples = []
+solversHPIPM_ocp         = [] 
+hpipm_ocp_iter_samples   = []  
+hpipm_ocp_time_samples   = []
+hpipm_ocp_solved_samples = []
 
 # Initial states
 
@@ -145,6 +141,7 @@ if('OSQP' in SOLVERS):
     solverosqp.eps_abs = EPS_ABS
     solverosqp.eps_rel = EPS_REL
     solverosqp.with_callbacks = CALLBACKS
+    solverosqp.OSQP_scaling = True 
 
 # Create solver HPIPM dense
 if('HPIPM_DENSE' in SOLVERS):
@@ -174,11 +171,11 @@ for sample_id in range(N_samples):
     print("Sample "+str(sample_id+1)+'/'+str(N_samples))
 
     # Initial state
-    if(name == "Cartpole"):  x0 = cartpole_x0_samples[i,:]
-    if(name == "Kuka"):      x0 = kuka_x0_samples[i,:]
-    if(name == "Quadrotor"): x0 = quadrotor_x0_samples[i,:]
-    if(name == "Taichi"):    p0 = taichi_p0_samples[i,:]
-    if(name == "solo12"):    mu = solo12_mu_samples[i]
+    if(name == "Cartpole"):  x0 = cartpole_x0_samples[sample_id,:]
+    if(name == "Kuka"):      x0 = kuka_x0_samples[sample_id,:]
+    if(name == "Quadrotor"): x0 = quadrotor_x0_samples[sample_id,:]
+    if(name == "Taichi"):    p0 = taichi_p0_samples[sample_id,:]
+    if(name == "solo12"):    mu = solo12_mu_samples[sample_id]
 
     # CSQP
     if('CSQP' in SOLVERS):
@@ -330,18 +327,18 @@ if(SAVE):
             hpipm_ocp_solved_samples=hpipm_ocp_solved_samples, 
             hpipm_ocp_time_samples=hpipm_ocp_time_samples,
             hpipm_ocp_iter_samples=hpipm_ocp_iter_samples)
-    # PREFIX = '/home/skleff/SQP_REBUTAL_BENCH/'
-    # file_name = name + "_qp_benchmark"
-    # np.savez(file_name, 
-    #         csqp_iter_solved_samples=csqp_solved_samples, 
-    #         csqp_time_samples=csqp_time_samples,
-    #         csqp_iter_samples=csqp_iter_samples,
-    #         osqp_iter_solved_samples=osqp_solved_samples, 
-    #         osqp_time_samples=osqp_time_samples,
-    #         osqp_iter_samples=osqp_iter_samples,
-    #         hpipm_dense_solved_samples=hpipm_dense_solved_samples, 
-    #         hpipm_dense_time_samples=hpipm_dense_time_samples,
-    #         hpipm_dense_iter_samples=hpipm_dense_iter_samples,
-    #         hpipm_ocp_solved_samples=hpipm_ocp_solved_samples, 
-    #         hpipm_ocp_time_samples=hpipm_ocp_time_samples,
-    #         hpipm_ocp_iter_samples=hpipm_ocp_iter_samples)
+    PREFIX = '/home/skleff/SQP_REBUTAL_BENCH/constrained/'
+    file_name = PREFIX + name + "_qp_benchmark"
+    np.savez(file_name, 
+            csqp_iter_solved_samples=csqp_solved_samples, 
+            csqp_time_samples=csqp_time_samples,
+            csqp_iter_samples=csqp_iter_samples,
+            osqp_iter_solved_samples=osqp_solved_samples, 
+            osqp_time_samples=osqp_time_samples,
+            osqp_iter_samples=osqp_iter_samples,
+            hpipm_dense_solved_samples=hpipm_dense_solved_samples, 
+            hpipm_dense_time_samples=hpipm_dense_time_samples,
+            hpipm_dense_iter_samples=hpipm_dense_iter_samples,
+            hpipm_ocp_solved_samples=hpipm_ocp_solved_samples, 
+            hpipm_ocp_time_samples=hpipm_ocp_time_samples,
+            hpipm_ocp_iter_samples=hpipm_ocp_iter_samples)

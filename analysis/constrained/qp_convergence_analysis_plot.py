@@ -17,9 +17,9 @@ SOLVERS = ['CSQP']
         #    'HPIPM_DENSE', 
         #    'HPIPM_OCP']
 
-# name = "solo12"
+name = "solo12"
 # name = "Kuka"
-name = "Taichi"
+# name = "Taichi"
 
 
 
@@ -28,7 +28,7 @@ import matplotlib
 matplotlib.rcParams["pdf.fonttype"] = 42
 matplotlib.rcParams["ps.fonttype"] = 42
 
-file_name = 'data/' + name + "_qp_convergence.npz"
+file_name = '/home/skleff/SQP_REBUTAL_BENCH/' + name + "_qp_convergence.npz"
 print("Loading " + file_name)
 npzfile = np.load(file_name)
 

@@ -24,7 +24,7 @@ TOL         = 0.
 CALLBACKS   = False
 EPS_IP      = 1e-10
 EPS_REL     = 0.
-SAVE = False
+SAVE = True
 
 name = "solo12"
 # name = "Kuka"
@@ -206,13 +206,13 @@ std_csqp_dist = np.std(csqp_dist, axis=0)
 std_hpipm_ocp_dist = np.std(hpipm_ocp_dist, axis=0)
 
 if(SAVE):
-    PREFIX = 'data/'
-    file_name = PREFIX + name + "_qp_convergence"
-    print("saving to "+file_name)
-    np.savez(file_name, 
-            csqp_time=csqp_time, 
-            csqp_iter=csqp_iter, 
-            csqp_dist=csqp_dist)
+    # PREFIX = 'data/'
+    # file_name = PREFIX + name + "_qp_convergence"
+    # print("saving to "+file_name)
+    # np.savez(file_name, 
+    #         csqp_time=csqp_time, 
+    #         csqp_iter=csqp_iter, 
+    #         csqp_dist=csqp_dist)
     PREFIX = '/home/skleff/SQP_REBUTAL_BENCH/'
     file_name = PREFIX + name + "_qp_convergence"
     np.savez(file_name, 

@@ -37,12 +37,12 @@ if(name == 'Kuka'):
 if(name == 'solo12'):
     MAX_QP_TIME = int(5e3)     # in ms
     MAX_QP_ITER = 100000
-    TIME_DISCRETIZATION = 1  # the larger the faster (usefull for very fast problems) 
+    TIME_DISCRETIZATION = 0.1  # the larger the faster (usefull for very fast problems) 
 
 
 
 
-file_name = name + "_qp_benchmark.npz"
+file_name = 'data/' + name + "_qp_benchmark.npz"
 print("Loading " + file_name)
 npzfile = np.load(file_name)
 
@@ -180,7 +180,7 @@ plt.gca().axes.yaxis.set_ticklabels([])
 
 if(SAVE_PLOT):
     fig0.savefig('figures/qp_bench_' + name + '.pdf', bbox_inches="tight")
-    fig0.savefig('/home/skleff/SQP_REBUTAL_BENCH/qp_bench_' + name + '.pdf', bbox_inches="tight")
+    fig0.savefig('/home/skleff/SQP_REBUTAL_BENCH/constrained/qp_bench_' + name + '.pdf', bbox_inches="tight")
 
 plt.show()
 plt.close('all')

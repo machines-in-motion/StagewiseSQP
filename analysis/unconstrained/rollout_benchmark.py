@@ -51,7 +51,7 @@ N_SAMPLES = 100
 solversDDP         = []
 solversFDDP        = []
 solversFDDP_filter = []
-solverCSSQP        = []
+solverSQP        = []
 
 # Initial states
 pendulum_x0  = np.array([3.14, 0., 0., 0.])
@@ -100,14 +100,14 @@ if(CALLBACKS): solverfddp_filter.setCallbacks([crocoddyl.CallbackVerbose()])
 solversFDDP_filter.append(solverfddp_filter)
 
 # Create solver SQP (MS)
-solverSQP = mim_solvers.SolverSQP(pb)
-solverSQP.xs = [solverSQP.problem.x0] * (solverSQP.problem.T + 1)  
-solverSQP.us = solverSQP.problem.quasiStatic([solverSQP.problem.x0] * solverSQP.problem.T)
-solverSQP.termination_tolerance  = TOL
-solverSQP.use_filter_line_search = True
-solverSQP.filter_size            = MAXITER
-solverSQP.with_callbacks         = CALLBACKS
-solverCSSQP.append(solverSQP)
+solversqp = mim_solvers.SolverSQP(pb)
+solversqp.xs = [solversqp.problem.x0] * (solversqp.problem.T + 1)  
+solversqp.us = solversqp.problem.quasiStatic([solversqp.problem.x0] * solversqp.problem.T)
+solversqp.termination_tolerance  = TOL
+solversqp.use_filter_line_search = True
+solversqp.filter_size            = MAXITER
+solversqp.with_callbacks         = CALLBACKS
+solverSQP.append(solversqp)
 
 
 
@@ -151,10 +151,10 @@ fddp_filter_kkt_samples    = []
 fddp_filter_solved_samples = []
 fddp_filter_avg_time_per_iter_samples = []
 
-SQP_iter_samples   = []  
-SQP_kkt_samples    = []
-SQP_solved_samples = []
-SQP_avg_time_per_iter_samples = []
+sqp_iter_samples   = []  
+sqp_kkt_samples    = []
+sqp_solved_samples = []
+sqp_avg_time_per_iter_samples = []
 
 # Solve the problem for each sample
 for i in range(N_SAMPLES):
@@ -238,26 +238,26 @@ for i in range(N_SAMPLES):
     # SQP        
     print("   Problem : "+BENCH_NAME+" SQP")
     if(BENCH_NAME == 'Taichi'):
-        models = list(solverSQP.problem.runningModels) + [solverSQP.problem.terminalModel]
+        models = list(solversqp.problem.runningModels) + [solversqp.problem.terminalModel]
         for m in models: m.differential.costs.costs["gripperPose"].cost.residual.reference = pin.SE3(np.eye(3), x0.copy())
     else:
-        solverSQP.problem.x0 = x0
-    solverSQP.xs = [solverSQP.problem.x0] * (solverSQP.problem.T + 1) 
-    solverSQP.us = solverSQP.problem.quasiStatic([solverSQP.problem.x0] * solverSQP.problem.T)
+        solversqp.problem.x0 = x0
+    solversqp.xs = [solversqp.problem.x0] * (solversqp.problem.T + 1) 
+    solversqp.us = solversqp.problem.quasiStatic([solversqp.problem.x0] * solversqp.problem.T)
     tic = time.time()
-    solverSQP.solve(solverSQP.xs, solverSQP.us, MAXITER, False)
-    SQP_solve_time = time.time() - tic
+    solversqp.solve(solversqp.xs, solversqp.us, MAXITER, False)
+    sqp_solve_time = time.time() - tic
         # Check convergence
-    solved = (solverSQP.iter < MAXITER) and (solverSQP.KKT < TOL)
-    SQP_solved_samples.append( solved )
-    print("   iter = "+str(solverSQP.iter)+"  |  KKT = "+str(solverSQP.KKT))
+    solved = (solversqp.iter < MAXITER) and (solversqp.KKT < TOL)
+    sqp_solved_samples.append( solved )
+    print("   iter = "+str(solversqp.iter)+"  |  KKT = "+str(solversqp.KKT))
     if(not solved): 
         print("      FAILED !!!!")
-        SQP_iter_samples.append(MAXITER)
+        sqp_iter_samples.append(MAXITER)
     else:
-        SQP_iter_samples.append(solverSQP.iter)
-    SQP_avg_time_per_iter_samples.append(SQP_solve_time/solverSQP.iter)
-    SQP_kkt_samples.append(solverSQP.KKT)
+        sqp_iter_samples.append(solversqp.iter)
+    sqp_avg_time_per_iter_samples.append(sqp_solve_time/solversqp.iter)
+    sqp_kkt_samples.append(solversqp.KKT)
 
 # Compute solving time statistics
 ddp_mean_solve_time         = np.mean(np.array(ddp_avg_time_per_iter_samples))
@@ -266,21 +266,21 @@ fddp_mean_solve_time        = np.mean(np.array(fddp_avg_time_per_iter_samples))
 fddp_std_solve_time         = np.std(np.array(fddp_avg_time_per_iter_samples))
 fddp_filter_mean_solve_time = np.mean(np.array(fddp_filter_avg_time_per_iter_samples))
 fddp_filter_std_solve_time  = np.std(np.array(fddp_filter_avg_time_per_iter_samples))
-SQP_mean_solve_time         = np.mean(np.array(SQP_avg_time_per_iter_samples))
-SQP_std_solve_time          = np.std(np.array(SQP_avg_time_per_iter_samples))
+sqp_mean_solve_time         = np.mean(np.array(sqp_avg_time_per_iter_samples))
+sqp_std_solve_time          = np.std(np.array(sqp_avg_time_per_iter_samples))
 
 print("Average solving times \n")
 print(ddp_mean_solve_time)
 print(" DDP      = " , ddp_mean_solve_time         ,  ' \xB1 ' , ddp_std_solve_time)
 print(" FDDP     = " , fddp_mean_solve_time        ,  ' \xB1 ' , fddp_std_solve_time)
 print(" FDDP_LS  = " , fddp_filter_mean_solve_time ,  ' \xB1 ' , fddp_filter_std_solve_time)
-print(" SQP      = " , SQP_mean_solve_time         ,  ' \xB1 ' , SQP_std_solve_time)
+print(" SQP      = " , sqp_mean_solve_time         ,  ' \xB1 ' , sqp_std_solve_time)
 
 # Average fddp iters
 ddp_iter_solved         = np.zeros(MAXITER)
 fddp_iter_solved        = np.zeros(MAXITER)
 fddp_filter_iter_solved = np.zeros(MAXITER)
-SQP_iter_solved         = np.zeros(MAXITER)
+sqp_iter_solved         = np.zeros(MAXITER)
 
 # Count number of problems solved for each sample initial state 
 for i in range(N_SAMPLES):
@@ -288,12 +288,12 @@ for i in range(N_SAMPLES):
     ddp_iter_ik  = np.array(ddp_iter_samples)[i]
     fddp_iter_ik = np.array(fddp_iter_samples)[i]
     fddp_filter_iter_ik = np.array(fddp_filter_iter_samples)[i]
-    SQP_iter_ik = np.array(SQP_iter_samples)[i]
+    sqp_iter_ik = np.array(sqp_iter_samples)[i]
     for j in range(MAXITER):
         if(ddp_iter_ik < j): ddp_iter_solved[j] += 1
         if(fddp_iter_ik < j): fddp_iter_solved[j] += 1
         if(fddp_filter_iter_ik < j): fddp_filter_iter_solved[j] += 1
-        if(SQP_iter_ik < j): SQP_iter_solved[j] += 1
+        if(sqp_iter_ik < j): sqp_iter_solved[j] += 1
 
 # Save the benchmark data 
 if(SAVE):
@@ -304,12 +304,12 @@ if(SAVE):
             ddp_iter_solved=ddp_iter_solved, 
             fddp_iter_solved=fddp_iter_solved,
             fddp_filter_iter_solved=fddp_filter_iter_solved,
-            SQP_iter_solved=SQP_iter_solved, 
+            sqp_iter_solved=sqp_iter_solved, 
             ddp_mean_solve_time=ddp_mean_solve_time,
             ddp_std_solve_time=ddp_std_solve_time,
             fddp_mean_solve_time=fddp_mean_solve_time, 
             fddp_std_solve_time=fddp_std_solve_time,
             fddp_filter_mean_solve_time=fddp_filter_mean_solve_time,
             fddp_filter_std_solve_time=fddp_filter_std_solve_time, 
-            SQP_mean_solve_time=SQP_mean_solve_time,
-            SQP_std_solve_time=SQP_std_solve_time)
+            sqp_mean_solve_time=sqp_mean_solve_time,
+            sqp_std_solve_time=sqp_std_solve_time)

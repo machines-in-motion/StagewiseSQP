@@ -58,7 +58,8 @@ if('horizon' in WHICH_PLOT) :
     plt.legend(loc='upper left', prop={'size': FONTSIZE}) 
     # Save, show , clean
     if(SAVE):
-        fig0.savefig('/tmp/CLQR_benchmark_horizon.pdf', bbox_inches="tight")
+        fig0.savefig('figures/CLQR_benchmark_horizon.pdf', bbox_inches="tight")
+        fig0.savefig('/home/skleff/SQP_REBUTAL_BENCH/constrained/CLQR_benchmark_horizon.pdf', bbox_inches="tight")
 
 
 if('state' in WHICH_PLOT): 
@@ -94,7 +95,9 @@ if('state' in WHICH_PLOT):
     plt.legend(loc='upper left', prop={'size': FONTSIZE}) 
     # Save, show , clean
     if(SAVE):
-        fig0.savefig('/tmp/CLQR_benchmark_state.pdf', bbox_inches="tight")
+        fig0.savefig('figures/CLQR_benchmark_state.pdf', bbox_inches="tight")
+        fig0.savefig('/home/skleff/SQP_REBUTAL_BENCH/constrained/CLQR_benchmark_state.pdf', bbox_inches="tight")
+
 
 plt.show()
 plt.close('all')

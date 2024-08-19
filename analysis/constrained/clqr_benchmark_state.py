@@ -137,7 +137,21 @@ hpipm_ocp_qp_time_std   = np.std(hpipm_ocp_time_solved, axis=1)
 
 # Save data
 if(SAVE):
-    PREFIX = '/tmp/'
+    PREFIX = 'data/'
+    file_name = PREFIX + "CLQR_state_benchmark"
+    np.savez(file_name, 
+             N_samples=N_samples,
+             horizon=horizon,
+             dim_list=dim_list,
+             csqp_qp_time_mean=csqp_qp_time_mean, 
+             osqp_qp_time_mean=osqp_qp_time_mean,
+             hpipm_dense_qp_time_mean=hpipm_dense_qp_time_mean,
+             hpipm_ocp_qp_time_mean=hpipm_ocp_qp_time_mean, 
+             csqp_qp_time_std=csqp_qp_time_std,
+             osqp_qp_time_std=osqp_qp_time_std,
+             hpipm_dense_qp_time_std=hpipm_dense_qp_time_std,
+             hpipm_ocp_qp_time_std=hpipm_ocp_qp_time_std)
+    PREFIX = '/home/skleff/SQP_REBUTAL_BENCH/'
     file_name = PREFIX + "CLQR_state_benchmark"
     np.savez(file_name, 
              N_samples=N_samples,
