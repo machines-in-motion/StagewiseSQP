@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
-from plot_config import LABELS, COLORS, LINESTYLES, LABELSIZE, FONTSIZE, FIGSIZE
+from plot_config import LABELS, COLORS, LINESTYLES, LABELSIZE, FONTSIZE, FIGSIZE_SQ
 
 matplotlib.rcParams["pdf.fonttype"] = 42
 matplotlib.rcParams["ps.fonttype"] = 42
@@ -51,24 +51,24 @@ bar_width = 0.2
 index = np.arange(n_problems)
 
 # Plotting the bars with error bars
-fig, ax = plt.subplots(figsize=(13.8, 10.8), constrained_layout=True)
+fig, ax = plt.subplots(figsize=FIGSIZE_SQ, constrained_layout=True)
 
 for i, solver in enumerate(SOLVERS):
     ax.bar(index + i * bar_width, solving_times[solver], bar_width, yerr=variances[solver],
            color=COLORS[solver], label=LABELS[solver], capsize=5, alpha=0.8, edgecolor='black')
 
 # Adding labels, title, and legend
-ax.set_xlabel('Problems', fontsize=26)
+ax.set_xlabel('Problems', fontsize=FONTSIZE)
 ax.grid(True)
 ax.set_yscale('log')
-ax.set_ylabel('Average time per iteration (ms)', fontsize=26)
-ax.set_title('Average time per iteration', fontsize=26)
+ax.set_ylabel('Average time per iteration (ms)', fontsize=FONTSIZE)
+ax.set_title('Average time per iteration', fontsize=FONTSIZE)
 ax.set_xticks(index + bar_width * (n_solvers - 1) / 2)
 ax.set_xticklabels(PROBLEMS)
-ax.tick_params(axis='y', labelsize=22)
-ax.tick_params(axis='x', labelsize=22)
+ax.tick_params(axis='y', labelsize=LABELSIZE)
+ax.tick_params(axis='x', labelsize=LABELSIZE)
 handles, labels = ax.get_legend_handles_labels()
-fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.1, 0.95), prop={'size': 26})
+fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.1, 0.95), prop={'size': FONTSIZE})
 
 # Save, show, clean
 if SAVE_PLOT:

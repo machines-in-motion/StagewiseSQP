@@ -16,7 +16,7 @@ from plot_config import LABELS, COLORS, LINESTYLES
 import time
 # Solvers
 SOLVERS = ['CSQP']
-        #    'OSQP',
+        #    'OSQP']
         #    'HPIPM_DENSE', 
         #    'HPIPM_OCP']
 
@@ -26,8 +26,8 @@ EPS_IP      = 1e-10
 EPS_REL     = 0.
 SAVE = True
 
-name = "solo12"
-# name = "Kuka"
+name = "Kuka"
+# name = "solo12"
 # name = "Taichi"
 
 
@@ -55,6 +55,10 @@ def distance(x, y):
 csqp_time = []
 csqp_iter = []
 csqp_dist = []
+
+osqp_time = []
+osqp_iter = []
+osqp_dist = []
 
 hpipm_ocp_time = []
 hpipm_ocp_dist = []
@@ -92,7 +96,16 @@ for sample_id in range(n_samples):
         solvercsqp.equality_qp_initial_guess = False
         solvercsqp.update_rho_with_heuristic = False
         solvercsqp.with_callbacks = CALLBACKS
-        # solvercsqp.with_qp_callbacks = True # CALLBACKS
+
+    # Create solver CSQP 
+    if('OSQP' in SOLVERS):
+        solverosqp = CSQP(pb, "OSQP")
+        solverosqp.termination_tolerance = TOL
+        solverosqp.with_qp_callbacks = False
+        solverosqp.OSQP_scaling = True
+        solverosqp.eps_abs = 1e-100
+        solverosqp.eps_rel = EPS_REL
+        solverosqp.with_callbacks = CALLBACKS
 
     # Create solver HPIPM ocp
     if('HPIPM_OCP' in SOLVERS):
@@ -103,7 +116,7 @@ for sample_id in range(n_samples):
         solverhpipm_ocp.with_callbacks = CALLBACKS
 
 
-    # use GT hpipm 
+    # Ground truth 
     solverGT = mim_solvers.SolverCSQP(pb) #CSQP(pb, "HPIPM_OCP")
     solverGT.termination_tolerance  = TOL
     solverGT.xs = [solverGT.problem.x0] * (solverGT.problem.T + 1) 
@@ -124,37 +137,48 @@ for sample_id in range(n_samples):
     du = np.zeros_like(du_GT)
     dist_HPIPM = distance(dx, dx_GT) + distance(du, du_GT)
     dist_CSQP = distance(dx, dx_GT) + distance(du, du_GT)
+    dist_OSQP = distance(dx, dx_GT) + distance(du, du_GT)
 
     sample_csqp_time = [0.]
     sample_csqp_iter = [0.]
     sample_csqp_dist = [dist_CSQP]
 
+    sample_osqp_time = [0.]
+    sample_osqp_iter = [0.]
+    sample_osqp_dist = [dist_OSQP]
+
     sample_hpipm_ocp_time = [0.]
     sample_hpipm_ocp_dist = [dist_HPIPM]
     for iter in range(1, MAX_QP_ITER_ADMM+1, 1):
-        print(iter, " / ", MAX_QP_ITER_ADMM)
+        # print(iter, " / ", MAX_QP_ITER_ADMM)
         # CSQP
         if('CSQP' in SOLVERS):
-            # print("   Problem : CSQP")
             solvercsqp.max_qp_iters = iter
-            # solvercsqp.rho_update_interval = 20 # 10 current best 
             solvercsqp.xs = [solvercsqp.problem.x0] * (solvercsqp.problem.T + 1) 
             solvercsqp.us = solvercsqp.problem.quasiStatic([solvercsqp.problem.x0] * solvercsqp.problem.T)
             solvercsqp.solve(solvercsqp.xs, solvercsqp.us, 0, False)
-            # import pdb; pdb.set_trace()
             t1 = time.time()
             solvercsqp.computeDirection(True)
             solvercsqp.qp_time = time.time() - t1
             dx = np.array(solvercsqp.dx)
             du = np.array(solvercsqp.du)
-            # dist = np.max((solvercsqp.norm_primal, solvercsqp.norm_dual)) # 
             dist = distance(dx, dx_GT) + distance(du, du_GT)
             sample_csqp_time.append(solvercsqp.qp_time*1e3)
             sample_csqp_dist.append(dist)
             sample_csqp_iter.append(solvercsqp.qp_iters)
-            # print("csqp iters = ", solvercsqp.qp_iters)
-            # print("csqp norm = ", np.max((solvercsqp.norm_primal, solvercsqp.norm_dual)))
 
+        # OSQP
+        if('OSQP' in SOLVERS):
+            solverosqp.max_qp_iters = iter
+            solverosqp.xs = [solverosqp.problem.x0] * (solverosqp.problem.T + 1) 
+            solverosqp.us = solverosqp.problem.quasiStatic([solverosqp.problem.x0] * solverosqp.problem.T)
+            solverosqp.solve(solverosqp.xs, solverosqp.us, 1, False)
+            dx = np.array(solverosqp.dx)
+            du = np.array(solverosqp.du)
+            dist = distance(dx, dx_GT) + distance(du, du_GT)
+            sample_osqp_time.append(solverosqp.qp_time*1e3)
+            sample_osqp_dist.append(dist)
+            sample_osqp_iter.append(solverosqp.qp_iters)
 
     for iter in range(1, MAX_QP_ITER_HPIPM+1):
         # HPIPM_OCP    
@@ -177,6 +201,10 @@ for sample_id in range(n_samples):
     csqp_iter.append(sample_csqp_iter)
     csqp_dist.append(sample_csqp_dist)
 
+    osqp_time.append(sample_osqp_time)
+    osqp_iter.append(sample_osqp_iter)
+    osqp_dist.append(sample_osqp_dist)
+
     hpipm_ocp_time.append(sample_hpipm_ocp_time)
     hpipm_ocp_dist.append(sample_hpipm_ocp_dist)
 
@@ -185,37 +213,53 @@ csqp_time = np.array(csqp_time)
 csqp_iter = np.array(csqp_iter)
 csqp_dist = np.array(csqp_dist)
 
+osqp_time = np.array(osqp_time)
+osqp_iter = np.array(osqp_iter)
+osqp_dist = np.array(osqp_dist)
+
 hpipm_ocp_time = np.array(hpipm_ocp_time)
 hpipm_ocp_dist = np.array(hpipm_ocp_dist)
 
 # Extract mean and std
 mean_csqp_time = np.mean(csqp_time, axis=0)
 mean_csqp_iter = np.mean(csqp_iter, axis=0)
+mean_osqp_time = np.mean(osqp_time, axis=0)
+mean_osqp_iter = np.mean(osqp_iter, axis=0)
 mean_hpipm_ocp_time = np.mean(hpipm_ocp_time, axis=0)
 
 mean_csqp_dist = np.median(csqp_dist, axis=0)
+mean_osqp_dist = np.median(osqp_dist, axis=0)
 mean_hpipm_ocp_dist = np.median(hpipm_ocp_dist, axis=0)
 
 q25_csqp_dist = np.quantile(csqp_dist, 0.25, axis=0)
+q25_osqp_dist = np.quantile(osqp_dist, 0.25, axis=0)
 q25_hpipm_ocp_dist = np.quantile(hpipm_ocp_dist, 0.25, axis=0)
 
 q75_csqp_dist = np.quantile(csqp_dist, 0.75, axis=0)
+q75_osqp_dist = np.quantile(osqp_dist, 0.75, axis=0)
 q75_hpipm_ocp_dist = np.quantile(hpipm_ocp_dist, 0.75, axis=0)
 
 std_csqp_dist = np.std(csqp_dist, axis=0)
+std_osqp_dist = np.std(osqp_dist, axis=0)
 std_hpipm_ocp_dist = np.std(hpipm_ocp_dist, axis=0)
 
 if(SAVE):
-    # PREFIX = 'data/'
-    # file_name = PREFIX + name + "_qp_convergence"
-    # print("saving to "+file_name)
-    # np.savez(file_name, 
-    #         csqp_time=csqp_time, 
-    #         csqp_iter=csqp_iter, 
-    #         csqp_dist=csqp_dist)
-    PREFIX = '/home/skleff/SQP_REBUTAL_BENCH/'
+    PREFIX = 'data/'
+    file_name = PREFIX + name + "_qp_convergence"
+    print("saving to "+file_name)
+    np.savez(file_name, 
+            csqp_time=csqp_time, 
+            csqp_iter=csqp_iter, 
+            csqp_dist=csqp_dist,
+            osqp_time=osqp_time, 
+            osqp_iter=osqp_iter, 
+            osqp_dist=osqp_dist)
+    PREFIX = '/home/skleff/SQP_REBUTAL_BENCH/constrained/'
     file_name = PREFIX + name + "_qp_convergence"
     np.savez(file_name, 
             csqp_time=csqp_time, 
             csqp_iter=csqp_iter, 
-            csqp_dist=csqp_dist)
+            csqp_dist=csqp_dist,            
+            osqp_time=osqp_time, 
+            osqp_iter=osqp_iter, 
+            osqp_dist=osqp_dist)

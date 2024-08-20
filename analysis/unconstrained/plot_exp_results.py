@@ -1,15 +1,16 @@
 from mim_data_utils import DataReader
 from croco_mpc_utils.pinocchio_utils import *
 import numpy as np
-from robot_properties_kuka.config import IiwaConfig
+from mim_robots.robot_loader import load_pinocchio_wrapper
 
 # Generate plot of number of iterations for each problem
+from plot_config import LABELS, COLORS, LINESTYLES, LABELSIZE, FONTSIZE, FIGSIZE_SQ
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.rcParams["pdf.fonttype"] = 42
 matplotlib.rcParams["ps.fonttype"] = 42
+
 import os
- 
 KUKA_DGH_PATH   = os.path.join(os.path.dirname(__file__), '../../kuka_dgh')
 os.sys.path.insert(1, str(KUKA_DGH_PATH))
 
@@ -19,8 +20,7 @@ from croco_mpc_utils.utils import CustomLogger, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FOR
 logger = CustomLogger(__name__, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT).logger
 
 
-iiwa_config = IiwaConfig()
-pinrobot    = iiwa_config.buildRobotWrapper()
+pinrobot    = load_pinocchio_wrapper('iiwa')
 model       = pinrobot.model
 data        = model.createData()
 frameId     = model.getFrameId('contact')
@@ -32,7 +32,7 @@ config        = launch_utils.load_config_file(EXP_NAME, path_prefix=KUKA_DGH_PAT
 
 
 DATA_PATH = os.path.join(KUKA_DGH_PATH, 'data')
-SAVE_PATH = '/tmp' # <<<<<<< EDIT SAVE PATH HERE
+SAVE_PATH = 'figures/' # <<<<<<< EDIT SAVE PATH HERE
 
 logger.info("Extract SQP data...")
 r1 = DataReader(DATA_PATH+'/unconstrained/circle_ssqp_REAL_2023-10-31T16:45:47.050199_sqp.mds') 
@@ -85,7 +85,7 @@ def compute_costs(r):
 
 
 # Plot the convergence ; KKT residual and number of iterations
-fig, ax = plt.subplots(2, 1, sharex='col',  figsize=(13.8,10.8), constrained_layout=True)
+fig, ax = plt.subplots(2, 1, sharex='col',  figsize=FIGSIZE_SQ, constrained_layout=True) 
 LINEWIDTH = 6
 
 
@@ -100,9 +100,9 @@ major_formatter = FuncFormatter(sci_format)
 
 
 # KKT residual 
-ax[0].plot(time_lin, r1.data['KKT'][N_START:N], label='SQP', linewidth=LINEWIDTH, color='b', alpha=0.5)
-ax[0].plot(time_lin, r2.data['KKT'][N_START:N], label='FDDP',linewidth=LINEWIDTH,  color='g',  alpha=0.5)
-ax[0].plot(time_lin, (N-N_START)*[config['solver_termination_tolerance']], label= 'Tolerance', linestyle='--', color='r', linewidth=LINEWIDTH, alpha=0.5)
+ax[0].plot(time_lin, r1.data['KKT'][N_START:N], color=COLORS['SQP'], linewidth=LINEWIDTH, linestyle=LINESTYLES['SQP'], label=LABELS['SQP']) 
+ax[0].plot(time_lin, r2.data['KKT'][N_START:N], color=COLORS['FDDP_filter'], linewidth=LINEWIDTH, linestyle='-', label=LABELS['FDDP_filter']) 
+ax[0].plot(time_lin, (N-N_START)*[config['solver_termination_tolerance']], label= 'Tolerance', linestyle='--', color='r', linewidth=LINEWIDTH) #, alpha=0.5)
 ax[0].set_ylim(0, 5e-4)
 ax[0].grid(linewidth=1)
 ax[0].set_ylabel('KKT residual norm', fontsize=22)
@@ -113,16 +113,17 @@ ax[0].yaxis.set_major_formatter(major_formatter)
 # ax[0].set_yticks([0, 1, 2, 3, 4, 5])
 
 # Number of iterations
-ax[1].plot(time_lin, r1.data['ddp_iter'][N_START:N], label='SQP', linewidth=LINEWIDTH, color='b', alpha=0.5)
-ax[1].plot(time_lin, r2.data['ddp_iter'][N_START:N], label='FDDP', linewidth=LINEWIDTH,  color='g', alpha=0.5)
-ax[1].plot(time_lin, (N-N_START)*[config['maxiter']], label= 'Max. # iter.', linestyle='--', color='r', linewidth=LINEWIDTH, alpha=0.5)
+ax[1].plot(time_lin, r1.data['ddp_iter'][N_START:N], color=COLORS['SQP'], linewidth=LINEWIDTH, linestyle=LINESTYLES['SQP'], label=LABELS['SQP']) 
+# Set axis and stuff
+ax[1].plot(time_lin, r2.data['ddp_iter'][N_START:N], color=COLORS['FDDP_filter'], linewidth=LINEWIDTH, linestyle='-', label=LABELS['FDDP_filter']) 
+ax[1].plot(time_lin, (N-N_START)*[config['maxiter']], label= 'Max. # iter.', linestyle='--', color='r', linewidth=LINEWIDTH) #, alpha=0.5)
 ax[1].set_ylim(0, 6)
 ax[1].set_yticks([0, 1, 2, 3, 4, 5])
 ax[1].grid(linewidth=1)
-ax[1].set_ylabel('Number of iterations', fontsize=22)
-ax[1].tick_params(axis = 'y', labelsize=22)
-ax[1].tick_params(axis = 'x', labelsize=22)
-ax[1].set_xlabel('Time (s)', fontsize=22)
+ax[1].set_ylabel('Number of iterations', fontsize=FONTSIZE)
+ax[1].set_xlabel('Time (s)', fontsize=FONTSIZE)
+ax[1].tick_params(axis = 'y', labelsize=LABELSIZE)
+ax[1].tick_params(axis = 'x', labelsize=LABELSIZE)
 ax[1].set_xlim(time_lin[0], time_lin[-1])
 
 # Cost
@@ -142,7 +143,7 @@ print("Cumulative cost of the MPC (FDDP) = ", np.sum(c2))
 fig.align_ylabels()
 handles, labels = ax[0].get_legend_handles_labels()
 # ax[0].legend(loc="upper left", framealpha=0.95, fontsize=26) 
-fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.1, 1.), prop={'size': 26}) 
+fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.1, 1.), prop={'size': FONTSIZE}) 
 # plt.tight_layout(pad=1)
 save_path = os.path.join(SAVE_PATH, 'circle_ssqp_vs_fddp_plot.pdf')
 logger.warning("Saving figure to "+str(save_path))

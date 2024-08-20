@@ -15,6 +15,8 @@ LINESTYLES = {'DDP': 'dashdot',
               'SQP': 'solid',
               }
 
-LABELSIZE = 22
-FONTSIZE  = 26
-FIGSIZE   = (19.2,10.8)
+LABELSIZE  = 22
+FONTSIZE   = 26
+FIGSIZE    = (19.2,10.8)
+FIGSIZE_SQ = (13.8,10.8)
+LINEWIDTH  = 4

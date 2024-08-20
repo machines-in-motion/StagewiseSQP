@@ -3,7 +3,7 @@ Plot the rollout benchmarks
 '''
 import numpy as np
 
-from plot_config import LABELS, COLORS, LINESTYLES, LABELSIZE, FONTSIZE, FIGSIZE
+from plot_config import LABELS, COLORS, LINESTYLES, LABELSIZE, FONTSIZE, FIGSIZE, LINEWIDTH
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.rcParams["pdf.fonttype"] = 42
@@ -35,10 +35,10 @@ xdata     = range(0,MAXITER)
 xdata2     = range(0,N_SAMPLES)
 # Plot number of problem solved vs max number of iterations
 fig0, ax0 = plt.subplots(1, 1, figsize=FIGSIZE)
-ax0.plot(xdata, npzfile['ddp_iter_solved']/N_SAMPLES, color=COLORS['DDP'], linewidth=4, linestyle=LINESTYLES['DDP'], label=LABELS['DDP']) 
-ax0.plot(xdata, npzfile['fddp_iter_solved']/N_SAMPLES, color=COLORS['FDDP'], linewidth=4, linestyle=LINESTYLES['FDDP'], label=LABELS['FDDP']) 
-ax0.plot(xdata, npzfile['fddp_filter_iter_solved']/N_SAMPLES, color=COLORS['FDDP_filter'], linewidth=4, linestyle=LINESTYLES['FDDP_filter'], label=LABELS['FDDP_filter']) 
-ax0.plot(xdata, npzfile['SQP_iter_solved']/N_SAMPLES, color=COLORS['SQP'], linewidth=4, linestyle=LINESTYLES['SQP'], label=LABELS['SQP']) 
+ax0.plot(xdata, npzfile['ddp_iter_solved']/N_SAMPLES, color=COLORS['DDP'], linewidth=LINEWIDTH, linestyle=LINESTYLES['DDP'], label=LABELS['DDP']) 
+ax0.plot(xdata, npzfile['fddp_iter_solved']/N_SAMPLES, color=COLORS['FDDP'], linewidth=LINEWIDTH, linestyle=LINESTYLES['FDDP'], label=LABELS['FDDP']) 
+ax0.plot(xdata, npzfile['fddp_filter_iter_solved']/N_SAMPLES, color=COLORS['FDDP_filter'], linewidth=LINEWIDTH, linestyle=LINESTYLES['FDDP_filter'], label=LABELS['FDDP_filter']) 
+ax0.plot(xdata, npzfile['SQP_iter_solved']/N_SAMPLES, color=COLORS['SQP'], linewidth=LINEWIDTH, linestyle=LINESTYLES['SQP'], label=LABELS['SQP']) 
 # Set axis and stuff
 ax0.set_ylabel('Percentage of problems solved', fontsize=FONTSIZE)
 ax0.set_xlabel('Max. number of iterations', fontsize=FONTSIZE)
