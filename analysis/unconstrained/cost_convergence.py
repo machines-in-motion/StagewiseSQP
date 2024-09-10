@@ -163,6 +163,12 @@ else:
     solversqp.problem.x0 = x0
 solversqp.xs = [solversqp.problem.x0] * (solversqp.problem.T + 1) 
 solversqp.us = solversqp.problem.quasiStatic([solversqp.problem.x0] * solversqp.problem.T)
+
+solversqp.solve(solversqp.xs, solversqp.us, 0, False)
+cost_init = solversqp.calcDiff()
+gap_norm_init = np.linalg.norm(solversqp.fs)
+
+
 tic = time.time()
 solversqp.solve(solversqp.xs, solversqp.us, MAXITER, False)
 sqp_solve_time = time.time() - tic
@@ -184,6 +190,12 @@ fs_norm_fddp_filter = np.array([np.linalg.norm(np.array(gap_)) for gap_ in fs_fd
 fs_norm_sqp = np.array([np.linalg.norm(np.array(gap_)) for gap_ in fs_sqp])[1:]
 
 
+fs_norm_ddp = np.concatenate((np.array([gap_norm_init]), fs_norm_ddp))
+fs_norm_fddp = np.concatenate((np.array([gap_norm_init]), fs_norm_fddp))
+fs_norm_fddp_filter = np.concatenate((np.array([gap_norm_init]), fs_norm_fddp_filter))
+fs_norm_sqp = np.concatenate((np.array([gap_norm_init]), fs_norm_sqp))
+
+
 fs_norm_ddp = np.max((fs_norm_ddp, 1e-12 * np.ones(fs_norm_ddp.shape)), axis=0)
 fs_norm_fddp = np.max((fs_norm_fddp, 1e-12 * np.ones(fs_norm_fddp.shape)), axis=0)
 fs_norm_fddp_filter = np.max((fs_norm_fddp_filter, 1e-12 * np.ones(fs_norm_fddp_filter.shape)), axis=0)
@@ -194,13 +206,18 @@ fs_norm_sqp = np.max((fs_norm_sqp, 1e-12 * np.ones(fs_norm_sqp.shape)), axis=0)
 cost_ddp = np.array(logddp.convergence_data['cost'])
 cost_fddp = np.array(logfddp.convergence_data['cost'])
 cost_fddp_filter = np.array(logfddp_filter.convergence_data['cost'])
-cost_sqp = np.array(logsqp.convergence_data['cost'])[1:]
+cost_sqp = np.array(logsqp.convergence_data['cost'])[:-1]
 
 
 cost_ddp -= cost_ddp[-1] + 1e-12
 cost_fddp -= cost_fddp[-1] + 1e-12
 cost_fddp_filter -= cost_fddp_filter[-1] + 1e-12 
 cost_sqp -= cost_sqp[-1] + 1e-12
+
+cost_ddp = np.concatenate((np.array([cost_init]), cost_ddp))
+cost_fddp = np.concatenate((np.array([cost_init]), cost_fddp))
+cost_fddp_filter = np.concatenate((np.array([cost_init]), cost_fddp_filter))
+cost_sqp = np.concatenate((np.array([cost_init]), cost_sqp))
 
 
 import numpy as np
@@ -228,10 +245,10 @@ print("MAXITER   = ", MAXITER)
 
 
 # x-axis : max number of iterations
-xdataddp           =  range(1, solverddp.iter + 1)
-xdatafddp          =  range(1, solverfddp.iter + 1)
-xdatafddp_filter   =  range(1, solverfddp_filter.iter + 1)
-xdatasqp           =  range(1, solversqp.iter + 1)
+xdataddp           =  range(0, solverddp.iter + 1)
+xdatafddp          =  range(0, solverfddp.iter + 1)
+xdatafddp_filter   =  range(0, solverfddp_filter.iter + 1)
+xdatasqp           =  range(0, solversqp.iter + 1)
 # Plot number of problem solved vs max number of iterations
 fig0, (ax0, ax1) = plt.subplots(2, 1, figsize=FIGSIZE)
 ax0.plot(xdataddp,         cost_ddp, color=COLORS['DDP'], linewidth=LINEWIDTH, linestyle=LINESTYLES['DDP'], label=LABELS['DDP']) 
