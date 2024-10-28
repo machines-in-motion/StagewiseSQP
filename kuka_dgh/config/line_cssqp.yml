@@ -32,7 +32,8 @@ reset_rho: False
 
 # Constraints terms
 # to select from the list : 'stateBox', 'ctrlBox', 'translationBox', 'None'
-WHICH_CONSTRAINTS: []
+WHICH_CONSTRAINTS: ['translationBox']
+
 
 
 # 'translation'
