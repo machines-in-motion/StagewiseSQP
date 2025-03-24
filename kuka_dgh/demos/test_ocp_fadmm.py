@@ -14,7 +14,7 @@ python_path = pathlib.Path('.').absolute().parent/'SQP'
 print(python_path)
 os.sys.path.insert(1, str(python_path))
 from core_mpc import path_utils, sim_utils
-from classical_mpc.ocp import OptimalControlProblemClassicalWithConstraints
+from classical_mpc.ocp import OptimalControlProblemClassical
 
 
 SIM = False
@@ -31,7 +31,7 @@ config = path_utils.load_yaml_file(CONFIG_PATH)
 q_init = np.asarray(config['q0'] )
 v_init = np.asarray(config['dq0'])
 x0 = np.concatenate([q_init, v_init])
-ddp = OptimalControlProblemClassicalWithConstraints(pin_robot, config).initialize(x0, callbacks=True)
+ddp = OptimalControlProblemClassical(pin_robot, config).initialize(x0, callbacks=True)
 
 # Solve
 qp_iters = 1000

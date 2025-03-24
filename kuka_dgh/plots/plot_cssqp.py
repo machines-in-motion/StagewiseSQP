@@ -3,13 +3,17 @@ from mim_data_utils import DataReader
 from croco_mpc_utils.pinocchio_utils import *
 import numpy as np
 import matplotlib.pyplot as plt 
+
+import pathlib
+import os
+python_path = pathlib.Path('.').absolute().parent/'kuka_dgh'
+os.sys.path.insert(1, str(python_path))
 from demos import launch_utils
 
 
-from robot_properties_kuka.config import IiwaConfig
+from mim_robots.robot_loader import load_pinocchio_wrapper
 
-iiwa_config = IiwaConfig()
-pinrobot    = iiwa_config.buildRobotWrapper()
+pinrobot    = load_pinocchio_wrapper('iiwa')
 model       = pinrobot.model
 data        = model.createData()
 frameId     = model.getFrameId('contact')
@@ -33,8 +37,8 @@ if(SIM):
     data_name = 'square_cssqp_SIM_2023-10-20T17:25:45.051546_cssqp_best_filter=3' 
     
 else:
-    data_path = '/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/square/paper/no_filter/'
-    data_name = 'square_cssqp_REAL_2023-10-23T17:54:23.590863_cssqp' 
+    data_path = '/tmp/'
+    data_name = 'square_cssqp_REAL_2024-01-18T15:34:35.945630_cssqp_CODE_SPRINT' 
     
 r = DataReader(data_path+data_name+'.mds')
 N = r.data['absolute_time'].shape[0]

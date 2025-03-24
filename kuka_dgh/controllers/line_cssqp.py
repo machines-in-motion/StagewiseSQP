@@ -4,7 +4,7 @@ import mim_solvers
 
 import time
 
-from croco_mpc_utils.ocp_constraints import OptimalControlProblemClassicalWithConstraints
+from croco_mpc_utils.ocp import OptimalControlProblemClassical
 import croco_mpc_utils.pinocchio_utils as pin_utils
 
 from croco_mpc_utils.utils import CustomLogger, GLOBAL_LOG_LEVEL, GLOBAL_LOG_FORMAT
@@ -40,22 +40,22 @@ def solveOCP(q, v, solver, max_sqp_iter, max_qp_iter, target_reach, ee_lb, ee_ub
     solver.solve(xs_init, us_init, maxiter=max_sqp_iter, isFeasible=False)
     solve_time = time.time()
     
-    return  solver.us[0], solver.xs[1], solver.K[0], solve_time - t, solver.iter, solver.cost, solver.constraint_norm, solver.gap_norm, solver.qp_iters, solver.KKT_norm
+    return  solver.us[0], solver.xs[1], solver.K[0], solve_time - t, solver.iter, solver.cost, solver.constraint_norm, solver.gap_norm, solver.qp_iters, solver.KKT
 
 
 
 
 class KukaLineCSSQP:
 
-    def __init__(self, head, iiwa_config, config, run_sim):
+    def __init__(self, head, pin_robot, config, run_sim):
         """
         Input:
             head              : thread head
-            robot_model       : pinocchio model
+            pin_robot         : pinocchio wrapper
             config            : MPC config yaml file
             run_sim           : boolean sim or real
         """
-        self.robot   = iiwa_config.buildRobotWrapper()
+        self.robot   = pin_robot
         self.head    = head
         self.RUN_SIM = run_sim
         self.joint_positions  = head.get_sensor('joint_positions')
@@ -90,7 +90,7 @@ class KukaLineCSSQP:
         self.OCP_TO_CTRL_RATIO = int(self.dt_ocp/self.dt_ctrl)
         self.u0 = pin_utils.get_u_grav(self.q0, self.robot.model, np.zeros(self.robot.model.nq))
         # Create OCP 
-        problem = OptimalControlProblemClassicalWithConstraints(self.robot, self.config).initialize(self.x0)
+        problem = OptimalControlProblemClassical(self.robot, self.config).initialize(self.x0)
 
         # Initialize the solver
         if(config['SOLVER'] == 'proxqp'):
@@ -100,18 +100,18 @@ class KukaLineCSSQP:
             logger.warning("Using the CSSQP solver.")            
             self.solver = mim_solvers.SolverCSQP(problem)
             
-        self.solver.with_callbacks  = self.config['with_callbacks']
-        self.solver.use_filter_ls   = self.config['use_filter_ls']
-        self.solver.filter_size     = self.config['filter_size']
-        self.solver.warm_start      = self.config['warm_start']
-        self.solver.termination_tolerance = self.config['solver_termination_tolerance']
-        self.solver.max_qp_iters    = self.config['max_qp_iter']
-        self.solver.eps_abs         = self.config['qp_termination_tol_abs']
-        self.solver.eps_rel         = self.config['qp_termination_tol_rel']
-        self.solver.warm_start_y    = self.config['warm_start_y']
-        self.solver.reset_rho       = self.config['reset_rho']  
-        self.solver.regMax = 1e6
-        self.solver.reg_max = 1e6
+        self.solver.with_callbacks         = self.config['with_callbacks']
+        self.solver.use_filter_line_search = self.config['use_filter_line_search']
+        self.solver.filter_size            = self.config['filter_size']
+        self.solver.warm_start             = self.config['warm_start']
+        self.solver.termination_tolerance  = self.config['solver_termination_tolerance']
+        self.solver.max_qp_iters           = self.config['max_qp_iter']
+        self.solver.eps_abs                = self.config['qp_termination_tol_abs']
+        self.solver.eps_rel                = self.config['qp_termination_tol_rel']
+        self.solver.warm_start_y           = self.config['warm_start_y']
+        self.solver.reset_rho              = self.config['reset_rho']  
+        self.solver.regMax                 = 1e6
+        self.solver.reg_max                = 1e6
 
         # Allocate MPC data
         self.K = self.solver.K[0]

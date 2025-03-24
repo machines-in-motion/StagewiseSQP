@@ -12,10 +12,9 @@ from matplotlib.animation import FuncAnimation
 import time
 
 
-from robot_properties_kuka.config import IiwaConfig
+from mim_robots.robot_loader import load_pinocchio_wrapper
 
-iiwa_config = IiwaConfig()
-pinrobot    = iiwa_config.buildRobotWrapper()
+pinrobot    = load_pinocchio_wrapper('iiwa')
 model       = pinrobot.model
 data        = model.createData()
 frameId     = model.getFrameId('contact')
@@ -30,7 +29,7 @@ EXP_NAME  = 'plane_cssqp'                                       # <<<<<<<<<<<<< 
 config    = launch_utils.load_config_file(EXP_NAME)
 
 s         = SimpleDataPlotter(dt=1./config['ctrl_freq'])
-data_path = '/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/plane/'
+data_path = './data/constrained/plane/'
 # data_name = 'plane_cssqp_REAL_2023-10-20T18:39:32.202714_cssqp_PUSH_PLANE1'
 data_name = 'plane_cssqp_REAL_2023-10-20T18:44:04.018319_cssqp_PUSH_PLANE2' # <<<<<<<<<<<<< Choose data file here 
 
@@ -162,7 +161,7 @@ t0 = time.time()
 
 time_lin = np.linspace(0, T, N_FRAMES)
 ani = FuncAnimation(fig, animate, frames=time_lin, repeat=False, interval = SKIP, init_func = init, blit=True)
-folder = '/home/skleff/Videos/'
+folder = '/tmp/'
 ani.save(folder + 'plane_cssqp_dynamic_plot_push2.mp4') #, fps=PPS)
 
 

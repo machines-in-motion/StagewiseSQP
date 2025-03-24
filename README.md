@@ -13,7 +13,7 @@ The two main solver variants used in this repository are available in our optima
 - [crocoddyl](https://github.com/loco-3d/crocoddyl/tree/master) (>= 2.0) : library of tools for optimal control  
 - [croco_mpc_utils](https://github.com/machines-in-motion/croco_mpc_utils.git) : helpers for easy & modular prototyping using Crocoddyl
 - [pinocchio](https://github.com/stack-of-tasks/pinocchio) : rigid-body dynamics computations
-- [mim_solvers](https://github.com/machines-in-motion/mim_robots)
+- [mim_robots](https://github.com/machines-in-motion/mim_robots)
 - [robot_descriptions](https://github.com/robot-descriptions/robot_descriptions.py)
 
 TODO: separate dependencies for hardware experiments and for reproducing the benchmarks

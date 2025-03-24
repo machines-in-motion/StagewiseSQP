@@ -20,7 +20,7 @@ T_CIRCLE: 2.
 # CSSQP solver parameters
 SOLVER: 'cssqp'
 with_callbacks: False
-use_filter_ls: True
+use_filter_line_search: True
 filter_size: 9
 warm_start: True
 max_qp_iter: 50    #125 

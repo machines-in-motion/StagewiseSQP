@@ -12,10 +12,9 @@ from matplotlib.animation import FuncAnimation
 import time
 
 
-from robot_properties_kuka.config import IiwaConfig
+from mim_robots.robot_loader import load_pinocchio_wrapper
 
-iiwa_config = IiwaConfig()
-pinrobot    = iiwa_config.buildRobotWrapper()
+pinrobot    = load_pinocchio_wrapper('iiwa')
 model       = pinrobot.model
 data        = model.createData()
 frameId     = model.getFrameId('contact')
@@ -30,10 +29,8 @@ EXP_NAME  = 'square_cssqp'                                       # <<<<<<<<<<<<<
 config    = launch_utils.load_config_file(EXP_NAME)
 
 s         = SimpleDataPlotter(dt=1./config['ctrl_freq'])
-# data_path = '/home/skleff/ws_croco2/workspace/src/StagewiseSQP/kuka_dgh/data/constrained/square/paper/'
-# data_name = 'square_cssqp_REAL_2023-10-23T17:54:23.590863_cssqp' # <<<<<<<<<<<<< Choose data file here
-data_path = '/tmp/' 
-data_name = 'square_cssqp_REAL_2023-10-24T17:02:05.517926_cssqp'
+data_path = './data/constrained/square/video/'
+data_name = 'square_cssqp_REAL_2023-10-20T17:55:11.345520_cssqp' # <<<<<<<<<<<<< Choose data file here
 
 r         = DataReader(data_path+data_name+'.mds')
 N         = r.data['absolute_time'].shape[0]
@@ -198,8 +195,8 @@ t0 = time.time()
 
 time_lin = np.linspace(0, T, N_FRAMES)
 ani = FuncAnimation(fig, animate, frames=time_lin, repeat=False, interval = SKIP, init_func = init, blit=True)
-folder = '/home/skleff/Videos/'
-ani.save(folder + 'test.mp4') #, fps=PPS)
+folder = '/tmp/'
+ani.save(folder + 'square_cssqp_dynamic_plot.mp4') #, fps=PPS)
 
 
 print("COMPUTE TIME = ", time.time() - t0)

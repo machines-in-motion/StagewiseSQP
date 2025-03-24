@@ -15,8 +15,8 @@ pinRef        = pin.LOCAL_WORLD_ALIGNED
 FRICTION_CSTR = True
 MU = 0.8     # friction coefficient
 
-SOLVE_OCP     = True   # solve the OCP 
-SAVE_OCP_SOL  = True   # save OCP solution
+SOLVE_OCP     = False   # solve the OCP 
+SAVE_OCP_SOL  = False   # save OCP solution
 
 PLOT_OCP_SOL  = False   # plot OCP solution
 
@@ -396,7 +396,7 @@ if(PLOT_1):
 # Current paper plot : FL and HL force ratio
 if(PLOT_2):
     time_lin = np.linspace(0, T, solver.problem.T)
-    fig, axs = plt.subplots(2, 1, figsize=(19.2,10.8), constrained_layout=True)
+    fig, axs = plt.subplots(2, 1, figsize=(13.8,10.8), constrained_layout=True) #figsize=(19.2,10.8), constrained_layout=True)
     names = ['FL', 'HL']#, 'FR', 'HR']
     coord = [0, 1] #(0,0), (1,0), (0,1), (1,1)]
     MAXs  = [5.3, 5.3] #, 1.2, 1.2]
@@ -418,13 +418,14 @@ if(PLOT_2):
         axs[coord[i]].set_ylim(0., MAX)
         axs[coord[i]].tick_params(axis = 'x', labelsize=22)
         axs[coord[i]].tick_params(axis = 'y', labelsize=22)
-        axs[coord[i]].set_ylabel(name+' force ratio', fontsize=30)
+        axs[coord[i]].set_ylabel(name+' force ratio', fontsize=22)
 
     handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.04, 1.), prop={'size': 30}) 
+    fig.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.04, 1.), prop={'size': 26}) 
     fig.align_ylabels(axs[:])
     fig.align_xlabels(axs[:])
-    axs[-1].set_xlabel('Time (s)', fontsize=30)
+    axs[-1].set_xlabel('Time (s)', fontsize=22)
+    fig.savefig('/tmp/solo_standing_friction_normalized.pdf', bbox_inches='tight')
     if(SAVE_PLOTS):
         fig.savefig('/home/skleff/data_sqp_paper_croc2/solo_standing_friction_normalized.pdf', bbox_inches="tight")
 
