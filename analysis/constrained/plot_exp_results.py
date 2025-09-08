@@ -9,7 +9,7 @@ import matplotlib
 matplotlib.rcParams["pdf.fonttype"] = 42
 matplotlib.rcParams["ps.fonttype"] = 42
  
- 
+import os
 KUKA_DGH_PATH   = os.path.join(os.path.dirname(__file__), '../../kuka_dgh')
 os.sys.path.insert(1, str(KUKA_DGH_PATH))
 
@@ -28,16 +28,16 @@ nq = model.nq ; nv = model.nv
 
 # Load config file
 SIM           = False
-EXP_NAME      = 'square_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
+EXP_NAME      = 'circle_cssqp' # <<<<<<<<<<<<< Choose experiment here (cf. launch_utils)
 config        = launch_utils.load_config_file(EXP_NAME, path_prefix=KUKA_DGH_PATH)
 
 PLOTS = [
-            # 'circle_ssqp',
-            # 'circle_cssqp_joint',
+            'circle_ssqp',
+            'circle_cssqp_joint',
             
             # 'circle_cssqp_ee',
             
-            'square_cssqp',
+            # 'square_cssqp',
             
             # 'line_cssqp',
             # 'plane_cssqp'
@@ -153,8 +153,8 @@ def plot_joint_traj(fig0, ax0, jmea, label):
     # Measured
     ax0.plot(xdata, jmea, color='b', linewidth=LINEWIDTH, label=label, alpha=0.5) 
     # Axis label & ticks
-    ax0.set_ylabel('Joint position $q_1$ (rad)', fontsize=26)
-    ax0.set_xlabel('Time (s)', fontsize=26)
+    ax0.set_ylabel('Joint position $q_1$ (rad)', fontsize=22)
+    ax0.set_xlabel('Time (s)', fontsize=22)
     ax0.tick_params(axis = 'y', labelsize=22)
     ax0.tick_params(axis = 'x', labelsize=22)
     ax0.grid(True) 
@@ -169,7 +169,7 @@ if('circle_cssqp_joint' in PLOTS and 'circle_ssqp' in PLOTS):
     target_position[:,2] = rs[0].data['target_position_z'][N_START:N,0]
     p_mea1 = get_p_(r1.data['joint_positions'][N_START:N], pinrobot.model, pinrobot.model.getFrameId('contact'))
     p_mea2 = get_p_(r2.data['joint_positions'][N_START:N], pinrobot.model, pinrobot.model.getFrameId('contact'))
-    fig_circle, ax_circle = plt.subplots(1, 1, figsize=(10.8,10.8)) 
+    fig_circle, ax_circle = plt.subplots(1, 1, figsize=(13.8,10.8), constrained_layout=True)
     plot_endeff_yz(fig_circle, ax_circle, p_mea2, target_position, "Constrained") 
     ax_circle.plot(p_mea1[:,1], p_mea1[:,2], color='g', linewidth=LINEWIDTH, label='Unconstrained', alpha=0.5) 
     ax_circle.set_xlim(-0.33, +0.33)
@@ -178,14 +178,16 @@ if('circle_cssqp_joint' in PLOTS and 'circle_ssqp' in PLOTS):
     # ax_circle.text(0., 0.2, '$x_0$', fontdict={'size':26})
     handles, labels = ax_circle.get_legend_handles_labels()
     fig_circle.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
-    save_path = save_path = os.path.join(SAVE_PATH, 'circle_cssqp_joint_plot2.pdf')
+    print("Saving in "+os.path.join(SAVE_PATH, 'circle_cssqp_joint_plot2.pdf'))
+    save_path = os.path.join(SAVE_PATH, 'circle_cssqp_joint_plot2.pdf')
     logger.warning("Saving figure to "+str(save_path))
     fig_circle.savefig(save_path, bbox_inches="tight")
     # Joint pos
     jmea1 = r1.data['joint_positions'][N_START:N, 0]
     jmea2 = r2.data['joint_positions'][N_START:N, 0]
     jlb = [-0.05]*(N-N_START) ; jub = [0.05]*(N-N_START)
-    fig_q, ax_q = plt.subplots(1, 1, figsize=(19.2,10.8))
+    
+    fig_q, ax_q = plt.subplots(1, 1, figsize=(13.8,10.8), constrained_layout=True)
     # Constraint 
     ax_q.plot(xdata, jlb, color='k', linewidth=LINEWIDTH, linestyle='--', label='Constraint', alpha=0.6)
     ax_q.plot(xdata, jub, color='k', linewidth=LINEWIDTH, linestyle='--', alpha=0.6)
@@ -195,9 +197,11 @@ if('circle_cssqp_joint' in PLOTS and 'circle_ssqp' in PLOTS):
     plot_joint_traj(fig_q, ax_q, jmea2, 'Constrained')  
     ax_q.set_ylim(-0.5, 0.75)
     ax_q.set_xlim(0., (N-N_START)/config['ctrl_freq'])
+    ax_q.tick_params(axis = 'y', labelsize=22)
+    ax_q.tick_params(axis = 'x', labelsize=22)
     ax_q.plot(xdata, jmea1, color='g', linewidth=LINEWIDTH, label='Unconstrained', alpha=0.5) 
     handles, labels = ax_q.get_legend_handles_labels()
-    fig_q.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.12, 0.885), prop={'size': 26}) 
+    fig_q.legend(handles, labels, loc='upper left', bbox_to_anchor=(0.1, 1.), prop={'size': 26}) 
     save_path = os.path.join(SAVE_PATH, 'circle_cssqp_joint_plot.pdf')
     logger.warning("Saving figure to "+str(save_path))
     fig_q.savefig(save_path, bbox_inches="tight")
