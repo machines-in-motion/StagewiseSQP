@@ -1,6 +1,6 @@
 # Stagewise implementation of SQPs for OCP
 
-This is the repository that contains the code to generate the benchmarks of [paper](https://ieeexplore.ieee.org/abstract/document/11112619). It includes trajectory optimization scripts and the MPC scipts used in our hardware experiments. 
+This is the repository that contains the code to generate the benchmarks of the following [paper](https://ieeexplore.ieee.org/abstract/document/11112619). It includes trajectory optimization scripts and the MPC scipts used in our hardware experiments. 
 
 ## Quick Overview of the code
 
