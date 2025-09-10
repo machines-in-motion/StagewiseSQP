@@ -1,6 +1,6 @@
 # Stagewise implementation of SQPs for OCP
 
-This is the repository that contains the code to generate the benchmarks of [paper]. It includes trajectory optimization scripts and the MPC scipts used in our hardware experiments. 
+This is the repository that contains the code to generate the benchmarks of [paper](https://ieeexplore.ieee.org/abstract/document/11112619). It includes trajectory optimization scripts and the MPC scipts used in our hardware experiments. 
 
 ## Quick Overview of the code
 
@@ -16,8 +16,6 @@ The two main solver variants used in this repository are available in our optima
 - [mim_robots](https://github.com/machines-in-motion/mim_robots)
 - [robot_descriptions](https://github.com/robot-descriptions/robot_descriptions.py)
 
-TODO: separate dependencies for hardware experiments and for reproducing the benchmarks
-
 ## Maintainers 
 
 The code is maintained by Avadesh Meduri, Armand Jordana, Sébastien Kleff. 
@@ -25,3 +23,13 @@ The code is maintained by Avadesh Meduri, Armand Jordana, Sébastien Kleff.
 ## Paper Citation
 
 Please cite this paper as reference for the code and algorithm. 
+
+```bibtex
+@article{jordana2025structure,
+  title={Structure-Exploiting Sequential Quadratic Programming for Model-Predictive Control},
+  author={Jordana, Armand and Kleff, S{\'e}bastien and Meduri, Avadesh and Carpentier, Justin and Mansard, Nicolas and Righetti, Ludovic},
+  journal={IEEE Transactions on Robotics},
+  year={2025},
+  publisher={IEEE}
+}
+```
